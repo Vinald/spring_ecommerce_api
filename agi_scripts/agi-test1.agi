@@ -1,0 +1,281 @@
+#!/usr/bin/python
+
+
+import sys
+import re
+import time
+import random
+import elementpath
+from xml.etree import ElementTree as et
+import lxml.etree as el
+import os
+import re
+from xml.dom import minidom
+from bs4 import BeautifulSoup as bs
+ 
+
+
+
+
+#####################################
+#### FUNCTIONS TO INTERACT WITH ASTERISK
+#####################################
+
+# agi = asterisk.agi.AGI()
+
+env = {}
+tests = 0
+
+while 1:
+   line = sys.stdin.readline().strip()
+
+   if line == '':
+      break
+   key,data = line.split(':')
+   if key[:4] <> 'agi_':
+      #skip input that doesn't begin with agi_
+      sys.stderr.write("Did not work!\n")
+      sys.stderr.flush()
+      continue
+   key = key.strip()
+   data = data.strip()
+   if key <> '':
+      env[key] = data
+
+sys.stderr.write("AGI Environment Dump:\n")
+sys.stderr.flush()
+for key in env.keys():
+   sys.stderr.write(" -- %s = %s\n" % (key, env[key]))
+   sys.stderr.flush()
+
+
+def checkresult (params):
+   params = params.rstrip()
+   if re.search('^200',params):
+      result = re.search('result=(\d+)',params)
+      if (not result):
+         sys.stderr.write("FAIL ('%s')\n" % params)
+         sys.stderr.flush()
+         return -1
+      else:
+         result = result.group(1)
+         #debug("Result:%s Params:%s" % (result, params))
+         sys.stderr.write("PASS (%s)\n" % result)
+         sys.stderr.flush()
+         return result
+   else:
+      sys.stderr.write("FAIL (unexpected result '%s')\n" % params)
+      sys.stderr.flush()
+      return -2
+
+
+#Print text in the Asterisk CLI
+def verbose (params):
+   sys.stderr.write("VERBOSE %s \"\"\n" % str(params))
+   sys.stderr.flush()
+   sys.stdout.write("VERBOSE %s \"\"\n" % str(params))
+   sys.stdout.flush()
+   result = sys.stdin.readline().strip()
+   checkresult(result)
+
+
+#Say a number in Asterisk
+def saynumber (params):
+   sys.stderr.write("SAY NUMBER %s \"\"\n" % params)
+   sys.stderr.flush()
+   sys.stdout.write("SAY NUMBER %s \"\"\n" % params)
+   sys.stdout.flush()
+   result = sys.stdin.readline().strip()
+   checkresult(result)
+
+
+#Function to get a number input from a user in Asterisk
+def getnumber (prompt, timelimit, digcount):
+   sys.stderr.write("GET DATA %s %d %d\n" % (prompt, timelimit, digcount))
+   sys.stderr.flush()
+   sys.stdout.write("GET DATA %s %d %d\n" % (prompt, timelimit, digcount))
+   sys.stdout.flush()
+   result = sys.stdin.readline().strip()
+   result = checkresult(result)
+   sys.stderr.write("digits are %s\n" % result)
+   sys.stderr.flush()
+   if result:
+      return result
+   else:
+      result = -1
+
+
+# Function to play an audio file in Asterisk
+def playaudio (file):
+   sys.stderr.write("EXEC MP3Player %s\n" % file)
+   sys.stderr.flush()
+   sys.stdout.write("EXEC MP3Player %s\n" % file)
+   sys.stdout.flush()
+   result = sys.stdin.readline().strip()
+   checkresult(result)
+
+def wait_for_digit():
+   sys.stderr.write("WAIT FOR DIGIT 3000\n")
+   sys.stderr.flush()
+   sys.stdout.write("WAIT FOR DIGIT 3000\n")
+   sys.stdout.flush()
+   result = sys.stdin.readline().strip()
+   checkresult(result)
+   
+   
+
+#This function shall play back a file, allowing the user to interupt the playback
+#by pressing one key or a set of keys and ending with the pound key
+def get_data(filename):
+   sys.stderr.write("GET DATA %s 20000 255\n" % filename)
+   sys.stderr.flush()
+   sys.stdout.write("GET DATA %s 20000 255\n" % filename)
+   sys.stdout.flush()
+   result = sys.stdin.readline().strip()
+   checkresult(result)   
+   verbose("The entered digits are %s" % result)
+
+
+#This function plays a file and can only be interupted if the right escape_digit
+#is entered. 
+def get_option(filename, escape_digits='', timeout=6000):   
+   sys.stderr.write("GET OPTION %s %s\n" % (filename, escape_digits))
+   sys.stderr.flush()
+   sys.stdout.write("GET OPTION %s %s\n" % (filename, escape_digits))
+   sys.stdout.flush()
+   result = sys.stdin.readline().strip()
+   checkresult(result)  
+   verbose("the result is %s" % result)
+   return (result)
+
+
+def stream_file(filename, escape_digits='', sample_offset=0):   
+   sys.stderr.write("STREAM FILE %s %s %s\n" % (filename, escape_digits, sample_offset))
+   sys.stderr.flush()
+   sys.stdout.write("STREAM FILE %s %s %s\n" % (filename, escape_digits, sample_offset))
+   sys.stdout.flush()
+   result = sys.stdin.readline().strip()
+   checkresult(result)  
+   verbose("the result is %s" % result)
+   return (result)
+
+
+###################################################
+### FUNCTIONS TO INTERACT WITH asteriskuser
+###################################################
+
+#This function cleans the environment that may contain previous meta files
+def clean_env():
+	os.system("rm -f *Main*")
+	os.system("rm -f *?_*")
+
+	
+
+# This function downloads the link containing the vxml file and stores it on the machine
+def getlink(link):
+	# type (str) -> None
+	assert (type(link) == str)
+	os.system("cd /home/asteriskuser/pyfiles")
+	os.system("wget " + str(link) + " > /dev/null 2>&1")    
+	time.sleep(0.5)
+	
+	
+# This function removes the downloaded file once its served its purpose
+def rm_file(xml_file):
+	os.system("cd /home/asteriskuser/pyfiles")
+	os.system("rm -f " + str(xml_file))
+
+
+#This function strips the xml file name which should match the file thats been downloaded
+def initial_file_finder(link):
+	file = str(link).split("flows/")[-1]    
+	return str(file)
+	
+
+#This function returns the file names for the subsequent call flows after MainFlow
+def general_file_finder(link):
+	file = str(link).split("calls/")[-1]   
+	return str(file)
+	
+
+			
+     
+
+content = []
+
+#Uses BeautifulSoup to parse the XML file
+def parse_file(file):
+	with open(file, "r") as new_file:
+		content = new_file.readlines()
+		content = "".join(content)
+		bs_content = bs(content, "lxml")        
+		return bs_content
+
+#Find the <block> tag in the code
+def find_block(parsed_xml_file):
+	x = (parsed_xml_file.find_all("block"))
+	for tag in (parsed_xml_file.find_all(re.compile("goto"))):
+		t =  tag.attrs
+		
+	if t is not None:
+		next = (t['next'])        
+		return (next)
+
+
+#Find the <audio> tags in the code
+def find_audio(parsed_xml_file):
+	x = (parsed_xml_file.find_all("audio"))
+	for tag in x:
+		t = tag.attrs
+	
+	if t is not None:
+		audio = (t['src'])
+		audio_file = str(audio).split("en/")[-1]
+		
+	return(audio_file)
+
+
+#This function shall return the next callflow to be executed.
+#Its takes the initial MainFlow and returns the next call flow link to execute.
+def gen_next_callflow(link):
+	clean_env()
+	getlink(link)
+	downloaded = initial_file_finder(link)
+	x = parse_file(downloaded)
+	y = find_block(x)
+	return (y)
+	rm_file(downloaded)
+
+
+def next_call_flow(link):
+	getlink(link)
+	file = general_file_finder(link)
+	parsed_file = parse_file(file)
+	audio = find_audio(parsed_file)
+	return(audio)
+	rm_file (file)
+
+
+#########################################
+#####      Call Flows
+#########################################
+
+
+
+test_link = "http://192.168.88.251/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone=256750046950"
+
+
+# next_link = gen_next_callflow(test_link)
+
+# audio = next_call_flow(next_link)
+
+# playaudio("/home/asteriskuser/en/We_are_Sorry.mp3")
+
+# get_option("/home/asteriskuser/en/Greeting", 1)
+
+stream_file("/home/asteriskuser/en/Greeting", '3')
+
+saynumber(1)
+# wait_for_digit()
+
+
