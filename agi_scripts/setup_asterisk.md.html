@@ -85,6 +85,20 @@ sip show peers
 ````
 Your peers should be online if they have been successfully registered.
 
+You shall need a soft phone on which you can test some of your calls. For my testing, I used wxCommunicator which is a Windos softphone
+that can be found [here]("https://sourceforge.net/projects/wxcommunicator/"). When you download, install this application and open it, you shall be welcomed with 
+a prompt that should be filled in like this:
+- Sip proxy : "the ip of your asterisk VM"
+- Line URI : "Can be left blank"
+- Username : "ivrtest"
+- Password: "12345678"
+
+Remember, this are the configurations we made in the **sip.conf** file. Aftr this, it should successfully register and should be able t make calls. However, for 
+some reason that I wasnt able to figure out, it cant receive calls. For receiving calls, I'd typically use an actual SIP phone.
+
+For FTP, I use MobaXTerm that can be downloaded [here]("https://mobaxterm.mobatek.net/download.html"). In the Sessio tab, I use SFTP for my FTP. Make sure the credentials you 
+use to login have the permission to read an write to the folder you want to write to. This shall come in handy for copying the audio files to the VM or copying the Motech Install Script.
+
 
 Getting MOTECH Installed
 =====================
@@ -173,3 +187,4 @@ This file is still under development and this DOC shall be updated accordingly.
 
 <style class="fallback">body{visibility:hidden}</style><script>markdeepOptions={tocStyle:'long'};</script>
 <!-- Markdeep: --><script src="https://casual-effects.com/markdeep/latest/markdeep.min.js?" charset="utf-8"></script>
+
