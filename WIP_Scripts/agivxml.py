@@ -1,80 +1,86 @@
 #! /usr/bin/env python
 
-import sys
-import re
-import time
 import elementpath
-from xml.etree import ElementTree as et
-import lxml.etree as el
-import os
-import re
-from xml.dom import minidom
-from bs4 import BeautifulSoup as bs
+from bs4 import BeautifulSoup 
 import agitest as asterisk
+import requests
 
 
 ###################################################
 ### FUNCTIONS TO INTERACT WITH MOTECH
 ###################################################
 
-#This function cleans the environment that may contain previous meta files
-def clean_env():
-    os.system("cd /home/asteriskuser/pyfiles")
-    os.system("rm -f *Main*")
-    os.system("rm -f *?_*")
+
+def process_xml(next_link):
+    asterisk.agi.verbose("START PROCESSING")
+    doc = BeautifulSoup(requests.get(next_link).content, "xml")
+    form = doc.find('form')
+    field = doc.find('field')
+    filled = doc.find('filled')
+    blocks = doc.find_all('block')
+    field_name = field.attrs['name']
+    asterisk.agi.verbose("break")
+
+    if field is not None and field_name is not None and field_name == 'finishedHearing':
+        for index in range(len(blocks)):
+            block = blocks[index]
+            prompts = block.find_all('prompt')            
+            
+            for prompt in prompts:
+                if prompt is not None and prompt.find('audio') is not None:
+                    audio = prompt.find('audio').attrs['src']
+                    asterisk.agi.verbose("AUDIO FILE IS %s" % audio)
+                    asterisk.agi.stream_file(audio)                    
+
+            has_attributes = len(block.attrs) > 0
+            if has_attributes:
+                name = block.attrs['name']
+                if name is not None and name == 'submit':
+                    goto = block.find('goto')
+                    next_link = goto.attrs['next']
+                    asterisk.agi.verbose("NEXT LINK IS %s" % next_link)                    
+                    return process_xml(next_link)
+
+    if len(field) > 0 and len(filled) > 0:
+        return process_audio_dialogue(form)
 
 
-#Uses BeautifulSoup to parse the XML file
-def parse_file(vxml_link):    
-    root = el.parse(vxml_link)
-    parsed_file = (el.tostring(root))
-    asterisk.agi.verbose("The following Link has been succesfully parsed: %s" % vxml_link)
-    return(parsed_file)
+def process_audio_dialogue(form):
+    field = form.find('field')
+    filled = form.find('filled')
+    field_name = field.attrs['name']
+    filled_name = filled.find('submit').attrs['namelist']
+    filled_next_link = filled.find('submit').attrs['next']
+
+    prompts = field.find_all('prompt')
+
+    if field_name == filled_name == 'pin':
+        asterisk.agi.verbose("ASK FOR PIN")
+        pin = asterisk.get_pin()
+        next_link = filled_next_link + '&' + filled_name + '=' + pin
+        asterisk.agi.verbose(next_link)
+        return process_xml(next_link)
     
 
-#Find the <block> tag in the code
-def find_block(parsed_xml_file):
-    x = (parsed_xml_file.find_all("block"))
-    for tag in (parsed_xml_file.find_all(re.compile("goto"))):
-        t =  tag.attrs
-
-    if t is not None:
-        next = (t['next'])
-        return (next)
-
-
-#Find the <audio> tags in the code
-def find_audio(parsed_xml_file):
-    x = (parsed_xml_file.find_all("audio"))
-    for tag in x:
-        t = tag.attrs
-
-    if t is not None:
-        audio = (t['src'])
-        audio_file = str(audio).split("en/")[-1]
-
-    return(audio_file)
+    for prompt in prompts:
+        if prompt is not None and prompt.find('audio') is not None:
+            audio = prompt.find('audio').attrs['src']
+            asterisk.agi.verbose("PLAYING AUDIO")
+            asterisk.agi.stream_file(audio)
 
 
 
-
-#########################################
-#####      Call Flows
-#########################################
-
-
-
-test_link = "http://192.168.88.251/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone=256750046950"
-
-asterisk.agi.verbose("STARTING VXML FILE PROCESSING FOR INBOUND CALL")
-
-clean_env()
-x =parse_file(test_link)
-
-asterisk.agi.say_number(1)
+# #########################################
+# #####      Call Flows    
+# #########################################
 
 
 
+test_link = "http://192.168.88.226/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone=256750046950"
+
+
+
+process_xml(test_link)
 
 
 
