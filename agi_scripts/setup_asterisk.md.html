@@ -133,7 +133,11 @@ You can then access the vxml callflow files. Am example is:
 The **192.168.88.251** would represent the local IP for your VM.
 To access the call flow for a particular number, add the **?phone=256750046950** infront of the **Mainflow.vxml**.
 The phone number added must be in the MOTECH database for the correct call flow to be generated. Otherwise
-the default call flow **"We_are_Sorry"** is what you shall be directed to.
+the default call flow **"We_are_Sorry"** is what you shall be directed to. 
+
+Please note that the phone numbr you select e.g. "256750046950" in our case must be in an "ACTIVATED" state in the database. You can check this
+by logging into th database e.gg 192.168.88.251:8080, using "root" for the username and password, then within motech_data_services, you access the "cfl_patients" table
+and search for the number you wish to use for testing. Simply edit the state from "DEACTIVATED" to "ACTIVATED" and save the changes.
 
 This nomenclature is what shall be used for options like **pin**, or **choice** when 
 a user needs to choose an option in the IVR menu. For example, for pin, it would look like:
