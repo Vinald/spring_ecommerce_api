@@ -89,7 +89,7 @@ def process_finished_hearing(blocks):
             for prompt in prompts:
                 if prompt is not None and prompt.find('audio') is not None:
                     audio = prompt.find('audio').attrs['src']
-                    log_info('Streaming Audio: {}'.format(audio))
+                    log_info('Streaming Audio: {}'.format(play_audio_locally(audio)))
                     agi.stream_file(play_audio_locally(audio))
                     # agi.stream_file(audio)
 
@@ -130,19 +130,21 @@ def process_audio_dialogue(form):
             timeout = prompt.attrs['timeout']
 
             if len(timeout) > 0 and timeout is not None:
-                timeout = int(float(timeout[:-1]) * 100)
+                timeout = int(float(timeout[:-1]) * 200)
             else:
                 timeout = 10000
 
             if filled_name.find('pin') >= 0:
-                log_info('Streaming entering pin music: {}'.format(audio))
-                input_digit = agi.get_data(audio, timeout, 4)
+                log_info('Streaming entering pin music: {}'.format(play_audio_locally(audio)))
+                input_digit = agi.get_data(play_audio_locally(audio), timeout, 4)
+                # input_digit = agi.get_data(audio, timeout, 4)
                 # input_digit = '1234'
-                if len(input_digit) == 4:
+                if len(input_digit) == 4:                    
                     break
             else:
-                log_info('Streaming dialogue music: {}'.format(audio))
-                input_digit = agi.get_data(audio, timeout, 1)
+                log_info('Streaming dialogue music: {}'.format(play_audio_locally(audio)))
+                input_digit = agi.get_data(play_audio_locally(audio), timeout, 1)
+                # input_digit = agi.get_data(audio, timeout, 1)
                 if len(input_digit) > 0:
                     break
 
@@ -161,8 +163,9 @@ def process_audio_dialogue(form):
         log_info('Hanging up')
         agi.hangup()
 
-    if field_name == filled_name:
+    if field_name == filled_name:        
         next_link = filled_next_link + '&' + filled_name + '=' + str(input_digit)
+        agi.verbose(next_link)
         return process_xml(next_link)
 
 
@@ -170,7 +173,7 @@ def process_audio_dialogue(form):
 # return the local file path to the same file, for streaming.
 def play_audio_locally(audio_link):
     file = str(audio_link).split("/audio/en/")[-1]
-    path = ("/home/asteriskuser/en/" + str(file))
+    path = ("http://0.0.0.0:8001/en/" + str(file))
     return path
 
 
