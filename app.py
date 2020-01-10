@@ -2,9 +2,13 @@ from flask import Flask, request, jsonify
 from asterisk.ami import AMIClient
 from asterisk.ami import AMIClientAdapter
 from configparser import ConfigParser
+import os
+
+
+working_dir = os.path.dirname(os.path.realpath(__file__))
 
 config = ConfigParser()
-config.read('config.ini')
+config.read(working_dir + '/config.ini')
 
 # Grab the ami section from the config file
 ami = config['ami']
