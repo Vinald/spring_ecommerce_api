@@ -6,8 +6,8 @@ from asterisk.ami import AMIClientAdapter
 app = Flask(__name__)
 
 
-client = AMIClient(address='127.0.0.1', port=5038)
-client.login(username='norman', secret='1234')
+client = AMIClient(address='172.17.0.1', port=5038)
+client.login(username='ivr', secret='1234')
 
 
 def callback_response(response):
@@ -24,7 +24,7 @@ def index():
 
     future = adapter.Originate(
         Channel='SIP/' + phone,
-        Exten='300',
+        Exten='100',
         Priority=1,
         Context='from-internal',
         CallerID='Call For Life Uganda',
