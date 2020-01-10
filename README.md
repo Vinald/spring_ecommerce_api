@@ -78,20 +78,20 @@ soft phone. You are free to chage them though if you wish. Notice though that I 
 
 In the /etc/asterisk/extensions.conf file, add the following lines, save and exit:
 
-```````
+```
 [phones]
         exten => 0800113213,1,NoOp(This is a Test IVR)
         same => n,Answer
         same => n,AGI(agivxml.py)
         same => n,Hangup
 
-`````` 
+```
 This basically tells Asterisk that when  **0800113213** (The Current Toll Free number) is dialed, direct the call to the **agivxml.py** AGI file.
 
 Once you are doe with that, refresh Asterisk so tht it can pick up the new configs 
 by entering the commands:
 
-```````
+```
 asterisk -rvvv
 
 Asterisk 16.6.2, Copyright (C) 1999 - 2018, Digium, Inc. and others.
@@ -110,13 +110,10 @@ asterisk*CLI> sip reload
 asterisk*CLI> dialplan reload
 Dialplan reloaded.
 
-```````
+```
 
-You can check that your peers are registerd with Asterisk by running this commnd within the Asterisk CLI:
+You can check that your peers are registerd with Asterisk by running this commnd within the Asterisk CLI `sip show peers`
 
-`````
-sip show peers
-````
 Your peers should be online if they have been successfully registered.
 
 You shall need a soft phone on which you can test some of your calls. For my testing, I used jfPhone which is a Windows softphone
@@ -134,9 +131,11 @@ For FTP, I use MobaXTerm that can be downloaded [here]("https://mobaxterm.mobate
 use to login have the permission to read an write to the folder you want to write to. 
 This shall come in handy for copying the audio files to the VM or copying the Motech Install Script. You must also have **vsftpd** installed on the linux machine you wish to FTP to.
 
-## Getting MOTECH Installed
+Getting MOTECH Installed
+===========
 
-### Prerequisites:
+Prerequisites:
+------
 
 * A VM with Ubuntu 18 LTS (The server version is most preferable for its speed). The VM should be updated and preferably have the following packages: vsftpd, openssh-server.
 
@@ -145,18 +144,19 @@ This shall come in handy for copying the audio files to the VM or copying the Mo
 Get access to the CFL install script and have it locally available on your new VM. The script can now be accessed [here]("http://gitlab.theacademy.co.ug/theacademy/scripts"). You can 
 download or clone it from there.
 Navigate to the directory and install the script:
-```````
+
+```
 cd cfl710/
 
 ./install-cfl710.sh
 
-``````
+```
 This may take up to 30 minutes. Once this is done. Run the command below to start the 
 MOTECH containers:
 
-`````
+```
 docker ps
-`````
+```
 
 You shall have to wait for atleast 8 minutes from the moment you run this 
 command for the MOTECH database to be ready for use. Take note of the IP of your local machine.
@@ -187,12 +187,12 @@ database entry is made/updated. The only link that is typically constant is the 
 
 ### agivxml.py
 This is the main python file that shall be present in the Asterisk Dialplan. 
-```````
+```
 [phones]
         exten => 100,1,NoOp(This is a Test IVR)
         same => n,Answer
         same => n,AGI(agivxml.py)
         same => n,Hangup
-``````
+```
 **NOTE:** This AGI script should be stored in the directory **/var/lib/asterisk/agi-bin/**, which is Asterisk's default directory for AGI files.
 
