@@ -9,7 +9,7 @@ Setting up your GitLab SSH
 On the Machine you wish to clone this repo too,
 
 ```
-root@asterisk:~# ssh-keygen
+root@asterisk:~# `ssh-keygen`
 Generating public/private rsa key pair.
 Enter file in which to save the key (/root/.ssh/id_rsa):
 Created directory '/root/.ssh'.
@@ -32,7 +32,7 @@ The key's randomart image is:
 |                 |
 +----[SHA256]-----+
 
-root@asterisk:~# cat ~/.ssh/id_rsa.pub
+root@asterisk:~# `cat ~/.ssh/id_rsa.pub`
 
 **ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDK7ZdEc8u+nXd+w2WrFMMxQEnrRsU5cqANLocKIZYO8RZsbbqs2LdKpYQN4mT9mskLoZqhI1HANDnPfY2tJdcVAhLvJyR+qDkXjzrqe4oU1o3vDuRsasjE+rezt+M6X9+FGvOPGP3Byl6vyJd+qkV3cJcNspoW6ZWlXHXHp0UpF89TSxvHMUv5815pRuOYvVtOxYi12uS//Gds91aK7xMbT9MGVKlSSTqJ4oEm6MgZ4ueMC3OFIuwJdG+/d6Td7rQ+TIkyGe3IfiVzmBJ0w4iWASsPV9yYDs2X+ILIqBqK52BDhJQ/xSxGveXtYmZpkjjDaxoL5hGkUmXdQPsZBnlb root@asterisk**
 
