@@ -6,16 +6,15 @@ as well as explain the use of some of the scripts included in this folder.
 Table of Contents
 =====
 
-<!--ts-->
-   * [Setting up your GitLab SSH](#Setting up your GitLab SSH)
-   * [Setting up Asterisk](#Setting up Asterisk)
-      * [Prerequisites](#Prerequisites)
-   * [Getting MOTECH Installed](#Getting MOTECH Installed)
-      * [Prerequisites](#Prerequisites)
-   * [The AGI Python scripts](#The AGI Python scripts)
-      * [agivxml.py](#agivxml.py)
-<!--te-->
-
+   * [Getting Your IVR Setup](#getting-your-ivr-setup)
+   * [Table of Contents](#table-of-contents)
+   * [Setting up your GitLab SSH](#setting-up-your-gitlab-ssh)
+   * [Setting up Asterisk](#setting-up-asterisk)
+      * [Prerequisites](#prerequisites)
+   * [Getting MOTECH Installed](#getting-motech-installed)
+      * [Prerequisites:](#prerequisites-1)
+   * [The AGI Python scripts](#the-agi-python-scripts)
+      * [agivxml.py](#agivxmlpy)
 
 Setting up your GitLab SSH  
 ======
