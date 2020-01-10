@@ -1,48 +1,65 @@
-#! /usr/bin/env python
-
-# Be sure to have all this libraries on your machine before executing this code.
+#!/home/arksnorman/motech/venv/bin/python
 
 import requests
 import asterisk.agi
 from bs4 import BeautifulSoup
 import logging
+from configparser import ConfigParser
+import os
+
+# Get script directory
+working_dir = os.path.dirname(os.path.realpath(__file__))
+
+# Initialize configuration parser
+config = ConfigParser()
+
+# Read config file
+config.read(working_dir + '/config.ini')
+
+# Grab the motech section from the config file
+motech_config = config['motech']
+
+# Get the host value for motech for example 172.17.0.1
+motech_hostname = motech_config['host']
 
 
+# Deal with log settings like log level, log file, format etc
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(levelname)s: %(message)s',
-    filename='/home/asteriskuser/pyfiles/app.log', # This "app.log" file is created automatically, just specify the correct home path to point to.
+    filename=working_dir + '/app.log',
     filemode='w',
 )
 
-agi = asterisk.agi.AGI()
 
+# Initialize the asterisk AGI
+agi = asterisk.agi.AGI()
+agi.verbose('Test')
 # Set maximum call time to 5 minutes
 agi.set_autohangup(600)
 
-# test_link = "http://192.168.88.222/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone=256750046950"
 
-#The IP should point to where your MOTECH Machine.
-base_link = 'http://192.168.88.222/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='
+# Define the starting voice URL of the application
+base_link = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='.format(motech_hostname)
 
+# Capture the incoming caller number and save it in the phone variable
 phone = str(agi.env['agi_callerid'])
 
-
-# This variable represents the call number if its an inbound call and the Outgoining call parameters
-# if its an outgoining call.
+# Define the variable to store info for outbound calls
 data = str(agi.get_variable('data'))
 
 
-
+# Define a custom log function
 def log_info(message):
     logging.info('[Number: {}]: {}'.format(phone, message))
 
 
+# Start logging
 log_info('Starting call')
 
 
 if data is not None and len(data) > 0:
-    # Outgoing Call Flow 
+    # Outgoing Call Flow
     data = data.split('&')
     phone = data[1]
     callId = data[0]
@@ -62,7 +79,7 @@ else:
     log_info('Starting Voice URL: {}'.format(link))
 
 
-def process_xml(next_link):
+def process_xml(next_link: str):
     doc = BeautifulSoup(requests.get(next_link).content, "xml")
     doc.get_text()
     form = doc.find('form')
@@ -83,15 +100,14 @@ def process_xml(next_link):
 def process_finished_hearing(blocks):
     for index in range(len(blocks)):
         block = blocks[index]
-        prompts = block.find_all('prompt')
+        prompts = block.find_all('prompt', recursive=False)
 
         if len(prompts) > 0:
             for prompt in prompts:
                 if prompt is not None and prompt.find('audio') is not None:
                     audio = prompt.find('audio').attrs['src']
-                    log_info('Streaming Audio: {}'.format(play_audio_locally(audio)))
-                    agi.stream_file(play_audio_locally(audio))
-                    # agi.stream_file(audio)
+                    log_info('Streaming Audio: {}'.format(audio))
+                    agi.stream_file(audio)
 
         has_attributes = len(block.attrs) > 0
 
@@ -103,6 +119,7 @@ def process_finished_hearing(blocks):
                 log_info('Processing next link: {}'.format(next_link))
                 return process_xml(next_link)
 
+        # Fix me
         # logging.fatal('Next link not found in blocks. exiting')
         # agi.hangup()
 
@@ -120,7 +137,7 @@ def process_audio_dialogue(form):
     log_info('Filled name: {}'.format(filled_name))
     log_info('Next Link: {}'.format(filled_next_link))
 
-    prompts = field.find_all('prompt')
+    prompts = field.find_all('prompt', recursive=False)
 
     input_digit = ''
 
@@ -130,21 +147,19 @@ def process_audio_dialogue(form):
             timeout = prompt.attrs['timeout']
 
             if len(timeout) > 0 and timeout is not None:
-                timeout = int(float(timeout[:-1]) * 200)
+                timeout = int(float(timeout[:-1]) * 100)
             else:
                 timeout = 10000
 
             if filled_name.find('pin') >= 0:
-                log_info('Streaming entering pin music: {}'.format(play_audio_locally(audio)))
-                input_digit = agi.get_data(play_audio_locally(audio), timeout, 4)
-                # input_digit = agi.get_data(audio, timeout, 4)
-                # input_digit = '1234'
-                if len(input_digit) == 4:                    
+                log_info('Streaming entering pin music: {}'.format(audio))
+                input_digit = agi.get_data(audio, timeout, 4)
+
+                if len(input_digit) == 4:
                     break
             else:
-                log_info('Streaming dialogue music: {}'.format(play_audio_locally(audio)))
-                input_digit = agi.get_data(play_audio_locally(audio), timeout, 1)
-                # input_digit = agi.get_data(audio, timeout, 1)
+                log_info('Streaming dialogue music: {}'.format(audio))
+                input_digit = agi.get_data(audio, timeout, 1)
                 if len(input_digit) > 0:
                     break
 
@@ -163,18 +178,9 @@ def process_audio_dialogue(form):
         log_info('Hanging up')
         agi.hangup()
 
-    if field_name == filled_name:        
+    if field_name == filled_name:
         next_link = filled_next_link + '&' + filled_name + '=' + str(input_digit)
-        agi.verbose(next_link)
         return process_xml(next_link)
-
-
-# This function is intended to take the audio link, strip out the file name for the file to be played and 
-# return the local file path to the same file, for streaming.
-def play_audio_locally(audio_link):
-    file = str(audio_link).split("/audio/en/")[-1]
-    path = ("http://0.0.0.0:8001/en/" + str(file))
-    return path
 
 
 def handle_no_input(form):
