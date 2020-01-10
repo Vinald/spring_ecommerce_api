@@ -76,7 +76,7 @@ peer that tries to authenticate with the user credentials:
 These are the credentials you would then configure on your SIP phone or 
 soft phone. You are free to chage them though if you wish. Notice though that I used a **phone number** as the username. This is important as we shall later see that its this number captured as the **CallID** variable used in the AGI Script.
 
-In the /etc/asterisk/extensions.conf file, add the following lines, save and exit:
+In the `/etc/asterisk/extensions.conf` file, add the following lines, save and exit:
 
 ```
 [phones]
@@ -120,9 +120,13 @@ You shall need a soft phone on which you can test some of your calls. For my tes
 that can be found [here]("https://sourceforge.net/projects/jfphone/"). When you download, install this application and open it.
 
 CFG (Its one of the Buttons) >> Accounts >> Line1 >>:
+
 Display Name - Softphone
+
 Username - 256750046950
+
 Password - 12345678
+
 Domain - 192.168.88.225 (Your Asterisk IP)
 
 Remember, this are the configurations we made in the **sip.conf** file. Aftr this, it should successfully register and should be able and make calls.
@@ -137,7 +141,7 @@ Getting MOTECH Installed
 Prerequisites:
 ------
 
-* A VM with Ubuntu 18 LTS (The server version is most preferable for its speed). The VM should be updated and preferably have the following packages: vsftpd, openssh-server.
+* A VM with Ubuntu 18 LTS (The server version is most preferable for its portability). The VM should be updated and preferably have the following packages: vsftpd, openssh-server.
 
 * The VM should have atleast 15GB space.
 
