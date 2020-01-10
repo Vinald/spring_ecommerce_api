@@ -1,13 +1,24 @@
 from flask import Flask, request, jsonify
 from asterisk.ami import AMIClient
 from asterisk.ami import AMIClientAdapter
+from configparser import ConfigParser
 
+config = ConfigParser()
+config.read('config.ini')
+
+# Grab the ami section from the config file
+ami = config['ami']
+
+ami_host = ami['host']
+ami_user = ami['user']
+ami_pass = ami['pass']
+ami_port = ami['port']
 
 app = Flask(__name__)
 
 
-client = AMIClient(address='172.17.0.1', port=5038)
-client.login(username='ivr', secret='1234')
+client = AMIClient(address=ami_host, port=ami_port)
+client.login(username=ami_user, secret=ami_pass)
 
 
 def callback_response(response):
