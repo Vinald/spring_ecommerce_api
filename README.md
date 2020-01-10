@@ -41,7 +41,8 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDK7ZdEc8u+nXd+w2WrFMMxQEnrRsU5cqANLocKIZYO
 
 Copy the created key and in GitLab >> User Settings >> SSH Keys, copy and paste this key into the available space and save. This way you wont need to use your email and password each time you need to interact with the repo.
 
-Once you are done with this, you need to delete the old repo and clone it again, this time round, clone it with **SSH** and not HTTP. That way, moving forward, you wont need to use your username and password to authenticate with interacting with git.
+Once you are done with this, you need to delete the old repo and clone it again, this time round, clone it with **SSH** and not HTTP. That way, moving forward, you wont need to use your username and password to authenticate with interacting with Git.
+
 Setting up Asterisk
 =====
 
