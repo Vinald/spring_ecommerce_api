@@ -1,11 +1,14 @@
-# Getting Your IVR Setup
+Getting Your IVR Setup
+===================
 This guide is essentially to help you get started with setting up MOTECH and Asterisk as well as setting up the python scripts 
 as well as explain the use of some of the scripts included in this folder. 
 
-## Setting up your GitLab SSH
+Setting up your GitLab SSH
+-----------------
 
 On the Machine you wish to clone this repo too,
-``````
+
+~~~~~~~~
 root@asterisk:~# ssh-keygen
 Generating public/private rsa key pair.
 Enter file in which to save the key (/root/.ssh/id_rsa):
@@ -31,9 +34,10 @@ The key's randomart image is:
 
 root@asterisk:~# cat ~/.ssh/id_rsa.pub
 
-** ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDK7ZdEc8u+nXd+w2WrFMMxQEnrRsU5cqANLocKIZYO8RZsbbqs2LdKpYQN4mT9mskLoZqhI1HANDnPfY2tJdcVAhLvJyR+qDkXjzrqe4oU1o3vDuRsasjE+rezt+M6X9+FGvOPGP3Byl6vyJd+qkV3cJcNspoW6ZWlXHXHp0UpF89TSxvHMUv5815pRuOYvVtOxYi12uS//Gds91aK7xMbT9MGVKlSSTqJ4oEm6MgZ4ueMC3OFIuwJdG+/d6Td7rQ+TIkyGe3IfiVzmBJ0w4iWASsPV9yYDs2X+ILIqBqK52BDhJQ/xSxGveXtYmZpkjjDaxoL5hGkUmXdQPsZBnlb root@asterisk **
+**ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDK7ZdEc8u+nXd+w2WrFMMxQEnrRsU5cqANLocKIZYO8RZsbbqs2LdKpYQN4mT9mskLoZqhI1HANDnPfY2tJdcVAhLvJyR+qDkXjzrqe4oU1o3vDuRsasjE+rezt+M6X9+FGvOPGP3Byl6vyJd+qkV3cJcNspoW6ZWlXHXHp0UpF89TSxvHMUv5815pRuOYvVtOxYi12uS//Gds91aK7xMbT9MGVKlSSTqJ4oEm6MgZ4ueMC3OFIuwJdG+/d6Td7rQ+TIkyGe3IfiVzmBJ0w4iWASsPV9yYDs2X+ILIqBqK52BDhJQ/xSxGveXtYmZpkjjDaxoL5hGkUmXdQPsZBnlb root@asterisk**
 
-``````
+~~~~~
+
 Copy the created key and in GitLab >> User Settings >> SSH Keys, copy and paste this key into the available space and save. This way you wont need to use your email and password each time you need to interact with the repo.
 
 
@@ -50,7 +54,7 @@ For the purposes of this setup, configure the following:
 
 In the /etc/asterisk/sip.conf file, add the following lines, save and exit:
 
-```````
+```
 [256750046950]
         type=friend
         context=phones
@@ -60,7 +64,7 @@ In the /etc/asterisk/sip.conf file, add the following lines, save and exit:
         host=dynamic
         nat=yes
 
-``````
+```
 In this, your basically telling asterisk that it should recognise any 
 peer that tries to authenticate with the user credentials:
 - Username : 256750046950
