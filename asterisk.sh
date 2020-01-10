@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Check if user is root and if not, exit script.
+if [[ "$EUID" -ne 0 ]]
+	then
+	echo "Please run as root"
+	exit
+fi
+
 # Change working directory to asterisk
 cd ./asterisk
 
