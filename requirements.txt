@@ -1,3 +1,4 @@
 flask
 pyst2
 beautifulsoup4==4.8.2
+asterisk-ami
