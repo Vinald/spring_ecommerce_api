@@ -46,7 +46,7 @@ Setting up Asterisk
 =====
 
 Prerequisites:
-======
+-----
 
 * A VM with Ubuntu 18 LTS (The server version is most preferable for its speed). The VM should be updated and preferably have the following packages: vsftpd, openssh-server.
 
