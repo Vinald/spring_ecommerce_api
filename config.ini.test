@@ -1,8 +1,26 @@
+; Make sure that you have the right persmissions to access this file by running:
+; chown -R asterisk ivr
+; This command shall give ownership of the cloned ivr folder to the "asterisk" user to make changes to that directory.
+
+; This is the demo config.ini.test file. Create a copy of this file using the command:
+; cp config.ini.test config.ini
+
+; This is ths file you shall modify with the existing configs you have on your machine.
+: Its been ignored in .gitignore so any changes to "config.ini" wont be commited.
+
+
+; This is the host IP that your MOTECH is attached to. 
+; For example, in "http://192.168.88.226/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone=256750046950"
+: The host IP is "192.168.88.226"
 [motech]
 host = 172.17.0.1
 
+
+; Navigate to /etc/asterisk/manager.conf and modify your AMI credentials as you see fit
 [ami]
 user = ivr
 pass = 1234
+; This IP typically doesnt change. Its the Motech Docker Container IP. So you typically wont 
+; need to bother with this, unless your in the production environment and not testing environment.
 host = 172.17.0.1
 port = 5038
