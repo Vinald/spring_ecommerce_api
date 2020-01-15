@@ -2,3 +2,4 @@ app.log
 .vscode
 venv
 audio.zip
+config.ini
