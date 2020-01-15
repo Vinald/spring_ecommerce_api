@@ -18,7 +18,7 @@ ami = config['ami']
 ami_host = ami['host']
 ami_user = ami['user']
 ami_pass = ami['pass']
-ami_port = ami['port']
+ami_port = int(ami['port'])
 
 app = Flask(__name__)
 
