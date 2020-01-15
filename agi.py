@@ -34,9 +34,9 @@ logging.basicConfig(
 
 # Initialize the asterisk AGI
 agi = asterisk.agi.AGI()
-agi.verbose('Test')
+
 # Set maximum call time to 5 minutes
-agi.set_autohangup(600)
+agi.set_autohangup(300)
 
 
 # Define the starting voice URL of the application
