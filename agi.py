@@ -1,4 +1,4 @@
-#!/home/arksnorman/motech/venv/bin/python
+#!/usr/bin/env python3
 
 import requests
 import asterisk.agi
@@ -6,6 +6,10 @@ from bs4 import BeautifulSoup
 import logging
 from configparser import ConfigParser
 import os
+
+
+# Initialize the asterisk AGI
+agi = asterisk.agi.AGI()
 
 # Get script directory
 working_dir = os.path.dirname(os.path.realpath(__file__))
@@ -25,15 +29,14 @@ motech_hostname = motech_config['host']
 
 # Deal with log settings like log level, log file, format etc
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.INFO,    
     format='[%(asctime)s] %(levelname)s: %(message)s',
     filename=working_dir + '/app.log',
     filemode='w',
 )
 
 
-# Initialize the asterisk AGI
-agi = asterisk.agi.AGI()
+
 agi.verbose('Test')
 # Set maximum call time to 5 minutes
 agi.set_autohangup(600)

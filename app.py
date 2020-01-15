@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from flask import Flask, request, jsonify
 from asterisk.ami import AMIClient
 from asterisk.ami import AMIClientAdapter
@@ -41,7 +43,7 @@ def index():
         Channel='SIP/' + phone,
         Exten='100',
         Priority=1,
-        Context='from-internal',
+        Context='ivr',
         CallerID='Call For Life Uganda',
         Variable='data={}&{}&{}'.format(call_id, phone, flow),
         ActionID=call_id,
