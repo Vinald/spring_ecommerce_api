@@ -48,7 +48,7 @@ mv '/tmp/audio/*' ${apache_web_root_dir}
 rm -rf '/tmp/audio'
 
 # Allow apache to listen to port 8001
-echo 'Listen 8000' > /etc/apache2/ports.conf
+echo 'Listen 8001' > /etc/apache2/ports.conf
 
 # Edit apache2 default virtual host to listen to port 8001
 sed -i 's/80/8000/g' '/etc/apache2/sites-available/000-default.conf'
