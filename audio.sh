@@ -51,7 +51,7 @@ rm -rf '/tmp/audio'
 echo 'Listen 8001' > /etc/apache2/ports.conf
 
 # Edit apache2 default virtual host to listen to port 8001
-sed -i 's/80/8000/g' '/etc/apache2/sites-available/000-default.conf'
+sed -i 's/80/8001/g' '/etc/apache2/sites-available/000-default.conf'
 
 # Confirm ownership of default apache2 directory to www-data (This is the default apache user)
 chown -R www-data:www-data ${apache_web_root_dir}
