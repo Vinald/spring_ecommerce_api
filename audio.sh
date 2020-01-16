@@ -42,7 +42,7 @@ mkdir -p ${apache_web_root_dir}
 unzip -qq ${audio_zipped_file} -d '/tmp'
 
 # Move audio files to the apache root directory
-mv '/tmp/audio/*' ${apache_web_root_dir}
+mv /tmp/audio/* ${apache_web_root_dir}
 
 # Clean the tmp directory
 rm -rf '/tmp/audio'
