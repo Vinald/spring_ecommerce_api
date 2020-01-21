@@ -22,7 +22,7 @@ Setting up your GitLab SSH
 
 This shall help with authentication with git. As opposed to authenticating with your username and password each time, you shall authenticate with SSH and wont need to use your credentials each time you wish to push or pull. On the Machine you wish to clone this repo too,
 
-```
+```console
 root@asterisk:~# ssh-keygen
 
 Generating public/private rsa key pair.
