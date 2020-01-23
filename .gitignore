@@ -3,3 +3,4 @@ app.log
 venv
 audio.zip
 config.ini
+*.swp
