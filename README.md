@@ -22,7 +22,7 @@ Setting up your GitLab SSH
 
 This shall help with authentication with git. As opposed to authenticating with your username and password each time, you shall authenticate with SSH and wont need to use your credentials each time you wish to push or pull. On the Machine you wish to clone this repo too,
 
-```
+```bash
 root@asterisk:~# ssh-keygen
 
 Generating public/private rsa key pair.
@@ -106,8 +106,8 @@ This basically tells Asterisk that when  **0800113213** (The Current Toll Free n
 Once you are doe with that, refresh Asterisk so tht it can pick up the new configs 
 by entering the commands:
 
-```
-asterisk -rvvv
+```bash
+root@asterisk:~#asterisk -rvvv
 
 Asterisk 16.6.2, Copyright (C) 1999 - 2018, Digium, Inc. and others.
 Created by Mark Spencer <markster@digium.com>
@@ -164,17 +164,17 @@ Get access to the CFL install script and have it locally available on your new V
 download or clone it from there.
 Navigate to the directory and install the script:
 
-```
-cd cfl710/
+```bash
+root@asterisk:~#cd cfl710/
 
-./install-cfl710.sh
+root@asterisk:~#./install-cfl710.sh
 
 ```
 This may take up to 30 minutes. Once this is done. Run the command below to start the 
 MOTECH containers:
 
-```
-docker ps
+```bash
+root@asterisk:~#docker ps
 ```
 
 You shall have to wait for atleast 8 minutes from the moment you run this 
