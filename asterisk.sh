@@ -18,6 +18,7 @@ echo
 
 # Copy new config file to asterisk directory
 cp -r * /etc/asterisk
+chown -R asterisk:asterisk /root
 
 
 echo
