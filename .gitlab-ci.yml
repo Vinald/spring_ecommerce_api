@@ -1,0 +1,31 @@
+stages:
+  - update-repository
+  - ivr-dependencies
+  - asterisk-operations
+
+update-repository:
+  stage: update-repository
+  script:
+    - cd /root/ivr
+    - sudo git reset --hard
+    - sudo git fetch -p --all
+    - sudo git checkout master
+    - sudo git pull
+  only:
+    - master
+
+ivr-dependencies:
+  stage: ivr-dependencies
+  script:
+    - sudo /bin/bash dependencies.sh
+
+  only:
+    - master
+
+asterisk-operations:
+  stage: asterisk-operations
+  script:
+    - sudo /bin/bash asterisk.sh
+
+  only:
+    - master
