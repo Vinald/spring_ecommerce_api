@@ -6,6 +6,7 @@ stages:
 update-repository:
   stage: update-repository
   script:
+    - sudo chown -R gitlab-runner /root
     - cd /root/ivr
     - sudo git reset --hard
     - sudo git fetch -p --all
