@@ -125,7 +125,7 @@ def process_finished_hearing(blocks):
         # agi.hangup()
 
 
-def process_audio_dialogue(form):
+def process_audio_dialogue(form, input_attempts=0, initial_timeout=0):
     field = form.find('field')
     filled = form.find('filled')
     items = form.find_all('item')
@@ -133,6 +133,11 @@ def process_audio_dialogue(form):
     field_name = field.attrs['name']
     filled_name = filled.find('submit').attrs['namelist']
     filled_next_link = filled.find('submit').attrs['next']
+
+    timeout = 1000
+    default_timeout = 1000
+
+    no_input_element = field.find_all('noinput', recursive=False)
 
     log_info('Field name: {}'.format(field_name))
     log_info('Filled name: {}'.format(filled_name))
@@ -148,9 +153,7 @@ def process_audio_dialogue(form):
             timeout = prompt.attrs['timeout']
 
             if len(timeout) > 0 and timeout is not None:
-                timeout = int(float(timeout[:-1]) * 100)
-            else:
-                timeout = 10000
+                timeout = int(float(timeout[:-1]) * 1000)
 
             if filled_name.find('pin') >= 0:
                 log_info('Streaming entering pin music: {}'.format(audio))
@@ -160,11 +163,19 @@ def process_audio_dialogue(form):
                     break
             else:
                 log_info('Streaming dialogue music: {}'.format(audio))
-                input_digit = agi.get_data(audio, timeout, 1)
+                input_digit = agi.get_data(audio, default_timeout, 1)
                 if len(input_digit) > 0:
                     break
 
     choices = []
+
+    if len(input_digit) == 0:
+        input_digit = agi.wait_for_digit(timeout)
+
+    if len(input_digit) == 0:
+        attempts = input_attempts + 1
+        no_input = no_input_and_no_match(no_input_element)
+        return process_no_input_and_no_match(no_input, attempts, form)
 
     if grammar is not None and items is not None:
         for item in items:
@@ -184,12 +195,48 @@ def process_audio_dialogue(form):
         return process_xml(next_link)
 
 
-def handle_no_input(form):
-    pass
+def no_input_and_no_match(elements):
+    for element in elements:
+        if element is not None and element.attrs['count'] is not None:
+            submit = element.find('submit')
+            prompt = element.find('prompt', recursive=False)
+            timeout = 0
+            next_link = None
+            audio_file = None
+
+            if submit is not None and submit.attrs['next'] is not None:
+                next_link = submit.attrs['next']
+
+            if prompt is not None:
+                audio = prompt.find('audio', recursive=False)
+                timeout = int(float(prompt.attrs['timeout'][:-1]) * 1000)
+                audio_file = audio.attrs['src']
+
+            return {
+                "audio": audio_file,
+                "count": int(element.attrs['count']),
+                "timeout": timeout,
+                "next_link": next_link,
+            }
+
+    return None
 
 
-def handle_no_match(form):
-    pass
+def process_no_input_and_no_match(element, attempts, form, no_input=True):
+    count = element['count']
+    audio = element['audio']
+    next_link = str(element['next_link'])
+
+    if attempts >= count:
+        if audio is not None:
+            agi.stream_file(audio)
+        if next_link is not None:
+            if no_input:
+                return process_xml(next_link + '&gNoInputEventCount=1')
+            return process_xml(next_link + '&gNoMatchEventCount=1')
+
+    if count > 0 and attempts < count:
+        return process_audio_dialogue(form, attempts)
 
 
 process_xml(link)
