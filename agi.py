@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import logging
 from configparser import ConfigParser
 import os
+import time
 
 
 # Initialize the asterisk AGI
@@ -125,7 +126,7 @@ def process_finished_hearing(blocks):
         # agi.hangup()
 
 
-def process_audio_dialogue(form, input_attempts=0, initial_timeout=0):
+def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     field = form.find('field')
     filled = form.find('filled')
     items = form.find_all('item')
@@ -138,6 +139,7 @@ def process_audio_dialogue(form, input_attempts=0, initial_timeout=0):
     default_timeout = 1000
 
     no_input_element = field.find_all('noinput', recursive=False)
+    no_match_element = field.find_all('nomatch', recursive=False)
 
     log_info('Field name: {}'.format(field_name))
     log_info('Filled name: {}'.format(filled_name))
@@ -175,7 +177,7 @@ def process_audio_dialogue(form, input_attempts=0, initial_timeout=0):
     if len(input_digit) == 0:
         attempts = input_attempts + 1
         no_input = no_input_and_no_match(no_input_element)
-        return process_no_input_and_no_match(no_input, attempts, form)
+        return process_no_input_and_no_match(no_input, attempts, no_match_attempts, form)
 
     if grammar is not None and items is not None:
         for item in items:
@@ -185,10 +187,13 @@ def process_audio_dialogue(form, input_attempts=0, initial_timeout=0):
             log_info('User entered: {} as their choice'.format(input_digit))
             return process_xml(filled_next_link + '&' + filled_name + '=' + str(input_digit))
 
+        time.sleep(5)
+
         # Handle Invalid in put here
         log_info('User entered an invalid choice: {}'.format(input_digit))
-        log_info('Hanging up')
-        agi.hangup()
+        match_attempts = no_match_attempts + 1
+        no_match = no_input_and_no_match(no_match_element)
+        return process_no_input_and_no_match(no_match, input_attempts, match_attempts, form, False)
 
     if field_name == filled_name:
         next_link = filled_next_link + '&' + filled_name + '=' + str(input_digit)
@@ -222,12 +227,12 @@ def no_input_and_no_match(elements):
     return None
 
 
-def process_no_input_and_no_match(element, attempts, form, no_input=True):
+def process_no_input_and_no_match(element, input_attempts, no_match_attempts, form, no_input=True):
     count = element['count']
     audio = element['audio']
     next_link = str(element['next_link'])
 
-    if attempts >= count:
+    if input_attempts >= count or no_match_attempts >= count:
         if audio is not None:
             agi.stream_file(audio)
         if next_link is not None:
@@ -235,8 +240,7 @@ def process_no_input_and_no_match(element, attempts, form, no_input=True):
                 return process_xml(next_link + '&gNoInputEventCount=1')
             return process_xml(next_link + '&gNoMatchEventCount=1')
 
-    if count > 0 and attempts < count:
-        return process_audio_dialogue(form, attempts)
+    return process_audio_dialogue(form, input_attempts, no_match_attempts)
 
 
 process_xml(link)
