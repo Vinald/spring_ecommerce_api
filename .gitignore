@@ -4,3 +4,4 @@ venv
 audio.zip
 config.ini
 *.swp
+.idea/
