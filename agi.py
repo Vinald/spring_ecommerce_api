@@ -7,7 +7,7 @@ import logging
 from configparser import ConfigParser
 import os
 import time
-
+from src.Audio import Audio
 
 # Initialize the asterisk AGI
 agi = asterisk.agi.AGI()
@@ -30,6 +30,7 @@ motech_hostname = motech_config['host']
 # Get the location that the audio files are stored locally on your machine
 local_audio_file_path = motech_config['audio_path']
 
+local_audio_path = Audio(local_audio_file_path)
 
 # Deal with log settings like log level, log file, format etc
 logging.basicConfig(
@@ -42,7 +43,6 @@ logging.basicConfig(
 
 # Set maximum call time to 5 minutes
 agi.set_autohangup(300)
-
 
 # Define the starting voice URL of the application
 base_link = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='.format(motech_hostname)
@@ -78,6 +78,7 @@ if data is not None and len(data) > 0:
     log_info('Starting Voice URL: {}'.format(link))
 else:
     # Incoming Call Flow
+    phone = phone.strip()[1:]
     log_info('Patient number: ' + phone)
     log_info('Call Direction: INCOMING')
     link = base_link + phone
@@ -111,8 +112,9 @@ def process_finished_hearing(blocks):
             for prompt in prompts:
                 if prompt is not None and prompt.find('audio') is not None:
                     audio = prompt.find('audio').attrs['src']
-                    log_info('Streaming Audio: {}'.format(play_audio_files_locally(audio)))
-                    agi.stream_file(play_audio_files_locally(audio))
+                    audio = local_audio_path.gen_audio_file(audio)
+                    log_info('Streaming Audio: {}'.format(audio))
+                    agi.stream_file(audio)
 
         has_attributes = len(block.attrs) > 0
 
@@ -155,14 +157,15 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     for prompt in prompts:
         if prompt is not None and prompt.find('audio') is not None:
             audio = prompt.find('audio').attrs['src']
+            audio = local_audio_path.gen_audio_file(audio)
             timeout = prompt.attrs['timeout']
 
             if len(timeout) > 0 and timeout is not None:
                 timeout = int(float(timeout[:-1]) * 1000)
 
             if filled_name.find('pin') >= 0:
-                log_info('Streaming entering pin music: {}'.format(play_audio_files_locally(audio)))
-                input_digit = agi.get_data(play_audio_files_locally(audio), timeout, 4)
+                log_info('Streaming entering pin music: {}'.format(audio))
+                input_digit = agi.get_data(audio, timeout, 4)
 
                 if len(input_digit) == 4:
                     break
@@ -237,31 +240,13 @@ def process_no_input_and_no_match(element, input_attempts, no_match_attempts, fo
 
     if input_attempts >= count or no_match_attempts >= count:
         if audio is not None:
-            agi.stream_file(play_audio_files_locally(audio))
+            agi.stream_file(audio)
         if next_link is not None:
             if no_input:
                 return process_xml(next_link + '&gNoInputEventCount=1')
             return process_xml(next_link + '&gNoMatchEventCount=1')
 
     return process_audio_dialogue(form, input_attempts, no_match_attempts)
-
-def play_audio_files_locally(audio_link):
-    if os.path.exists(local_audio_file_path):
-        if '/en/' in audio_link:
-            file = str(audio_link).split("audio/en/")[-1]
-            path = (local_audio_file_path + '/en/' + str(file[:-4]))
-            return path
-        if '/lg/' in audio_link:
-            file = str(audio_link).split("audio/lg/")[-1]
-            path = (local_audio_file_path + '/lg/' + str(file[:-4]))
-            return path
-        if '/ly/' in audio_link:
-            file = str(audio_link).split("audio/ly/")[-1]
-            path = (local_audio_file_path + '/ly/' + str(file[:-4]))
-            return path
-
-    log_info('Invalid local path specified for audio files. Streaming from Amazon')
-    return audio_link
 
 
 process_xml(link)
