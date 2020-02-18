@@ -6,7 +6,8 @@ class Audio:
         self.audio_path = audio_path
 
     def format_audio_path(self):
-        if os.path.exists(self.audio_path):
+        if not os.path.exists(self.audio_path):
+            return None
             if self.audio_path[-1] == '/':
                 self.audio_path = self.audio_path.strip()[:-1]
                 return self.audio_path
