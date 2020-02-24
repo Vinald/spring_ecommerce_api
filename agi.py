@@ -3,7 +3,6 @@
 import requests
 import asterisk.agi
 from bs4 import BeautifulSoup
-import logging
 from configparser import ConfigParser
 import os
 import time
