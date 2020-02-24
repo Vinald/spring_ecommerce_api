@@ -7,6 +7,7 @@ import logging
 from configparser import ConfigParser
 import os
 import time
+from src.Logger import Logger
 
 
 # Initialize the asterisk AGI
@@ -27,19 +28,8 @@ motech_config = config['motech']
 # Get the host value for motech for example 172.17.0.1
 motech_hostname = motech_config['host']
 
-
-# Deal with log settings like log level, log file, format etc
-logging.basicConfig(
-    level=logging.INFO,    
-    format='[%(asctime)s] %(levelname)s: %(message)s',
-    filename=working_dir + '/app.log',
-    filemode='w',
-)
-
-
 # Set maximum call time to 5 minutes
 agi.set_autohangup(300)
-
 
 # Define the starting voice URL of the application
 base_link = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='.format(motech_hostname)
@@ -50,14 +40,11 @@ phone = str(agi.env['agi_callerid'])
 # Define the variable to store info for outbound calls
 data = str(agi.get_variable('data'))
 
-
-# Define a custom log function
-def log_info(message):
-    logging.info('[Number: {}]: {}'.format(phone, message))
-
+#Initialize Logger
+logger = Logger(working_dir, phone)
 
 # Start logging
-log_info('Starting call')
+logger.log_info('Starting call')
 
 
 if data is not None and len(data) > 0:
@@ -67,18 +54,18 @@ if data is not None and len(data) > 0:
     callId = data[0]
     jumpTo = data[2]
 
-    log_info('Call ID: ' + callId)
-    log_info('Patient number: ' + phone)
-    log_info('Call Direction: OUTGOING')
+    logger.log_info('Call ID: ' + callId)
+    logger.log_info('Patient number: ' + phone)
+    logger.log_info('Call Direction: OUTGOING')
 
     link = "{}{}&callId={}&jumpTo={}".format(base_link, phone, callId, jumpTo)
-    log_info('Starting Voice URL: {}'.format(link))
+    logger.log_info('Starting Voice URL: {}'.format(link))
 else:
     # Incoming Call Flow
-    log_info('Patient number: ' + phone)
-    log_info('Call Direction: INCOMING')
+    logger.log_info('Patient number: ' + phone)
+    logger.log_info('Call Direction: INCOMING')
     link = base_link + phone
-    log_info('Starting Voice URL: {}'.format(link))
+    logger.log_info('Starting Voice URL: {}'.format(link))
 
 
 def process_xml(next_link: str):
@@ -91,11 +78,11 @@ def process_xml(next_link: str):
     field_name = field.attrs['name']
 
     if field is not None and field_name is not None and field_name == 'finishedHearing':
-        log_info('Processing uninterrupted hearing')
+        logger.log_info('Processing uninterrupted hearing')
         return process_finished_hearing(blocks)
 
     if field is not None and len(filled) > 0:
-        log_info('Starting Audio Dialogue')
+        logger.log_info('Starting Audio Dialogue')
         return process_audio_dialogue(form)
 
 
@@ -108,7 +95,7 @@ def process_finished_hearing(blocks):
             for prompt in prompts:
                 if prompt is not None and prompt.find('audio') is not None:
                     audio = prompt.find('audio').attrs['src']
-                    log_info('Streaming Audio: {}'.format(audio))
+                    logger.log_info('Streaming Audio: {}'.format(audio))
                     agi.stream_file(audio)
 
         has_attributes = len(block.attrs) > 0
@@ -118,7 +105,7 @@ def process_finished_hearing(blocks):
             if name is not None and name == 'submit':
                 goto = block.find('goto')
                 next_link = goto.attrs['next']
-                log_info('Processing next link: {}'.format(next_link))
+                logger.log_info('Processing next link: {}'.format(next_link))
                 return process_xml(next_link)
 
         # Fix me
@@ -141,9 +128,9 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     no_input_element = field.find_all('noinput', recursive=False)
     no_match_element = field.find_all('nomatch', recursive=False)
 
-    log_info('Field name: {}'.format(field_name))
-    log_info('Filled name: {}'.format(filled_name))
-    log_info('Next Link: {}'.format(filled_next_link))
+    logger.log_info('Field name: {}'.format(field_name))
+    logger.log_info('Filled name: {}'.format(filled_name))
+    logger.log_info('Next Link: {}'.format(filled_next_link))
 
     prompts = field.find_all('prompt', recursive=False)
 
@@ -158,13 +145,13 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
                 timeout = int(float(timeout[:-1]) * 1000)
 
             if filled_name.find('pin') >= 0:
-                log_info('Streaming entering pin music: {}'.format(audio))
+                logger.log_info('Streaming entering pin music: {}'.format(audio))
                 input_digit = agi.get_data(audio, timeout, 4)
 
                 if len(input_digit) == 4:
                     break
             else:
-                log_info('Streaming dialogue music: {}'.format(audio))
+                logger.log_info('Streaming dialogue music: {}'.format(audio))
                 input_digit = agi.get_data(audio, default_timeout, 1)
                 if len(input_digit) > 0:
                     break
@@ -184,13 +171,13 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
             choices.append(int(item.get_text()))
 
         if int(input_digit) in choices:
-            log_info('User entered: {} as their choice'.format(input_digit))
+            logger.log_info('User entered: {} as their choice'.format(input_digit))
             return process_xml(filled_next_link + '&' + filled_name + '=' + str(input_digit))
 
         time.sleep(5)
 
         # Handle Invalid in put here
-        log_info('User entered an invalid choice: {}'.format(input_digit))
+        logger.log_info('User entered an invalid choice: {}'.format(input_digit))
         match_attempts = no_match_attempts + 1
         no_match = no_input_and_no_match(no_match_element)
         return process_no_input_and_no_match(no_match, input_attempts, match_attempts, form, False)
