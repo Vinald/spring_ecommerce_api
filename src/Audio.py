@@ -18,4 +18,4 @@ class Audio:
         audio_path = audio_path + audio_file_name
         if not os.path.exists(audio_path):
             return link
-        return audio_path[:-4]
+        return os.path.splitext(audio_path)[0]
