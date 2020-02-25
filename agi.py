@@ -165,7 +165,7 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
 
             if filled_name.find('pin') >= 0:
                 log_info('Streaming entering pin music: {}'.format(audio_file))
-                input_digit = agi.get_data(audio, timeout, 4)
+                input_digit = agi.get_data(audio_file, timeout, 4)
 
                 if len(input_digit) == 4:
                     break
