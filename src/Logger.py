@@ -7,11 +7,11 @@ class Logger:
         self.phone = phone
 
     def log_config(self):
-        logging.basicConfig(
-            level=logging.INFO,
-            format='[%(asctime)s] %(levelname)s: %(message)s',
-            filename=self.logger_dir + '/app.log',
-            filemode='w',
+        return logging.basicConfig(
+                    level=logging.INFO,
+                    format='[%(asctime)s] %(levelname)s: %(message)s',
+                    filename=self.logger_dir + '/app.log',
+                    filemode='w',
         )
 
     def log_info(self, message):
