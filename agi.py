@@ -157,7 +157,7 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     for prompt in prompts:
         if prompt is not None and prompt.find('audio') is not None:
             audio = prompt.find('audio').attrs['src']
-            audio = local_audio_path.gen_audio_file(audio)
+            audio_file = local_audio_path.gen_audio_file(audio)
             timeout = prompt.attrs['timeout']
 
             if len(timeout) > 0 and timeout is not None:
