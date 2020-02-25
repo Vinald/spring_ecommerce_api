@@ -113,7 +113,7 @@ def process_finished_hearing(blocks):
                 if prompt is not None and prompt.find('audio') is not None:
                     audio = prompt.find('audio').attrs['src']
                     audio_file = local_audio_path.gen_audio_file(audio)
-                    log_info('Streaming Audio: {}'.format(audio))
+                    log_info('Streaming Audio: {}'.format(audio_file))
                     agi.stream_file(audio)
 
         has_attributes = len(block.attrs) > 0
