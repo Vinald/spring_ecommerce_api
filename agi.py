@@ -7,7 +7,7 @@ import logging
 from configparser import ConfigParser
 import os
 import time
-
+from src.Audio import Audio
 
 # Initialize the asterisk AGI
 agi = asterisk.agi.AGI()
@@ -27,6 +27,7 @@ motech_config = config['motech']
 # Get the host value for motech for example 172.17.0.1
 motech_hostname = motech_config['host']
 
+local_audio_path = Audio(motech_config['audio_path'])
 
 # Deal with log settings like log level, log file, format etc
 logging.basicConfig(
@@ -39,7 +40,6 @@ logging.basicConfig(
 
 # Set maximum call time to 5 minutes
 agi.set_autohangup(300)
-
 
 # Define the starting voice URL of the application
 base_link = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='.format(motech_hostname)
@@ -108,8 +108,9 @@ def process_finished_hearing(blocks):
             for prompt in prompts:
                 if prompt is not None and prompt.find('audio') is not None:
                     audio = prompt.find('audio').attrs['src']
-                    log_info('Streaming Audio: {}'.format(audio))
-                    agi.stream_file(audio)
+                    audio_file = local_audio_path.gen_audio_file(audio)
+                    log_info('Streaming Audio: {}'.format(audio_file))
+                    agi.stream_file(audio_file)
 
         has_attributes = len(block.attrs) > 0
 
@@ -152,20 +153,21 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     for prompt in prompts:
         if prompt is not None and prompt.find('audio') is not None:
             audio = prompt.find('audio').attrs['src']
+            audio_file = local_audio_path.gen_audio_file(audio)
             timeout = prompt.attrs['timeout']
 
             if len(timeout) > 0 and timeout is not None:
                 timeout = int(float(timeout[:-1]) * 1000)
 
             if filled_name.find('pin') >= 0:
-                log_info('Streaming entering pin music: {}'.format(audio))
-                input_digit = agi.get_data(audio, timeout, 4)
+                log_info('Streaming entering pin music: {}'.format(audio_file))
+                input_digit = agi.get_data(audio_file, timeout, 4)
 
                 if len(input_digit) == 4:
                     break
             else:
-                log_info('Streaming dialogue music: {}'.format(audio))
-                input_digit = agi.get_data(audio, default_timeout, 1)
+                log_info('Streaming dialogue music: {}'.format(audio_file))
+                input_digit = agi.get_data(audio_file, default_timeout, 1)
                 if len(input_digit) > 0:
                     break
 
@@ -234,7 +236,7 @@ def process_no_input_and_no_match(element, input_attempts, no_match_attempts, fo
 
     if input_attempts >= count or no_match_attempts >= count:
         if audio is not None:
-            agi.stream_file(audio)
+            agi.stream_file(local_audio_path.gen_audio_file(audio))
         if next_link is not None:
             if no_input:
                 return process_xml(next_link + '&gNoInputEventCount=1')
