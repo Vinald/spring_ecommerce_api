@@ -23,7 +23,7 @@ systemctl stop ivr-api.service
 old_service='/etc/systemd/system/ivr-api.service'
 new_service='./ivr-api.service'
 
-cp ${new_service}, ${old_service}
+cp ${new_service} ${old_service}
 
 systemctl daemon-reload
 systemctl enable ivr-api.service
