@@ -15,7 +15,7 @@
 ; Simply replace <audio_path> with your home audio path e.g. /home/asteriskidi/audio
 [motech]
 host = 172.17.0.1
-audio_path = /home/<audio_path>
+audio_path = /var/www/html/audio
 
 
 ; Navigate to /etc/asterisk/manager.conf and modify your AMI credentials as you see fit
