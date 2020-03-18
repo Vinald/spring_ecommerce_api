@@ -1,0 +1,12 @@
+[Unit]
+Description=IVR API Service
+After=network.target
+
+[Service]
+WorkingDirectory=/root/ivr
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+ExecStart=/usr/local/bin/gunicorn --worker-class=gevent --worker-connections=100 --workers=3 --bind 0.0.0.0:5000  wsgi:app
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
