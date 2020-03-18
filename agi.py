@@ -12,6 +12,9 @@ from src.Audio import Audio
 # Initialize the asterisk AGI
 agi = asterisk.agi.AGI()
 
+# Set maximum call time to 5 minutes
+agi.set_autohangup(300)
+
 # Get script directory
 working_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -29,9 +32,6 @@ motech_hostname = motech_config['host']
 
 local_audio_path = Audio(motech_config['audio_path'])
 
-# Set maximum call time to 5 minutes
-agi.set_autohangup(300)
-
 # Define the starting voice URL of the application
 base_link = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='.format(motech_hostname)
 
@@ -41,7 +41,7 @@ phone = str(agi.env['agi_callerid'])
 # Define the variable to store info for outbound calls
 data = str(agi.get_variable('data'))
 
-#Initialize Logger
+# Initialize Logger
 logger = Logger(working_dir, phone)
 
 # Start logging
