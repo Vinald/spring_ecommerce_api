@@ -121,7 +121,13 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     items = form.find_all('item')
     grammar = form.find('grammar')
     field_name = field.attrs['name']
-    filled_name = filled.find('submit').attrs['namelist']
+
+    try:
+        filled_name = filled.find('submit').attrs['namelist']
+    except Exception as e:
+        logger.log_info(str(e))
+        filled_name = filled.attrs['namelist']
+
     filled_next_link = filled.find('submit').attrs['next']
 
     timeout = 1000

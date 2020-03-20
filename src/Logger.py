@@ -10,7 +10,7 @@ class Logger:
             level=logging.INFO,
             format='[%(asctime)s] %(levelname)s: %(message)s',
             filename=self.log_dir + '/app.log',
-            filemode='w+',
+            filemode='a+',
         )
         self.logger = logging.getLogger()
 
