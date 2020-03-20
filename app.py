@@ -19,6 +19,7 @@ ami_host = ami['host']
 ami_user = ami['user']
 ami_pass = ami['pass']
 ami_port = int(ami['port'])
+ami_trunk = ami['trunk']
 
 app = Flask(__name__)
 
@@ -39,8 +40,13 @@ def index():
 
     adapter = AMIClientAdapter(client)
 
+    channel = 'SIP/' + phone
+
+    if ami_trunk is not None and len(ami_trunk) > 0:
+        channel = 'SIP/{}/{}'.format(ami_trunk, phone)
+
     future = adapter.Originate(
-        Channel='SIP/' + phone,
+        Channel=channel,
         Exten='100',
         Priority=1,
         Context='ivr',

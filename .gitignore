@@ -5,3 +5,5 @@ audio.zip
 config.ini
 *.swp
 .idea/
+src/__pycache__/
+
