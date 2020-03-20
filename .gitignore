@@ -6,4 +6,5 @@ config.ini
 *.swp
 .idea/
 src/__pycache__/
+__pycache__
 

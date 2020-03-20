@@ -43,7 +43,7 @@ def index():
     channel = 'SIP/' + phone
 
     if ami_trunk is not None and len(ami_trunk) > 0:
-        channel = 'SIP/{}/{}'.format(ami_trunk, phone)
+        channel = 'SIP/{}/+{}'.format(ami_trunk, phone)
 
     future = adapter.Originate(
         Channel=channel,
