@@ -133,8 +133,8 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     timeout = 1000
     default_timeout = 1000
 
-    no_input_element = field.find_all('noinput', recursive=False)
-    no_match_element = field.find_all('nomatch', recursive=False)
+    no_input_element = field.find_all('noinput')
+    no_match_element = field.find_all('nomatch')
 
     logger.log_info('Field name: {}'.format(field_name))
     logger.log_info('Filled name: {}'.format(filled_name))
@@ -199,7 +199,7 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
 
 def no_input_and_no_match(elements):
     for element in elements:
-        if element is not None and element.attrs['count'] is not None:
+        if element is not None and element.has_attr('count') and element.attrs['count'] is not None:
             submit = element.find('submit')
             prompt = element.find('prompt', recursive=False)
             timeout = 0
