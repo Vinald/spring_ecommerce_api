@@ -117,6 +117,14 @@ def process_finished_hearing(blocks):
 
 def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     field = form.find('field')
+
+    try:
+        # Capture the length of DTMF, lets say like 4 digits (type="digits?length=4")
+        field_length = int(field.attrs['type'].split('=')[1])
+    except Exception as e:
+        logger.log_info(str(e))
+        field_length = None
+
     filled = form.find('filled')
     items = form.find_all('item')
     grammar = form.find('grammar')
@@ -153,16 +161,14 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
             if len(timeout) > 0 and timeout is not None:
                 timeout = int(float(timeout[:-1]) * 1000)
 
-            if filled_name.find('pin') >= 0:
-                logger.log_info('Streaming entering pin music: {}'.format(audio_file))
-                input_digit = agi.get_data(audio_file, timeout, 4)
-
-                if len(input_digit) == 4:
+            if field_length is not None:
+                logger.log_info('Streaming dialogue music: {}'.format(audio_file))
+                input_digit = agi.get_data(audio_file, timeout, field_length)
+                if len(input_digit) == field_length:
                     break
             else:
                 logger.log_info('Streaming dialogue music: {}'.format(audio_file))
                 input_digit = agi.get_data(audio_file, default_timeout, 1)
-
                 if len(input_digit) > 0:
                     break
 
