@@ -165,6 +165,8 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
 
             if field_length is not None:
                 logger.log_info('Streaming dialogue music: {}'.format(audio_file))
+                if field_length > 1:
+                    timeout = 3000
                 input_digit = agi.get_data(audio_file, timeout, max_field_length)
                 if len(input_digit) >= max_field_length or len(input_digit) == field_length:
                     break
