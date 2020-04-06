@@ -7,6 +7,13 @@ if [[ "$EUID" -ne 0 ]]
 	exit
 fi
 
+cp /etc/asterisk/sip.conf /etc/asterisk/sip.conf.backup
+cp /etc/asterisk/extensions.conf /etc/asterisk/extensions.conf.backup
+cp /etc/asterisk/cdr.conf /etc/asterisk/cdr.conf.backup
+cp /etc/asterisk/cdr_custom.conf /etc/asterisk/cdr_custom.conf.backup
+cp /etc/asterisk/manager.conf /etc/asterisk/manager.conf.backup 
+
+
 # Change working directory to asterisk
 cd ./asterisk
 
