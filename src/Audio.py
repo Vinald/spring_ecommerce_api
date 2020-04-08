@@ -13,6 +13,8 @@ class Audio:
         return self.path
 
     def gen_audio_file(self, link):
+        if self.get_audio_path() is None:
+            return link
         path = self.get_audio_path() + link
         if not os.path.exists(path):
             return link
