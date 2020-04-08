@@ -41,11 +41,11 @@ phone = str(agi.env['agi_callerid'])
 # Define the variable to store info for outbound calls
 data = str(agi.get_variable('data'))
 
-# Initialize Logger
-logger = Logger(working_dir, phone)
+# Initial call ID
+callId = ''
 
-# Start logging
-logger.log_info('Starting call')
+# Initial call direction
+call_direction = 'INCOMING'
 
 
 if data is not None and len(data) > 0:
@@ -54,19 +54,23 @@ if data is not None and len(data) > 0:
     phone = data[1]
     callId = data[0]
     jumpTo = data[2]
-
-    logger.log_info('Call ID: ' + callId)
-    logger.log_info('Patient number: ' + phone)
-    logger.log_info('Call Direction: OUTGOING')
+    call_direction = 'OUTGOING'
 
     link = "{}{}&callId={}&jumpTo={}".format(base_link, phone, callId, jumpTo)
-    logger.log_info('Starting Voice URL: {}'.format(link))
 else:
     # Incoming Call Flow
-    logger.log_info('Patient number: ' + phone)
-    logger.log_info('Call Direction: INCOMING')
     link = base_link + phone
-    logger.log_info('Starting Voice URL: {}'.format(link))
+
+
+# Initialize Logger
+logger = Logger(working_dir, phone)
+
+# Start logging
+logger.log_info('Starting call')
+logger.log_info('Call ID: ' + callId)
+logger.log_info('Patient number: {}'.format(phone))
+logger.log_info('Call Direction: {}'.format(call_direction))
+logger.log_info('Starting Voice URL: {}'.format(link))
 
 
 def process_xml(next_link: str):
