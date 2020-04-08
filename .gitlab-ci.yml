@@ -1,7 +1,7 @@
 stages:
   - update-repository
   - ivr-dependencies
-  - asterisk-operations
+  - finish-up
 
 update-repository:
   stage: update-repository
@@ -18,15 +18,15 @@ update-repository:
 ivr-dependencies:
   stage: ivr-dependencies
   script:
-    - sudo /bin/bash dependencies.sh
+    - sudo /bin/bash install.sh
 
   only:
     - master
 
-asterisk-operations:
-  stage: asterisk-operations
+finish-up:
+  stage: finish-up
   script:
-    - sudo /bin/bash asterisk.sh
+    - sudo chown -R asterisk:asterisk /root
 
   only:
     - master
