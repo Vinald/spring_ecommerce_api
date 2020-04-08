@@ -169,7 +169,7 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
                 logger.log_info('Streaming dialogue music: {}'.format(audio_file))
                 input_digit = agi.get_data(audio_file, timeout, field_length)
                 time.sleep(2)
-                if len(input_digit) >= field_length or len(input_digit) > 0:
+                if len(input_digit) == field_length:
                     break
             else:
                 logger.log_info('Streaming dialogue music: {}'.format(audio_file))
