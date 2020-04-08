@@ -41,11 +41,11 @@ phone = str(agi.env['agi_callerid'])
 # Define the variable to store info for outbound calls
 data = str(agi.get_variable('data'))
 
-# Initialize Logger
-logger = Logger(working_dir, phone)
+# Initial call ID
+callId = ''
 
-# Start logging
-logger.log_info('Starting call')
+# Initial call direction
+call_direction = 'INCOMING'
 
 
 if data is not None and len(data) > 0:
@@ -54,19 +54,23 @@ if data is not None and len(data) > 0:
     phone = data[1]
     callId = data[0]
     jumpTo = data[2]
-
-    logger.log_info('Call ID: ' + callId)
-    logger.log_info('Patient number: ' + phone)
-    logger.log_info('Call Direction: OUTGOING')
+    call_direction = 'OUTGOING'
 
     link = "{}{}&callId={}&jumpTo={}".format(base_link, phone, callId, jumpTo)
-    logger.log_info('Starting Voice URL: {}'.format(link))
 else:
     # Incoming Call Flow
-    logger.log_info('Patient number: ' + phone)
-    logger.log_info('Call Direction: INCOMING')
     link = base_link + phone
-    logger.log_info('Starting Voice URL: {}'.format(link))
+
+
+# Initialize Logger
+logger = Logger(working_dir, phone)
+
+# Start logging
+logger.log_info('Starting call')
+logger.log_info('Call ID: ' + callId)
+logger.log_info('Patient number: {}'.format(phone))
+logger.log_info('Call Direction: {}'.format(call_direction))
+logger.log_info('Starting Voice URL: {}'.format(link))
 
 
 def process_xml(next_link: str):
@@ -117,6 +121,14 @@ def process_finished_hearing(blocks):
 
 def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     field = form.find('field')
+
+    try:
+        # Capture the length of DTMF, lets say like 4 digits (type="digits?length=4")
+        field_length = int(field.attrs['type'].split('=')[1])
+    except Exception as e:
+        logger.log_info(str(e))
+        field_length = None
+
     filled = form.find('filled')
     items = form.find_all('item')
     grammar = form.find('grammar')
@@ -153,11 +165,11 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
             if len(timeout) > 0 and timeout is not None:
                 timeout = int(float(timeout[:-1]) * 1000)
 
-            if filled_name.find('pin') >= 0:
-                logger.log_info('Streaming entering pin music: {}'.format(audio_file))
-                input_digit = agi.get_data(audio_file, timeout, 4)
-
-                if len(input_digit) == 4:
+            if field_length is not None:
+                logger.log_info('Streaming dialogue music: {}'.format(audio_file))
+                input_digit = agi.get_data(audio_file, timeout, field_length)
+                time.sleep(2)
+                if len(input_digit) == field_length:
                     break
             else:
                 logger.log_info('Streaming dialogue music: {}'.format(audio_file))
@@ -168,7 +180,10 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
 
     choices = []
 
-    if len(input_digit) == 0:
+    if field_length is not None and len(input_digit) < field_length:
+        input_digit = agi.get_data('silence/1', timeout, field_length)
+
+    if len(input_digit) == 0 and field_length is None:
         input_digit = agi.wait_for_digit(timeout)
 
     if len(input_digit) == 0:
