@@ -121,11 +121,9 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     try:
         # Capture the length of DTMF, lets say like 4 digits (type="digits?length=4")
         field_length = int(field.attrs['type'].split('=')[1])
-        max_field_length = field_length + 1
     except Exception as e:
         logger.log_info(str(e))
         field_length = None
-        max_field_length = None
 
     filled = form.find('filled')
     items = form.find_all('item')
@@ -165,10 +163,9 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
 
             if field_length is not None:
                 logger.log_info('Streaming dialogue music: {}'.format(audio_file))
-                if field_length > 1:
-                    timeout = 3000
-                input_digit = agi.get_data(audio_file, timeout, max_field_length)
-                if len(input_digit) >= max_field_length or len(input_digit) == field_length:
+                input_digit = agi.get_data(audio_file, timeout, field_length)
+                time.sleep(2)
+                if len(input_digit) >= field_length or len(input_digit) > 0:
                     break
             else:
                 logger.log_info('Streaming dialogue music: {}'.format(audio_file))
@@ -178,7 +175,10 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
 
     choices = []
 
-    if len(input_digit) == 0:
+    if len(input_digit) == 0 and field_length is not None:
+        input_digit = agi.get_data('silence', timeout, field_length)
+
+    if len(input_digit) == 0 and field_length is None:
         input_digit = agi.wait_for_digit(timeout)
 
     if len(input_digit) == 0:
