@@ -164,7 +164,7 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
             if field_length is not None:
                 logger.log_info('Streaming dialogue music: {}'.format(audio_file))
                 input_digit = agi.get_data(audio_file, timeout, field_length)
-                time.sleep(3)
+                time.sleep(2)
                 if len(input_digit) >= field_length or len(input_digit) > 0:
                     break
             else:
@@ -176,7 +176,7 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
 
     choices = []
 
-    if len(input_digit) == 0 and field_length is not None:
+    if field_length is not None and len(input_digit) < field_length:
         input_digit = agi.get_data('silence/1', timeout, field_length)
 
     if len(input_digit) == 0 and field_length is None:
