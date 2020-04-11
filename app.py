@@ -51,8 +51,8 @@ def callback_response(response):
     print(response)
 
 
-
 state = ''
+
 
 def channel_statuses(status):
     codes = {'0': 'NO EXTENSION', '3': 'NO ANSWER', '4': 'ANSWERED', '5': 'BUSY', '8': 'CHANNEL NOT AVAILABLE'}
@@ -75,14 +75,12 @@ def event_listener_originate(event, **kwargs):
     logger.info('ActionID: {}, Channel: {}, Channel state: {}'.format(actionid, channel, state))
 
 
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')
     call_id = request.args.get('callId')
-
-    logger.info(request.args.get(''))
+    logger.info(request.url)
 
     adapter = AMIClientAdapter(client)
 
@@ -99,7 +97,7 @@ def index():
             CallerID='Call For Life Uganda',
             Variable='data={}&{}&{}&{}'.format(call_id, phone, flow, channel),
             ActionID=call_id,
-            Timeout=30000,
+            Timeout=45000,
             Async=True,
             _callback=callback_response
 
