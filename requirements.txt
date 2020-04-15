@@ -5,3 +5,5 @@ asterisk-ami
 lxml
 gunicorn
 gevent
+flake8
+autopep8

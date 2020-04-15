@@ -2,6 +2,7 @@ app.log
 app_py.log
 .vscode
 venv
+audio
 audio.zip
 config.ini
 *.swp
