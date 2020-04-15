@@ -33,7 +33,8 @@ motech_hostname = motech_config['host']
 local_audio_path = Audio(motech_config['audio_path'])
 
 # Define the starting voice URL of the application
-base_link = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='.format(motech_hostname)
+base_link = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='.format(
+    motech_hostname)
 
 # Capture the incoming caller number and save it in the phone variable
 phone = str(agi.env['agi_callerid'])
@@ -123,7 +124,8 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     field = form.find('field')
 
     try:
-        # Capture the length of DTMF, lets say like 4 digits (type="digits?length=4")
+        # Capture the length of DTMF, lets say like 4 digits
+        # (type="digits?length=4")
         field_length = int(field.attrs['type'].split('=')[1])
     except Exception as e:
         logger.log_info(str(e))
@@ -166,13 +168,15 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
                 timeout = int(float(timeout[:-1]) * 1000)
 
             if field_length is not None:
-                logger.log_info('Streaming dialogue music: {}'.format(audio_file))
+                logger.log_info(
+                    'Streaming dialogue music: {}'.format(audio_file))
                 input_digit = agi.get_data(audio_file, timeout, field_length)
                 time.sleep(2)
                 if len(input_digit) == field_length:
                     break
             else:
-                logger.log_info('Streaming dialogue music: {}'.format(audio_file))
+                logger.log_info(
+                    'Streaming dialogue music: {}'.format(audio_file))
                 input_digit = agi.get_data(audio_file, default_timeout, 1)
 
                 if len(input_digit) > 0:
@@ -189,32 +193,43 @@ def process_audio_dialogue(form, input_attempts=0, no_match_attempts=0):
     if len(input_digit) == 0:
         attempts = input_attempts + 1
         no_input = no_input_and_no_match(no_input_element)
-        return process_no_input_and_no_match(no_input, attempts, no_match_attempts, form)
+        return process_no_input_and_no_match(
+            no_input, attempts, no_match_attempts, form)
 
     if grammar is not None and items is not None:
         for item in items:
             choices.append(int(item.get_text()))
 
         if int(input_digit) in choices:
-            logger.log_info('User entered: {} as their choice'.format(input_digit))
-            return process_xml(filled_next_link + '&' + filled_name + '=' + str(input_digit))
+            logger.log_info(
+                'User entered: {} as their choice'.format(input_digit))
+            return process_xml(
+                filled_next_link +
+                '&' +
+                filled_name +
+                '=' +
+                str(input_digit))
 
         time.sleep(5)
 
         # Handle Invalid in put here
-        logger.log_info('User entered an invalid choice: {}'.format(input_digit))
+        logger.log_info(
+            'User entered an invalid choice: {}'.format(input_digit))
         match_attempts = no_match_attempts + 1
         no_match = no_input_and_no_match(no_match_element)
-        return process_no_input_and_no_match(no_match, input_attempts, match_attempts, form, False)
+        return process_no_input_and_no_match(
+            no_match, input_attempts, match_attempts, form, False)
 
     if field_name == filled_name:
-        next_link = filled_next_link + '&' + filled_name + '=' + str(input_digit)
+        next_link = filled_next_link + '&' + \
+            filled_name + '=' + str(input_digit)
         return process_xml(next_link)
 
 
 def no_input_and_no_match(elements):
     for element in elements:
-        if element is not None and element.has_attr('count') and element.attrs['count'] is not None:
+        if element is not None and element.has_attr(
+                'count') and element.attrs['count'] is not None:
             submit = element.find('submit')
             prompt = element.find('prompt', recursive=False)
             timeout = 0
@@ -239,7 +254,12 @@ def no_input_and_no_match(elements):
     return None
 
 
-def process_no_input_and_no_match(element, input_attempts, no_match_attempts, form, no_input=True):
+def process_no_input_and_no_match(
+        element,
+        input_attempts,
+        no_match_attempts,
+        form,
+        no_input=True):
     count = element['count']
     audio = element['audio']
     next_link = str(element['next_link'])

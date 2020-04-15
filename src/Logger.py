@@ -28,6 +28,7 @@ class Logger:
     def check_if_log_file_is_writable(self):
         try:
             with open(self.log_dir + '/app.log', 'w+') as f:
+                f.close()
                 pass
         except Exception as e:
             print('Log file not writable or does not exist: {}'.format(str(e)))
