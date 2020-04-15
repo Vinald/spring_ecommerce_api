@@ -22,11 +22,12 @@ log_dir = os.path.dirname(os.path.realpath(__file__))
 logging.basicConfig(
             level=logging.INFO,
             format='[%(asctime)s] %(levelname)s: %(message)s',
-            filename=log_dir + '/app_py.log',
+            datefmt='%m/%d/%Y %I:%M:%S %p',
+            filename=log_dir + '/app.log',
             filemode='a+',
         )
 
-open(log_dir + '/app_py.log', 'w+')
+open(log_dir + '/app.log', 'w+')
 
 logger = logging.getLogger()
 
@@ -55,7 +56,9 @@ state = ''
 
 
 def channel_statuses(status):
-    codes = {'0': 'NO EXTENSION', '3': 'NO ANSWER', '4': 'ANSWERED', '5': 'BUSY', '8': 'CHANNEL NOT AVAILABLE'}
+    # Initial Originate Responses from Asterisk
+    # codes = {'0': 'NO EXTENSION', '3': 'NO ANSWER', '4': 'ANSWERED', '5': 'BUSY', '8': 'CHANNEL NOT AVAILABLE'}
+    codes = {'0': 'FAILED', '3': 'NO ANSWER', '4': 'COMPLETED', '5': 'BUSY', '8': 'FAILED'}
     for key in codes.keys():
         if status == key:
             code = codes[key]
