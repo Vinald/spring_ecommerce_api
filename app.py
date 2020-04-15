@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from flask import Flask, request, jsonify
-from asterisk.ami import AMIClient, SimpleAction
+from asterisk.ami import AMIClient
 from asterisk.ami import AMIClientAdapter
 from configparser import ConfigParser
 import os
@@ -20,12 +20,12 @@ config.read(working_dir + '/config.ini')
 log_dir = os.path.dirname(os.path.realpath(__file__))
 
 logging.basicConfig(
-            level=logging.INFO,
-            format='[%(asctime)s] %(levelname)s: %(message)s',
-            datefmt='%m/%d/%Y %I:%M:%S %p',
-            filename=log_dir + '/app.log',
-            filemode='a+',
-        )
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s: %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S %p',
+    filename=log_dir + '/app.log',
+    filemode='a+',
+)
 
 open(log_dir + '/app.log', 'w+')
 
@@ -58,7 +58,12 @@ state = ''
 def channel_statuses(status):
     # Initial Originate Responses from Asterisk
     # codes = {'0': 'NO EXTENSION', '3': 'NO ANSWER', '4': 'ANSWERED', '5': 'BUSY', '8': 'CHANNEL NOT AVAILABLE'}
-    codes = {'0': 'FAILED', '3': 'NO ANSWER', '4': 'COMPLETED', '5': 'BUSY', '8': 'FAILED'}
+    codes = {
+        '0': 'FAILED',
+        '3': 'NO ANSWER',
+        '4': 'COMPLETED',
+        '5': 'BUSY',
+        '8': 'FAILED'}
     for key in codes.keys():
         if status == key:
             code = codes[key]
@@ -75,7 +80,9 @@ def event_listener_originate(event, **kwargs):
     actionid = event_dict["ActionID"]
     channel = event_dict["Channel"]
     state = channel_statuses(channelstatus_num)
-    logger.info('ActionID: {}, Channel: {}, Channel state: {}'.format(actionid, channel, state))
+    logger.info(
+        'ActionID: {}, Channel: {}, Channel state: {}'.format(
+            actionid, channel, state))
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -92,21 +99,22 @@ def index():
     if ami_trunk is not None and len(ami_trunk) > 0:
         channel = 'SIP/{}/+{}'.format(ami_trunk, phone)
 
-    future = adapter.Originate(
-            Channel=channel,
-            Exten='100',
-            Priority=1,
-            Context='ivr',
-            CallerID='Call For Life Uganda',
-            Variable='data={}&{}&{}&{}'.format(call_id, phone, flow, channel),
-            ActionID=call_id,
-            Timeout=45000,
-            Async=True,
-            _callback=callback_response
+    adapter.Originate(
+        Channel=channel,
+        Exten='100',
+        Priority=1,
+        Context='ivr',
+        CallerID='Call For Life Uganda',
+        Variable='data={}&{}&{}&{}'.format(call_id, phone, flow, channel),
+        ActionID=call_id,
+        Timeout=45000,
+        Async=True,
+        _callback=callback_response
+    )
 
-        )
-
-    client.add_event_listener(event_listener_originate, white_list='OriginateResponse')
+    client.add_event_listener(
+        event_listener_originate,
+        white_list='OriginateResponse')
 
     global state
     if state != "":
