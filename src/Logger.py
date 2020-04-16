@@ -11,7 +11,7 @@ class Logger:
             format='[%(asctime)s] %(levelname)s: %(message)s',
             datefmt='%m/%d/%Y %I:%M:%S %p',
             filename=self.log_dir + '/app.log',
-            filemode='a+',
+            filemode='a',
         )
         self.logger = logging.getLogger()
 

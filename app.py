@@ -24,7 +24,7 @@ logging.basicConfig(
     format='[%(asctime)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S %p',
     filename=log_dir + '/app.log',
-    filemode='a+',
+    filemode='a',
 )
 
 open(log_dir + '/app.log', 'w+')
