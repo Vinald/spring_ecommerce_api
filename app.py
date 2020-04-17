@@ -74,7 +74,6 @@ def channel_reason(status):
     for key in reasons:
         if status == key:
             return = reasons[key]
-            return ch_reason
 
 
 def event_listener_originate(event, **kwargs):
