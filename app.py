@@ -22,24 +22,7 @@ config = ConfigParser()
 config.read(working_dir + '/config.ini')
 
 # Initiate Logger
-# log_dir = os.path.dirname(os.path.realpath(__file__))
-# 
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='[%(asctime)s] %(levelname)s: %(message)s',
-#     datefmt='%m/%d/%Y %I:%M:%S %p',
-#     filename=log_dir + '/app.log',
-#     filemode='a',
-# )
-# 
-# open(log_dir + '/app.log', 'a+')
-# 
-# logger = logging.getLogger()
-
 logger = Logger(working_dir)
-
-
-
 
 # Grab the ami section from the config file
 ami = config['ami']
@@ -128,6 +111,7 @@ def gen_status_link(callid, timestamp, status, reason, **optional_params):
     :return: status_link
     """
     status_link = str(status_base_link + callid + '.vxml?_dt=' + timestamp + '&status=' + status + '&reason=' + reason)
+
     if 'externalID' and 'externalType' in optional_params:
         status_link = str(status_link + '&externalId=' + optional_params['externalID'] + '&externalType=' +
                           optional_params['externalType'])
@@ -170,7 +154,7 @@ def index():
 
     session_type = 'voxeoSessionId'
 
-    complete_status_counter = int(180)
+    complete_status_counter = int(360)
 
     global state
     if state != "":

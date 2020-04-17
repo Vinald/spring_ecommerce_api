@@ -9,4 +9,5 @@ config.ini
 .idea/
 src/__pycache__/
 __pycache__
+app.pyc
 
