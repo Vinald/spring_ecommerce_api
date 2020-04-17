@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, redirect
 import requests
 from asterisk.ami import AMIClient
 from asterisk.ami import AMIClientAdapter
 from configparser import ConfigParser
 import os
-import logging
 import random
 import string
 import ast
