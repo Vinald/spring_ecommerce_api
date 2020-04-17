@@ -63,17 +63,16 @@ def channel_statuses(status):
         '4': 'COMPLETED',
         '5': 'BUSY',
         '8': 'FAILED'}
-    for key in codes.keys():
+    for key in codes:
         if status == key:
-            code = codes[key]
-            return code
+            return codes[key]
 
 
 def channel_reason(status):
     reasons = {'BUSY': 'busy', 'COMPLETED': 'application', 'FAILED': 'unreachable', 'NO_ANSWER': 'timeout'}
     for key in reasons:
         if status == key:
-            return = reasons[key]
+            return reasons[key]
 
 
 def event_listener_originate(event, **kwargs):
