@@ -64,7 +64,7 @@ else:
 
 
 # Initialize Logger
-logger = Logger(working_dir, phone)
+logger = Logger(working_dir, phone=phone)
 
 # Start logging
 logger.log_info('Starting call')
