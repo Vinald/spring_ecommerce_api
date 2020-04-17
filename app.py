@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
+import requests
 from asterisk.ami import AMIClient
 from asterisk.ami import AMIClientAdapter
 from configparser import ConfigParser
 import os
 import logging
-import re
+import random
+import string
 import ast
+import re
 import time
-
+import datetime
+import threading
+from src.Logger import Logger
 
 working_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -17,42 +22,36 @@ config = ConfigParser()
 config.read(working_dir + '/config.ini')
 
 # Initiate Logger
-log_dir = os.path.dirname(os.path.realpath(__file__))
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)s: %(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S %p',
-    filename=log_dir + '/app.log',
-    filemode='a',
-)
-
-open(log_dir + '/app.log', 'w+')
-
-logger = logging.getLogger()
+logger = Logger(working_dir)
 
 # Grab the ami section from the config file
 ami = config['ami']
+motech_config = config['motech']
 
 ami_host = ami['host']
 ami_user = ami['user']
 ami_pass = ami['pass']
 ami_port = int(ami['port'])
 ami_trunk = ami['trunk']
+motech_hostname = motech_config['host']
+state = ''
+
+status_base_link = 'http://{}/motech-platform-server/module/callflows/status/'.format(motech_hostname)
+
 
 app = Flask(__name__)
-
-
 client = AMIClient(address=ami_host, port=ami_port)
 client.login(username=ami_user, secret=ami_pass)
 
 
 def callback_response(response):
-    logger.info(response)
-    print(response)
+    logger.log_info(response)
 
 
-state = ''
+def random_alphanumeric_string(stringlength=32):
+    char = string.ascii_lowercase + string.digits
+    external_id = ''.join((random.choice(char) for i in range(stringlength)))
+    return str(external_id)
 
 
 def channel_statuses(status):
@@ -60,29 +59,64 @@ def channel_statuses(status):
     # codes = {'0': 'NO EXTENSION', '3': 'NO ANSWER', '4': 'ANSWERED', '5': 'BUSY', '8': 'CHANNEL NOT AVAILABLE'}
     codes = {
         '0': 'FAILED',
-        '3': 'NO ANSWER',
+        '3': 'NO_ANSWER',
         '4': 'COMPLETED',
         '5': 'BUSY',
         '8': 'FAILED'}
-    for key in codes.keys():
+    for key in codes:
         if status == key:
-            code = codes[key]
-            return code
+            return codes[key]
+
+
+def channel_reason(status):
+    reasons = {'BUSY': 'busy', 'COMPLETED': 'application', 'FAILED': 'unreachable', 'NO_ANSWER': 'timeout'}
+    for key in reasons:
+        if status == key:
+            return reasons[key]
 
 
 def event_listener_originate(event, **kwargs):
     global state
+    logger.log_info('{}\n'.format(event))
     event_dict = re.split(r"\->", str(event))
     event_dict = event_dict[1]
     event_dict = event_dict[1:]
     event_dict = ast.literal_eval(event_dict)
-    channelstatus_num = event_dict["Reason"]
-    actionid = event_dict["ActionID"]
+    channel_status_num = event_dict["Reason"]
+    action_id = event_dict["ActionID"]
     channel = event_dict["Channel"]
-    state = channel_statuses(channelstatus_num)
-    logger.info(
-        'ActionID: {}, Channel: {}, Channel state: {}'.format(
-            actionid, channel, state))
+    state = channel_statuses(channel_status_num)
+    logger.log_info(
+        'ActionID: {}, Channel: {}, Channel state: {}\n'.format(
+            action_id, channel, state))
+
+
+def current_timestamp():
+    t1 = datetime.datetime.now()
+    t1 = t1.timestamp()
+    t1 = round(t1, 3)
+    t1 = str(t1).replace('.', '')
+    return t1
+
+
+def gen_status_link(callid, timestamp, status, reason, **optional_params):
+    """
+    :param callid:
+    :param timestamp:
+    :param status: NO_ANSWER,COMPLETED,FAILED,BUSY
+    :param reason: timeout,application,unreachable,busy
+    :param optional_params: externalID, externalType >> Used is status == COMPLETED
+    :return: status_link
+    """
+    status_link = str(status_base_link + callid + '.vxml?_dt=' + timestamp + '&status=' + status + '&reason=' + reason)
+
+    if 'externalID' and 'externalType' in optional_params:
+        status_link = str(status_link + '&externalId=' + optional_params['externalID'] + '&externalType=' +
+                          optional_params['externalType'])
+        logger.log_info('Reply to MOTECH(Call Answered): {}\n'.format(status_link))
+        return status_link
+    logger.log_info('Reply to MOTECH: {}\n'.format(status_link))
+    return status_link
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -90,7 +124,7 @@ def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')
     call_id = request.args.get('callId')
-    logger.info(request.url)
+    logger.log_info(request.url)
 
     adapter = AMIClientAdapter(client)
 
@@ -116,19 +150,38 @@ def index():
         event_listener_originate,
         white_list='OriginateResponse')
 
+    session_type = 'voxeoSessionId'
+
+    complete_status_counter = int(360)
+
     global state
     if state != "":
         state = ""
         while state == "":
             time.sleep(0.5)
-        return jsonify({'status': state})
+        if state == 'COMPLETED':
+            link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
+                                   externalID=random_alphanumeric_string(), externalType=session_type)
+
+            threading.Timer(complete_status_counter, lambda: requests.get(link)).start()
+            return redirect(link, code=302)
+
+        link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state))
+        return redirect(link, code=302)
+
     else:
         while state == "":
             time.sleep(0.5)
-        return jsonify({'status': state})
+        if state == 'COMPLETED':
+            link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
+                                   externalID=random_alphanumeric_string(), externalType=session_type)
+            threading.Timer(complete_status_counter, lambda: requests.get(link)).start()
+            return redirect(link, code=302)
+        link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state))
+        return redirect(link, code=302)
 
 
 if __name__ == '__main__':
     # Debug Info shown in log file
-    logger.info('App.py Logger Started')
+    logger.log_info('App.py Logger Started')
     app.run(host='0.0.0.0', debug=True)
