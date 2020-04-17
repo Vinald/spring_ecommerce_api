@@ -71,7 +71,7 @@ def channel_statuses(status):
 
 def channel_reason(status):
     reasons = {'BUSY': 'busy', 'COMPLETED': 'application', 'FAILED': 'unreachable', 'NO_ANSWER': 'timeout'}
-    for reason in reasons.keys():
+    for key in reasons:
         if status == reason:
             ch_reason = reasons[reason]
             return ch_reason
