@@ -138,7 +138,7 @@ def index():
         Priority=1,
         Context='ivr',
         CallerID='Call For Life Uganda',
-        Variable='data={}&{}&{}&{}'.format(call_id, phone, flow, channel),
+        Variable='data={}&{}&{}&{},CDR(dialed_number)={}'.format(call_id, phone, flow, channel, phone),
         ActionID=call_id,
         Timeout=45000,
         Async=True,
