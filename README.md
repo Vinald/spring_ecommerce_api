@@ -1,310 +1,154 @@
-Call Link Uganda (IDI Inhouse IVR)
-===================
-Call Link Uganda is a project inspired by the need to have an Inhouse IVR solutions to handle
-the current volume of calls made by the **Call for Life** project.
+# Call Link Uganda. The Ugandan Academy Interactive Voice Response -IVR
 
-This guide is essentially to help you get started with setting up MOTECH, Asterisk as well as setting up the python scripts. 
-It shall also explain the use of some of the scripts included in this project. 
+Call Link Uganda is a project inspired by the need to have an Inhouse IVR solutions to handle
+the current volume of calls made by the **Call for Life project**.
+
+This guide is essentially to help you get started with setting up IVR for either development or production environment
 
 Table of Contents
 =================
-
-   * [Call Link Uganda (IDI Inhouse IVR)](#call-link-uganda-idi-inhouse-ivr)
-   * [Table of Contents](#table-of-contents)
    * [Setting up your GitLab SSH](#setting-up-your-gitlab-ssh)
-   * [Setting up Asterisk](#setting-up-asterisk)
-      * [Prerequisites](#prerequisites)
-   * [Getting MOTECH Installed](#getting-motech-installed)
-      * [Prerequisites:](#prerequisites-1)
-   * [Python Files and Scripts](#python-files-and-scripts)
-      * [agi.py](#agipy)
-      * [app.py](#apppy)
-      * [app.log](#applog)
-      * [config.ini.test](#configinitest)
-      * [config.ini](#configini)
-   * [Shell Script Files](#shell-script-files)
-      * [asterisk.sh](#asterisksh)
-      * [dependencies.sh](#dependenciessh)
-      * [requirements.txt](#requirementstxt)
-   * [Useful Project Directories](#useful-project-directories)
-      * [/asterisk](#asterisk)
-      * [/src](#src)
-
+   * [Prerequisites](#prerequisites)
+   * [Installation](#installation)
+   * [Development](#development)
+   * [References](#references)
 
 Setting up your GitLab SSH  
 ======
-
-This shall help with authentication with git. As opposed to authenticating with your username and password each time, you shall authenticate with SSH and wont need to use your credentials each time you wish to push or pull. On the Machine you wish to clone this repo too,
-
-```
-bash
-root@asterisk:~# ssh-keygen
-
-Generating public/private rsa key pair.
-Enter file in which to save the key (/root/.ssh/id_rsa):
-Created directory '/root/.ssh'.
-Enter passphrase (empty for no passphrase):
-Enter same passphrase again:
-Your identification has been saved in /root/.ssh/id_rsa.
-Your public key has been saved in /root/.ssh/id_rsa.pub.
-The key fingerprint is:
-SHA256:4M1ANA+B06uFiP3BYKbTcdXNuCV3Cx+iBkK8svRBw3Q root@asterisk
-The key's randomart image is:
-+---[RSA 2048]----+
-|   =o=Eo +       |
-|  = Xoo++ B o    |
-| B B *oo.* = o   |
-|+ * *.o=+   o    |
-| o = =..S        |
-|  . +            |
-|                 |
-|                 |
-|                 |
-+----[SHA256]-----+
-
-root@asterisk:~# cat ~/.ssh/id_rsa.pub
-
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDK7ZdEc8u+nXd+w2WrFMMxQEnrRsU5cqANLocKIZYO8RZsbbqs2LdKpYQN4mT9mskLoZqhI1HANDnPfY2tJdcVAhLvJyR+qDkXjzrqe4oU1o3vDuRsasjE+rezt+M6X9+FGvOPGP3Byl6vyJd+qkV3cJcNspoW6ZWlXHXHp0UpF89TSxvHMUv5815pRuOYvVtOxYi12uS//Gds91aK7xMbT9MGVKlSSTqJ4oEm6MgZ4ueMC3OFIuwJdG+/d6Td7rQ+TIkyGe3IfiVzmBJ0w4iWASsPV9yYDs2X+ILIqBqK52BDhJQ/xSxGveXtYmZpkjjDaxoL5hGkUmXdQPsZBnlb root@asterisk
-
-```
-
-Copy the created key and in GitLab >> User Settings >> SSH Keys, copy and paste this key into the available space and save. This way you wont need to use your email and password each time you need to interact with the repo.
-
-Once you are done with this, you need to delete the old repo and clone it again, this time round, clone it with **SSH** and not HTTP. That way, moving forward, you wont need to use your username and password to authenticate with interacting with Git.
-
-Setting up Asterisk
-=====
+Please click [here](https://docs.gitlab.com/ee/ssh/#rsa-ssh-keys) to follow the steps needed to set up your gitlab ssh key
 
 Prerequisites
------
+=============
+Hardware Requirements
+| Hardware | Suggested | Comment |
+| ------ | ------ | ----- |
+| SIP Phone | Fanvil, Grandstream, Yealink | This may not be need in case you have a soft phone on your pc or mobile phone |
 
-* A VM with Ubuntu 18 LTS (The server version is most preferable for its speed). The VM should be updated and preferably have the following packages: vsftpd, openssh-server.
+Compute Requirements
+| Component | Minimum Required | Comment |
+| ------ | ------ |------|
+| CPU | 2 cores | 1.6Ghz per core |
+| RAM | 2 Gb | |
+| Disk | 50 Gb | Solid State Drive prefered | 
+Please note that these requirements maybe provisioned to a virtual machine (**Hyper V, VMware, Oracle Virtualbox, Citrix etc**)
 
-Follow the guide [here]("https://computingforgeeks.com/how-to-install-asterisk-16-lts-on-ubuntu-18-04-16-04-debian-9") to get Asterisk
-set up on your local machine.
+Software  Requirements
+| Software | Version | Reference | Comment |
+| ------ | ------ |------| ------ |
+| Ubuntu Server OS | 18.04 or higher | [Download from here](https://ubuntu.com/download/server) |
+| MOTECH | 9.3 or higher | [Installation Instructions](http://gitlab.theacademy.co.ug/theacademy/scripts) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
+| Asterisk | 16 or higher | [Installation Instructions](https://computingforgeeks.com/how-to-install-asterisk-16-lts-on-ubuntu-18-04-16-04-debian-9/) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
 
-For the purposes of this setup, configure the following:
+Installation
+============
+The initial thing to do before you run anything is to make sure your in the root directory of the application.
 
-In the `/etc/asterisk/sip.conf` file, add the following lines, save and exit:
+To start the installation, make sure have elevated privileges (**sudo**). Please run the following command in the terminal to gain elevated privileges.
 
-```
-[256750046950]
-        type=friend
-        context=phones
-        disallow=all
-        allow=ulaw,alaw
-        secret=12345678
-        host=dynamic
-        nat=yes
-
-```
-In this, your basically telling asterisk that it should recognise any 
-peer that tries to authenticate with the user credentials:
-- Username : 256750046950
-- Password: 12345678
-
-These are the credentials you would then configure on your SIP phone or 
-soft phone. You are free to chage them though if you wish. Notice though that I used a **phone number** as the username. This is important as we shall later see that its this number captured as the **CallID** variable used in the AGI Script.
-
-In the `/etc/asterisk/extensions.conf` file, add the following lines, save and exit:
-
-```
-[ivr]
-        exten => 0800113213,1,NoOp(This is a Test IVR)
-        same => n,Answer
-        same => n,AGI(agivxml.py)
-        same => n,Hangup
-
-```
-This basically tells Asterisk that when  **0800113213** (The Current Toll Free number) is dialed, direct the call to the **agivxml.py** AGI file.
-
-Once you are doe with that, refresh Asterisk so tht it can pick up the new configs 
-by entering the commands:
-
+**Note.** You will most likely be asked to enter a password after running the command depending on your system setup
 ```bash
-root@asterisk:~#asterisk -rvvv
-
-Asterisk 16.6.2, Copyright (C) 1999 - 2018, Digium, Inc. and others.
-Created by Mark Spencer <markster@digium.com>
-Asterisk comes with ABSOLUTELY NO WARRANTY; type 'core show warranty' for details.
-This is free software, with components licensed under the GNU General Public
-License version 2 and other licenses; you are welcome to redistribute it under
-certain conditions. Type 'core show license' for details.
-Running as user 'asterisk'
-Running under group 'asterisk'
-Connected to Asterisk 16.6.2 currently running on asterisk (pid = 602)
-
-asterisk*CLI>
-asterisk*CLI> sip reload
- Reloading SIP
-asterisk*CLI> dialplan reload
-Dialplan reloaded.
-
+$ sudo su
+# 
 ```
 
-You can check that your peers are registered with Asterisk by running this command within the Asterisk CLI `sip show peers`
+When the dollar sign **$** changes to a hash **#**, means the command was successful and we are ready to go.
 
-Your peers should be online if they have been successfully registered.
+1. First step
+    `config.ini.test`
+    This is a demo file created as an example to how the config.ini file should look like.
+    This file contains the format that should be followed when creating the config.ini file.
+    This format should be followed correctly and the variables filled in accordingly.
+    This file was created to ensure that this project can easily be run on different system setups with easy integration.
 
-You shall need a soft phone on which you can test some of your calls. For my testing, I used jfPhone which is a Windows softphone
-that can be found [here]("https://sourceforge.net/projects/jfphone/"). When you download, install this application and open it.
+    This file must be created by the user as shown in the command below. In this file, the user can specify configurations like:
+    - IP of the MOTECH host
+    - AMI Configurations, needed by `app.py`
+    - The audio directory path
+    
+    Well here is the command to create the config file
+    
+    ```bash
+    # cp config.ini.test config.ini
+    ```
+    After creating the config file, you can edit the file with any of your favorite editors depending on your system setup i.e `nano`, `vim`, `gedit` etc.
+    
+    For example to use nano, run the following command.
+    ```bash
+    # nano config.ini
+    ```
 
-CFG (Its one of the Buttons) >> Accounts >> Line1 >>:
+2. Second step
 
-Display Name - Softphone
+    The will help to install the application dependencies with the following command
+    ```bash
+    # bash install.sh
+    ```
+    This will take a couple of minutes but its worth it.
+    
+3. Third step
 
-Username - 256750046950
+    Run the following command to setup your asterisk configuration (dialplan, sip configuration, asterisk manager etc)
+    
+    ```bash
+    # bash asterisk.sh
+    ```
+    
+4. Last step
+    
+    Configure your SIP phone / Soft phone
+    Below are the following default details to be used while configuring the phone
+    | Key | Value |
+    | ------ | ------ |
+    | username, auth name, etc | `200` |
+    | password | `1234` |
+    | host / IP Address | This should be IP of the machine running the application. It will vary on different machines and networks.  Run `ifconfig` in the ubuntu terminal to get the correct IP address. For example it could be like `192.168.8.50`. |
 
-Password - 12345678
-
-Domain - 192.168.88.225 (Your Asterisk IP)
-
-Remember, this are the configurations we made in the **sip.conf** file. Aftr this, it should successfully register and should be able and make calls.
-
-For FTP, I use MobaXTerm that can be downloaded [here]("https://mobaxterm.mobatek.net/download.html"). In the Session tab, I use SFTP for my FTP. Make sure the credentials you 
-use to login have the permission to read an write to the folder you want to write to. 
-This shall come in handy for copying the audio files to the VM or copying the Motech Install Script. You must also have **vsftpd** installed on the linux machine you wish to FTP to.
-
-And worry not, this file shall later be updated with the correct information using the `asterisk.sh` script.
-This is simply a background on how to get started if you are a first time user.
-
-Getting MOTECH Installed
+    After successfull configuration, make a call to `100` from your SIP or Soft phone and you should be able to connect to the IVR.
+    
+Development
 ===========
+**Prerequisites**
+Intermediate `Unix\Linux` Knowledge
+A good understanding of `python3`, object oriented programing, package managers etc.
+A good understanfing of `VoIP` (Voice over IP) mostly asterisk
+A good understanfing of `MOTECH`. The applications which sends call requests to the IVR
+An IDE for example `pycharm professional`
 
-Prerequisites:
-------
+Some other things you find out yourself when everything almost failing for you ;)
 
-* A VM with Ubuntu 18 LTS (The server version is most preferable for its portability). The VM should be updated and preferably have the following packages: vsftpd, openssh-server.
+**Ports used by the IVR while running**
+Port: `5000`
+This is where external applications like MOTECH which want to make calls through the IVR send call requests.
+The Flask web server is the one which runs on this port by default.
+Check the references below to find out more about Flask library
 
-* The VM should have atleast 15GB space.
+**Coding style**
+We use the Python Enhancement Proposal (PEP) 8 style while coding. You can refer to this page [here](https://www.python.org/dev/peps/pep-0008/) for more info about the coding style.
 
-Get access to the CFL install script and have it locally available on your new VM. The script can now be accessed [here]("http://gitlab.theacademy.co.ug/theacademy/scripts"). You can 
-download or clone it from there.
-Navigate to the directory and install the script:
-
+Before pushing code to the respository, please check for any coding style errors with the following command
 ```bash
-root@asterisk:~#cd cfl710/
-
-root@asterisk:~#./install-cfl710.sh
-
+$ flake8 --max-line-length=120 --statistics ./app.py ./agi.py ./src
 ```
-This may take up to 30 minutes. Once this is done. Run the command below to start the 
-MOTECH containers:
 
+The output of this command with show you filenames with errors or nothing if there are no errors.
+
+To fix your coding style errors to match the coding style (PEP8) automatically, run the following command.
 ```bash
-root@asterisk:~#docker ps
+$ autopep8 --in-place --aggressive --aggressive <filename_with_errors or a directory>
 ```
+Note. This tool may not fix some styling errors therefore there might be need for manual fixing.
 
-You shall have to wait for atleast 8 minutes from the moment you run this 
-command for the MOTECH database to be ready for use. Take note of the IP of your local machine.
-This is where the MOTECH database shall be accessed from.
-You can then access the vxml callflow files. Am example is:
+References
+==========
 
-**"http://192.168.88.251/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone=256750046950"**
+Asterisk Manager Interface (AMI) - [Reference](https://wiki.asterisk.org/wiki/pages/viewpage.action?pageId=4817239)
+This is the interface we use to initiate calls and get call responses from asterisk
 
-The **192.168.88.251** would represent the local IP for your VM.
-To access the call flow for a particular number, add the **?phone=256750046950** infront of the **Mainflow.vxml**.
-The phone number added must be in the MOTECH database for the correct call flow to be generated. Otherwise
-the default call flow **"We_are_Sorry"** is what you shall be directed to. 
+Asterisk Gateway Interface (AGI) [Reference](https://wiki.asterisk.org/wiki/pages/viewpage.action?pageId=32375589)
+This is the interface we use to manipulate the asterisk language after parsing VXML 
 
-Please note that the phone numbr you select e.g. "256750046950" in our case must be in an "ACTIVATED" state in the database. You can check this
-by logging into th database e.g 192.168.88.251:8080, using "root" for the username and password, then within motech_data_services, you access the "cfl_patients" table
-and search for the number you wish to use for testing. Simply edit the state from "DEACTIVATED" to "ACTIVATED" and save the changes.
+Beautiful Soup [Reference](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
+This is the library we use to parse Voice XML (VXML)
 
-This nomenclature is what shall be used for options like **pin**, or **choice** when 
-a user needs to choose an option in the IVR menu. For example, for pin, it would look like:
-
-**"http://192.168.88.251/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?pin=1234"**
-							
-With this you should be able to interact with MOTECH successfully. Note that after the **Mainflow.vxml**,
-the following links are autogenerated by MOTECH and are always different because for each link clicked or downloaded, a 
-database entry is made/updated. The only link that is typically constant is the first **Mainflow.vxml** link.
-
-Python Files and Scripts
-======
-
-agi.py
-----
-
-This is the main python file that shall be present in the Asterisk Dialplan. 
-
-```
-[ivr]
-        exten => 100,1,NoOp(Call Life Uganda Inhouse IVR)
-        same => n,Answer
-        same => n,AGI(agivxml.py)
-        same => n,Hangup
-```
-
-**NOTE:** This AGI script can be stored in the directory `/var/lib/asterisk/agi-bin/`, which is Asterisk's default directory for AGI files, or can be referenced with a path.
-For this project, we shall reference the path in the format `/home/<user>/ivr/agi.py`.
-
-app.py
-------
-This file is responsible generating scheduled outbound calls from MOTECH via asterisk. 
-It contains the functions needed to originate an outbound call and is responsible for
-relaying call state to MOTECH.
-
-app.log
-----
-This is the logger that's been built to automatically log the whole call flow process independently.
-This is necessary for troubleshooting purposes as and when they arise. This logger logs the following information:
-* Date and Time
-* Phone number currently in session
-* Direction of the current call (Inbound or Outbound)
-* Audio files streamed as and when they are streamed.
-
-This log file can easily be exported and queried should need arise.
-
-config.ini.test
------
-This is a demo file created as an example to how the `config.ini` file should be created.
-This file contains the format that should be followed when creating the `config.ini` file.
-This format should be followed correctly and the variables filled in accordingly. This file 
-was created to ensure that this project can easily be run on different system setups with easy integration.
-
-config.ini
-----
-This file **must** be created by the user. In this file, the user can specify configurations like:
-* IP of the MOTECH host
-* AMI Configurations, needed by `app.py`
-* The audio directory path
-
-Shell Script Files
-=====
-
-asterisk.sh
-----
-This script was needed to harmonise the various configurations that were required in the 
-asterisk config folder. When run, this script looks into the **Asterisk** folder and overwriting any existing
-configurations with the configurations specified in that directory. 
-
-Updates to the dialplan, sip.conf or any other asterisk related configurations can thus simply be made
-in this folder and updates accordingly.
-
-dependencies.sh
------
-This shell script is required should one be installing this project on a fresh machine. This script
-checks for and installs the necessary python dependencies required by the python scripts
-mentioned above.
-
-requirements.txt
-----
-This document informs the `dependencies.sh` script on what python libraries to install in 
-relation to this project.
-
-Useful Project Directories
-====
-A couple for folders have been created to aid in project organisation and ease of access to information.
-All remember to give the **asterisk** user permissions to use these folders and the files inside them least the 
-`agi.py` script may fail to use them correctly.
-
-/asterisk
-----
-This folder contains config files related to asterisk e.g. extensions.conf and sip.conf. Modifications to Asterisk
-can easily be made here and effected by running the `asterisk.sh` script. 
-
-/src
----
-This folder contains the various classes designed to work with the main `agi.py` file. This choice of design
-was opted for to make for running of unittests, troubleshooting and modification of the main `agi.py` code easier.
+Flask [Reference](https://flask.palletsprojects.com/en/1.1.x/)
+This is the library we use to develop the IVR API
