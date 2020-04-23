@@ -1,11 +1,15 @@
 stages:
-  - code-style-check
-  - update-repository
-  - ivr-dependencies
-  - finish-up
+  - code-quality-staging
+  - code-quality-production
+  - build-staging
+  - build-production
+  - deploy-staging
+  - deploy-production
+  - clean-up-staging
+  - clean-up-production
 
-update-repository:
-  stage: update-repository
+build-staging:
+  stage: build-staging
   script:
     - sudo chown -R gitlab-runner /root
     - cd /root/ivr
@@ -13,31 +17,77 @@ update-repository:
     - sudo git fetch -p --all
     - sudo git checkout master
     - sudo git pull
+  tags:
+    - ivr-staging
+  only:
+    - /^v*$/i
+
+build-production:
+  stage: build-production
+  script:
+    - sudo chown -R gitlab-runner /root
+    - cd /root/ivr
+    - sudo git reset --hard
+    - sudo git fetch -p --all
+    - sudo git checkout master
+    - sudo git pull
+  tags:
+    - ivr-production
   only:
     - master
 
-ivr-dependencies:
-  stage: ivr-dependencies
+deploy-staging:
+  stage: deploy-staging
   script:
     - sudo /bin/bash install.sh
+  tags:
+    - ivr-staging
+  only:
+    - /^v*$/i
 
+deploy-production:
+  stage: deploy-production
+  script:
+    - sudo /bin/bash install.sh
+  tags:
+    - ivr-production
   only:
     - master
 
-code-style-check:
-  stage: code-style-check
+code-quality-staging:
+  stage: code-quality-staging
   script:
-    - pwd
     - sudo pip3 install -r requirements.txt
     - sudo flake8 --max-line-length=120 --statistics ./app.py ./agi.py ./src
+  tags:
+    - ivr-staging
+  only:
+    - /^v*$/i
 
+code-quality-production:
+  stage: code-quality-production
+  script:
+    - sudo pip3 install -r requirements.txt
+    - sudo flake8 --max-line-length=120 --statistics ./app.py ./agi.py ./src
+  tags:
+    - ivr-production
   only:
     - master
 
-finish-up:
-  stage: finish-up
+clean-up-staging:
+  stage: clean-up-staging
   script:
     - sudo chown -R asterisk:asterisk /root
+  tags:
+    - ivr-staging
+  only:
+    - /^v*$/i
 
+clean-up-production:
+  stage: clean-up-production
+  script:
+    - sudo chown -R asterisk:asterisk /root
+  tags:
+    - ivr-production
   only:
     - master
