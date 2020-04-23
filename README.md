@@ -1,7 +1,7 @@
-# Call Link Uganda. The Ugandan Academy Interactive Voice Response - IVR
+# Call Link Uganda. The Ugandan Academy In-house Interactive Voice Response - IVR
 
 >>>
-Call Link Uganda is a project inspired by the need to have an Inhouse IVR solutions to handle
+Call Link Uganda is a project inspired by the need to have an In-house IVR solutions to handle
 the current volume of calls made by the **Call for Life project**.
 
 This guide is essentially to help you get started with setting up IVR for either development or production environment
@@ -36,7 +36,7 @@ Prerequisites
 | ------ | ------ | ------ |
 | CPU | 2 cores | 1.6Ghz per core |
 | RAM | 2 Gb | |
-| Disk | 50 Gb | Solid State Drive prefered |
+| Disk | 50 Gb | Solid State Drive preferred |
 
 
 Please note that these requirements maybe provisioned to a virtual machine (**Hyper V, VMware, Oracle Virtualbox, Citrix etc**)
@@ -123,7 +123,7 @@ Below are the default details to be used while configuring the phone
 | host / IP Address | This should be IP of the machine running the application.<br>It will vary on different machines and networks.<br>Run `ifconfig` in the ubuntu terminal to get the correct IP address.<br>For example it could be like `192.168.8.50`. |
 
 
-After a successfull configuration, make a call to `100` from your SIP or Soft phone, you should be able to connect to the IVR.
+After a successful configuration, make a call to `100` from your SIP or Soft phone, you should be able to connect to the IVR.
 
 
 Development
@@ -132,8 +132,8 @@ Development
 >>>
 Intermediate `Unix\Linux` Knowledge  
 A good understanding of `python3`, object oriented programing, package managers etc.  
-A good understanfing of `VoIP` (Voice over IP) mostly asterisk 16    
-A good understanfing of `MOTECH`. The applications which sends call requests to the IVR  
+A good understanding of `VoIP` (Voice over IP) mostly asterisk 16    
+A good understanding of `MOTECH`. The applications which sends call requests to the IVR  
 An good IDE for example `pycharm professional`  
 >>>
 
@@ -154,12 +154,12 @@ You can refer to this page [here](https://www.python.org/dev/peps/pep-0008/) for
 >>>
 
 
-Before pushing code to the respository, please check for any coding style errors with the following command otherwise your pipelines will fail  
+Before pushing code to the repository, please check for any coding style errors with the following command otherwise your pipelines will fail  
 ```bash
 $ flake8 --max-line-length=120 --statistics ./app.py ./agi.py ./src
 ```
 
-The output of this command with show you filenames with errors or nothing if there aint any.
+The output of this command with show you filenames with errors or nothing if there ain't any.
 
 
 To fix your coding style errors to match the coding style (PEP8) automatically, run the following command.
