@@ -20,7 +20,7 @@ build-staging:
   tags:
     - ivr-staging
   only:
-    - /^v*$/i
+    - /^v.*$/i
 
 build-production:
   stage: build-production
@@ -43,7 +43,7 @@ deploy-staging:
   tags:
     - ivr-staging
   only:
-    - /^v*$/i
+    - /^v.*$/i
 
 deploy-production:
   stage: deploy-production
@@ -62,7 +62,7 @@ code-quality-staging:
   tags:
     - ivr-staging
   only:
-    - /^v*$/i
+    - /^v.*$/i
 
 code-quality-production:
   stage: code-quality-production
@@ -81,7 +81,7 @@ clean-up-staging:
   tags:
     - ivr-staging
   only:
-    - /^v*$/i
+    - /^v.*$/i
 
 clean-up-production:
   stage: clean-up-production
