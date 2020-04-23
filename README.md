@@ -138,6 +138,13 @@ An good IDE for example `pycharm professional`
 >>>
 
 
+**Permissions Fixing**  
+Use the following commands to fix the application permissions  
+```bash
+$ sudo chown -R asterisk:$USER /path/to/application/directory
+```
+
+
 **Ports used by the IVR while running**
 >>>
 Port: `5000`  
@@ -186,3 +193,10 @@ This is the library we use to parse Voice XML (VXML) from external applications 
 
 Flask [Reference](https://flask.palletsprojects.com/en/1.1.x/)  
 This is the library we use to develop the IVR API
+
+
+Flake8 [Reference](http://flake8.pycqa.org/en/latest/user/configuration.html)  
+Used for code style linting (checking).
+
+Autopep8 [Reference](https://pypi.org/project/autopep8/)  
+Auto fixes code style errors
