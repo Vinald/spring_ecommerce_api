@@ -103,7 +103,11 @@ def process_finished_hearing(blocks):
                     audio = prompt.find('audio').attrs['src']
                     audio_file = local_audio_path.gen_audio_file(audio)
                     logger.log_info('Streaming Audio: {}'.format(audio_file))
-                    agi.stream_file(audio_file)
+                    try:
+                        agi.stream_file(audio_file)
+                    except Exception as e:
+                        msg = 'Failed to stream audio file -> {}: {}'
+                        logger.log_info(msg.format(audio_file, str(e)))
 
         has_attributes = len(block.attrs) > 0
 
