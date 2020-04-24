@@ -72,6 +72,47 @@ def channel_reason(status):
             return reasons[key]
 
 
+def gen_motech_reply(call_id, channel, status, timer):
+    """
+    :param status:
+    :param call_id: MOTECH generated caller ID
+    :param timestamp: Generate timestamp
+    :param reason: BUSY, COMPLETED, FAILED, NO_ANSWER
+    :param channel: SIP Channel
+    :param external_id: Random Alphanumeric String
+    :param timer: Time to wait before sending link to change MOTECH call state from IN_PROGRESS to COMPLETED
+    :return: Reply to MOTECH
+    """
+
+    initial_state = 'IN_PROGRESS'
+    session_type = 'voxeoSessionId'
+
+    logger.log_info('ActionID: {}, Channel: {}, Channel state: {}\n'.format(call_id, channel, status))
+    if status == 'COMPLETED':
+        link = gen_status_link(call_id,
+                               current_timestamp(),
+                               initial_state,
+                               channel_reason(status),
+                               externalID=random_alphanumeric_string(),
+                               externalType=session_type
+                               )
+        completed_link = gen_status_link(call_id,
+                                         current_timestamp(),
+                                         status,
+                                         channel_reason(status),
+                                         externalID=random_alphanumeric_string(),
+                                         externalType=session_type
+                                         )
+        threading.Timer(timer, lambda: requests.get(completed_link)).start()
+        threading.Timer(timer, lambda: logger.log_info(
+            'COMPLETED_State Update to MOTECH: {}'.format(completed_link))).start()
+        logger.log_info('Reply to MOTECH(Call Answered): {}\n'.format(link))
+        return link
+    link = gen_status_link(call_id, current_timestamp(), status, channel_reason(status))
+    logger.log_info('Reply to MOTECH: {}\n'.format(link))
+    return link
+
+
 def event_listener(event, **kwargs):
     global state
     if str(event.name) == 'OriginateResponse':
@@ -104,10 +145,10 @@ def gen_status_link(callid, timestamp, status, reason, **optional_params):
     if 'externalID' and 'externalType' in optional_params:
         status_link = str(status_link + '&externalId=' + optional_params['externalID'] + '&externalType=' +
                           optional_params['externalType'])
-        logger.log_info('Reply to MOTECH(Call Answered): {}\n'.format(status_link))
         return status_link
-    logger.log_info('Reply to MOTECH: {}\n'.format(status_link))
     return status_link
+
+
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -137,48 +178,21 @@ def index():
         _callback=callback_response
     )
 
-    # client.add_event_listener(
-    #     event_listener,
-    #     white_list='OriginateResponse')
     client.add_event_listener(event_listener)
-
-    session_type = 'voxeoSessionId'
     complete_status_counter = int(360)
-    initial_state = 'IN_PROGRESS'
 
     global state
     if state != "":
         state = ""
         while state == "":
             time.sleep(0.5)
-        logger.log_info('ActionID: {}, Channel: {}, Channel state: {}\n'.format(call_id, channel, state))
-        if state == 'COMPLETED':
-            link = gen_status_link(call_id, current_timestamp(), initial_state, channel_reason(state),
-                                   externalID=random_alphanumeric_string(), externalType=session_type)
-            completed_link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
-                                   externalID=random_alphanumeric_string(), externalType=session_type)
-            threading.Timer(complete_status_counter, lambda: requests.get(completed_link)).start()
-            threading.Timer(complete_status_counter, lambda: logger.log_info('COMPLETED_State Update to MOTECH: {}'
-                                                                             .format(completed_link))).start()
-            return redirect(link, code=302)
-        link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state))
-        return redirect(link, code=302)
-
+        link = gen_motech_reply(call_id, channel, state, complete_status_counter)
+        return redirect(link)
     else:
         while state == "":
             time.sleep(0.5)
-        logger.log_info('ActionID: {}, Channel: {}, Channel state: {}\n'.format(call_id, channel, state))
-        if state == 'COMPLETED':
-            link = gen_status_link(call_id, current_timestamp(), initial_state, channel_reason(state),
-                                   externalID=random_alphanumeric_string(), externalType=session_type)
-            completed_link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
-                                   externalID=random_alphanumeric_string(), externalType=session_type)
-            threading.Timer(complete_status_counter, lambda: requests.get(completed_link)).start()
-            threading.Timer(complete_status_counter, lambda: logger.log_info('COMPLETED_State Update to MOTECH: {}'
-                                                                             .format(completed_link))).start()
-            return redirect(link, code=302)
-        link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state))
-        return redirect(link, code=302)
+        link = gen_motech_reply(call_id, channel, state, complete_status_counter)
+        return redirect(link)
 
 
 if __name__ == '__main__':
