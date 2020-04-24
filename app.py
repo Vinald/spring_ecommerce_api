@@ -150,8 +150,8 @@ def index():
         white_list='OriginateResponse')
 
     session_type = 'voxeoSessionId'
-
     complete_status_counter = int(360)
+    initial_state = 'IN_PROGRESS'
 
     global state
     if state != "":
@@ -159,12 +159,14 @@ def index():
         while state == "":
             time.sleep(0.5)
         if state == 'COMPLETED':
-            link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
+            link = gen_status_link(call_id, current_timestamp(), initial_state, channel_reason(state),
                                    externalID=random_alphanumeric_string(), externalType=session_type)
-
-            threading.Timer(complete_status_counter, lambda: requests.get(link)).start()
+            completed_link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
+                                   externalID=random_alphanumeric_string(), externalType=session_type)
+            threading.Timer(complete_status_counter, lambda: requests.get(completed_link)).start()
+            threading.Timer(complete_status_counter, lambda: logger.log_info('COMPLETED_State Update to MOTECH: {}'
+                                                                             .format(completed_link))).start()
             return redirect(link, code=302)
-
         link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state))
         return redirect(link, code=302)
 
@@ -172,9 +174,13 @@ def index():
         while state == "":
             time.sleep(0.5)
         if state == 'COMPLETED':
-            link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
+            link = gen_status_link(call_id, current_timestamp(), initial_state, channel_reason(state),
                                    externalID=random_alphanumeric_string(), externalType=session_type)
-            threading.Timer(complete_status_counter, lambda: requests.get(link)).start()
+            completed_link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
+                                   externalID=random_alphanumeric_string(), externalType=session_type)
+            threading.Timer(complete_status_counter, lambda: requests.get(completed_link)).start()
+            threading.Timer(complete_status_counter, lambda: logger.log_info('COMPLETED_State Update to MOTECH: {}'
+                                                                             .format(completed_link))).start()
             return redirect(link, code=302)
         link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state))
         return redirect(link, code=302)
