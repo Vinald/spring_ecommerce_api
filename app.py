@@ -79,7 +79,7 @@ def event_listener(event, **kwargs):
             channel_status_num = str(event.keys.get('Reason'))
             state = channel_statuses(channel_status_num)
         except Exception as e:
-            logger.info('Event Listener Error : {}'.format(str(e)))
+            logger.log_info('Event Listener Error : {}'.format(str(e)))
 
 
 def current_timestamp():
@@ -137,9 +137,10 @@ def index():
         _callback=callback_response
     )
 
-    client.add_event_listener(
-        event_listener,
-        white_list='OriginateResponse')
+    # client.add_event_listener(
+    #     event_listener,
+    #     white_list='OriginateResponse')
+    client.add_event_listener(event_listener)
 
     session_type = 'voxeoSessionId'
     complete_status_counter = int(360)
