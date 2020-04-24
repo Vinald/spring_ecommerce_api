@@ -79,7 +79,7 @@ def event_listener(event, **kwargs):
             channel_status_num = str(event.keys.get('Reason'))
             state = channel_statuses(channel_status_num)
         except Exception as e:
-            logger.info('Event Listener Error : {}'.format(e))
+            logger.info('Event Listener Error : {}'.format(str(e)))
 
 
 def current_timestamp():
