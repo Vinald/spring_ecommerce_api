@@ -8,8 +8,6 @@ from configparser import ConfigParser
 import os
 import random
 import string
-import ast
-import re
 import time
 import datetime
 import threading
@@ -74,20 +72,14 @@ def channel_reason(status):
             return reasons[key]
 
 
-def event_listener_originate(event, **kwargs):
+def event_listener(event, **kwargs):
     global state
-    logger.log_info('{}\n'.format(event))
-    event_dict = re.split(r"\->", str(event))
-    event_dict = event_dict[1]
-    event_dict = event_dict[1:]
-    event_dict = ast.literal_eval(event_dict)
-    channel_status_num = event_dict["Reason"]
-    action_id = event_dict["ActionID"]
-    channel = event_dict["Channel"]
-    state = channel_statuses(channel_status_num)
-    logger.log_info(
-        'ActionID: {}, Channel: {}, Channel state: {}\n'.format(
-            action_id, channel, state))
+    if str(event.name) == 'OriginateResponse':
+        try:
+            channel_status_num = str(event.keys.get('Reason'))
+            state = channel_statuses(channel_status_num)
+        except Exception as e:
+            logger.info('Event Listener Error : {}'.format(str(e)))
 
 
 def current_timestamp():
@@ -146,7 +138,7 @@ def index():
     )
 
     client.add_event_listener(
-        event_listener_originate,
+        event_listener,
         white_list='OriginateResponse')
 
     session_type = 'voxeoSessionId'
@@ -158,6 +150,7 @@ def index():
         state = ""
         while state == "":
             time.sleep(0.5)
+        logger.log_info('ActionID: {}, Channel: {}, Channel state: {}\n'.format(call_id, channel, state))
         if state == 'COMPLETED':
             link = gen_status_link(call_id, current_timestamp(), initial_state, channel_reason(state),
                                    externalID=random_alphanumeric_string(), externalType=session_type)
@@ -173,6 +166,7 @@ def index():
     else:
         while state == "":
             time.sleep(0.5)
+        logger.log_info('ActionID: {}, Channel: {}, Channel state: {}\n'.format(call_id, channel, state))
         if state == 'COMPLETED':
             link = gen_status_link(call_id, current_timestamp(), initial_state, channel_reason(state),
                                    externalID=random_alphanumeric_string(), externalType=session_type)
