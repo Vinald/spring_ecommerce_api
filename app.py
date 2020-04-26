@@ -149,8 +149,6 @@ def gen_status_link(callid, timestamp, status, reason, **optional_params):
     return status_link
 
 
-
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     flow = request.args.get('jumpTo')
