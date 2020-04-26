@@ -8,8 +8,6 @@ from configparser import ConfigParser
 import os
 import random
 import string
-import ast
-import re
 import time
 import datetime
 import threading
@@ -74,20 +72,55 @@ def channel_reason(status):
             return reasons[key]
 
 
-def event_listener_originate(event, **kwargs):
+def gen_motech_reply(call_id, channel, status, timer):
+    """
+    :param status:
+    :param call_id: MOTECH generated caller ID
+    :param timestamp: Generate timestamp
+    :param reason: BUSY, COMPLETED, FAILED, NO_ANSWER
+    :param channel: SIP Channel
+    :param external_id: Random Alphanumeric String
+    :param timer: Time to wait before sending link to change MOTECH call state from IN_PROGRESS to COMPLETED
+    :return: Reply to MOTECH
+    """
+
+    initial_state = 'IN_PROGRESS'
+    session_type = 'voxeoSessionId'
+
+    logger.log_info('ActionID: {}, Channel: {}, Channel state: {}\n'.format(call_id, channel, status))
+    if status == 'COMPLETED':
+        link = gen_status_link(call_id,
+                               current_timestamp(),
+                               initial_state,
+                               channel_reason(status),
+                               externalID=random_alphanumeric_string(),
+                               externalType=session_type
+                               )
+        completed_link = gen_status_link(call_id,
+                                         current_timestamp(),
+                                         status,
+                                         channel_reason(status),
+                                         externalID=random_alphanumeric_string(),
+                                         externalType=session_type
+                                         )
+        threading.Timer(timer, lambda: requests.get(completed_link)).start()
+        threading.Timer(timer, lambda: logger.log_info(
+            'COMPLETED_State Update to MOTECH: {}'.format(completed_link))).start()
+        logger.log_info('Reply to MOTECH(Call Answered): {}\n'.format(link))
+        return link
+    link = gen_status_link(call_id, current_timestamp(), status, channel_reason(status))
+    logger.log_info('Reply to MOTECH: {}\n'.format(link))
+    return link
+
+
+def event_listener(event, **kwargs):
     global state
-    logger.log_info('{}\n'.format(event))
-    event_dict = re.split(r"\->", str(event))
-    event_dict = event_dict[1]
-    event_dict = event_dict[1:]
-    event_dict = ast.literal_eval(event_dict)
-    channel_status_num = event_dict["Reason"]
-    action_id = event_dict["ActionID"]
-    channel = event_dict["Channel"]
-    state = channel_statuses(channel_status_num)
-    logger.log_info(
-        'ActionID: {}, Channel: {}, Channel state: {}\n'.format(
-            action_id, channel, state))
+    if str(event.name) == 'OriginateResponse':
+        try:
+            channel_status_num = str(event.keys.get('Reason'))
+            state = channel_statuses(channel_status_num)
+        except Exception as e:
+            logger.log_info('Event Listener Error : {}'.format(str(e)))
 
 
 def current_timestamp():
@@ -112,9 +145,7 @@ def gen_status_link(callid, timestamp, status, reason, **optional_params):
     if 'externalID' and 'externalType' in optional_params:
         status_link = str(status_link + '&externalId=' + optional_params['externalID'] + '&externalType=' +
                           optional_params['externalType'])
-        logger.log_info('Reply to MOTECH(Call Answered): {}\n'.format(status_link))
         return status_link
-    logger.log_info('Reply to MOTECH: {}\n'.format(status_link))
     return status_link
 
 
@@ -138,19 +169,14 @@ def index():
         Priority=1,
         Context='ivr',
         CallerID='Call For Life Uganda',
-        Variable='data={}&{}&{}&{}'.format(call_id, phone, flow, channel),
+        Variable='data={}&{}&{}&{},CDR(dialed_number)={}'.format(call_id, phone, flow, channel, phone),
         ActionID=call_id,
         Timeout=45000,
         Async=True,
         _callback=callback_response
     )
 
-    client.add_event_listener(
-        event_listener_originate,
-        white_list='OriginateResponse')
-
-    session_type = 'voxeoSessionId'
-
+    client.add_event_listener(event_listener)
     complete_status_counter = int(360)
 
     global state
@@ -158,26 +184,13 @@ def index():
         state = ""
         while state == "":
             time.sleep(0.5)
-        if state == 'COMPLETED':
-            link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
-                                   externalID=random_alphanumeric_string(), externalType=session_type)
-
-            threading.Timer(complete_status_counter, lambda: requests.get(link)).start()
-            return redirect(link, code=302)
-
-        link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state))
-        return redirect(link, code=302)
-
+        link = gen_motech_reply(call_id, channel, state, complete_status_counter)
+        return redirect(link)
     else:
         while state == "":
             time.sleep(0.5)
-        if state == 'COMPLETED':
-            link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state),
-                                   externalID=random_alphanumeric_string(), externalType=session_type)
-            threading.Timer(complete_status_counter, lambda: requests.get(link)).start()
-            return redirect(link, code=302)
-        link = gen_status_link(call_id, current_timestamp(), state, channel_reason(state))
-        return redirect(link, code=302)
+        link = gen_motech_reply(call_id, channel, state, complete_status_counter)
+        return redirect(link)
 
 
 if __name__ == '__main__':
