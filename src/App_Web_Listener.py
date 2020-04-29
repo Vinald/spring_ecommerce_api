@@ -8,7 +8,7 @@ import threading
 from src.Logger import Logger
 
 
-class App_Web_Listener:
+class AppWebListener:
     def __init__(self, working_dir, status_base_link):
         self.working_dir = working_dir
         self.status_base_link = status_base_link
