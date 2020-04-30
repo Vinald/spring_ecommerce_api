@@ -5,9 +5,11 @@ import asterisk.agi
 from bs4 import BeautifulSoup
 from configparser import ConfigParser
 import os
+import sys
 import time
 from src.Logger import Logger
 from src.Audio import Audio
+import urllib
 
 # Initialize the asterisk AGI
 agi = asterisk.agi.AGI()
@@ -17,24 +19,36 @@ agi.set_autohangup(300)
 
 # Get script directory
 working_dir = os.path.dirname(os.path.realpath(__file__))
-
+errorLogger = Logger(working_dir)
 # Initialize configuration parser
 config = ConfigParser()
 
-# Read config file
-config.read(working_dir + '/config.ini')
+try:
+    # read config file
+    config.read(working_dir + '/config.ini')
+except Exception as e:
+    errorLogger.Log_info("config file  does not  exist")
+    exit()
 
 # Grab the motech section from the config file
 motech_config = config['motech']
 
-# Get the host value for motech for example 172.17.0.1
-motech_hostname = motech_config['host']
+try:
+    # Get the host value for motech for example 172.17.0.1
+    motech_hostname = motech_config['host']
+except Exception as e:
+    errorLogger.Log_info("The host link is unavailable")
 
 local_audio_path = Audio(motech_config['audio_path'])
 
 # Define the starting voice URL of the application
 base_link = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='.format(
     motech_hostname)
+try:
+    # open base link
+    check_url = urllib.urlopen(base_link)
+except Exception as e:
+    errorLogger.log_info('Failure to open  base  link')
 
 # Capture the incoming caller number and save it in the phone variable
 phone = str(agi.env['agi_callerid'])
@@ -61,7 +75,6 @@ if data is not None and len(data) > 0:
 else:
     # Incoming Call Flow
     link = base_link + phone
-
 
 # Initialize Logger
 logger = Logger(working_dir, phone)
