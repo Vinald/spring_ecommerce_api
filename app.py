@@ -7,7 +7,7 @@ from configparser import ConfigParser
 import os
 import time
 from src.Logger import Logger
-from src.App_Web_Listener import AppWebListener
+from src.AppWebListener import AppWebListener
 
 working_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -37,7 +37,7 @@ client = AMIClient(address=ami_host, port=ami_port)
 client.login(username=ami_user, secret=ami_pass)
 
 # Initiate Web_Listener class
-app_web_listener = AppWebListener(working_dir, status_base_link)
+app_web_listener = AppWebListener(logger, status_base_link)
 
 
 def callback_response(response):
@@ -59,7 +59,8 @@ def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')
     call_id = request.args.get('callId')
-    logger.log_info(request.url)
+
+    logger.log_info("Call request from external app: {}".format(request.url))
 
     adapter = AMIClientAdapter(client)
 
@@ -99,6 +100,4 @@ def index():
 
 
 if __name__ == '__main__':
-    # Debug Info shown in log file
-    logger.log_info('App.py Logger Started')
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
