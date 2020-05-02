@@ -19,7 +19,7 @@ agi.set_autohangup(300)
 
 # Get script directory
 working_dir = os.path.dirname(os.path.realpath(__file__))
-errorLogger = Logger(working_dir)
+error_logger = Logger(working_dir)
 # Initialize configuration parser
 config = ConfigParser()
 
