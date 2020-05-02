@@ -20,7 +20,6 @@ agi.set_autohangup(300)
 # Get script directory
 working_dir = os.path.dirname(os.path.realpath(__file__))
 error_logger = Logger(working_dir)
-
 # Initialize configuration parser
 config = ConfigParser()
 
@@ -38,7 +37,7 @@ try:
     # Get the host value for motech for example 172.17.0.1
     motech_hostname = motech_config['host']
 except Exception as e:
-    error_logger.log_info(e)
+    error_logger.log_info("The host link is unavailable")
 
 local_audio_path = Audio(motech_config['audio_path'])
 
