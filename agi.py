@@ -19,7 +19,8 @@ agi.set_autohangup(300)
 
 # Get script directory
 working_dir = os.path.dirname(os.path.realpath(__file__))
-errorLogger = Logger(working_dir)
+error_logger = Logger(working_dir)
+
 # Initialize configuration parser
 config = ConfigParser()
 
@@ -27,7 +28,7 @@ try:
     # read config file
     config.read(working_dir + '/config.ini')
 except Exception as e:
-    errorLogger.Log_info("config file  does not  exist")
+    error_logger.log_info(e)
     exit()
 
 # Grab the motech section from the config file
@@ -37,7 +38,7 @@ try:
     # Get the host value for motech for example 172.17.0.1
     motech_hostname = motech_config['host']
 except Exception as e:
-    errorLogger.Log_info("The host link is unavailable")
+    error_logger.log_info(e)
 
 local_audio_path = Audio(motech_config['audio_path'])
 
@@ -48,7 +49,7 @@ try:
     # open base link
     check_url = urllib.urlopen(base_link)
 except Exception as e:
-    errorLogger.log_info('Failure to open  base  link')
+    error_logger.log_info(e)
 
 # Capture the incoming caller number and save it in the phone variable
 phone = str(agi.env['agi_callerid'])
