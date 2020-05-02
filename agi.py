@@ -27,7 +27,7 @@ try:
     # read config file
     config.read(working_dir + '/config.ini')
 except Exception as e:
-    errorLogger.Log_info("config file  does not  exist")
+    error_logger.log_info(e)
     exit()
 
 # Grab the motech section from the config file
