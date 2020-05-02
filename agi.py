@@ -9,32 +9,41 @@ import time
 from src.Logger import Logger
 from src.Audio import Audio
 
+
+# Get script directory
+working_dir = os.path.dirname(os.path.realpath(__file__))
+
+# Initialize Logger
+logger = Logger(working_dir)
+
 # Initialize the asterisk AGI
 agi = asterisk.agi.AGI()
 
 # Set maximum call time to 5 minutes
 agi.set_autohangup(300)
 
-# Get script directory
-working_dir = os.path.dirname(os.path.realpath(__file__))
-
 # Initialize configuration parser
 config = ConfigParser()
 
-# Read config file
-config.read(working_dir + '/config.ini')
+try:
+    config.read(working_dir + '/config.ini')
+except Exception as e:
+    log_msg = "Failed to read config file: {}".format(str(e))
+    agi.verbose(log_msg)
+    logger.log_info(log_msg)
+    exit()
+
 
 # Grab the motech section from the config file
 motech_config = config['motech']
 
-# Get the host value for motech for example 172.17.0.1
 motech_hostname = motech_config['host']
 
 local_audio_path = Audio(motech_config['audio_path'])
 
 # Define the starting voice URL of the application
-base_link = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='.format(
-    motech_hostname)
+start_url = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='
+base_link = start_url.format(motech_hostname)
 
 # Capture the incoming caller number and save it in the phone variable
 phone = str(agi.env['agi_callerid'])
@@ -63,12 +72,9 @@ else:
     link = base_link + phone
 
 
-# Initialize Logger
-logger = Logger(working_dir, phone)
-
-# Start logging
+logger.set_phone(phone)
 logger.log_info('Starting call')
-logger.log_info('Call ID: ' + callId)
+logger.log_info('Call ID: {}'.format(callId))
 logger.log_info('Patient number: {}'.format(phone))
 logger.log_info('Call Direction: {}'.format(call_direction))
 logger.log_info('Starting Voice URL: {}'.format(link))
