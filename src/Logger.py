@@ -18,6 +18,9 @@ class Logger:
     def get_logger(self):
         return self.logger
 
+    def set_phone(self, phone):
+        self.phone = phone
+
     def log_info(self, message):
         try:
             if self.phone:
