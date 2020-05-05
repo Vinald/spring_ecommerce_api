@@ -3,9 +3,9 @@
 import requests
 import asterisk.agi
 from bs4 import BeautifulSoup
-from configparser import ConfigParser
 import os
 import time
+from src.Config import Config
 from src.Logger import Logger
 from src.Audio import Audio
 
@@ -23,27 +23,12 @@ agi = asterisk.agi.AGI()
 agi.set_autohangup(300)
 
 # Initialize configuration parser
-config = ConfigParser()
+config = Config(working_dir, logger, 'motech')
 
-try:
-    config.read(working_dir + '/config.ini')
-except Exception as e:
-    log_msg = "Failed to read config file: {}".format(str(e))
-    agi.verbose(log_msg)
-    logger.log_info(log_msg)
-    exit()
-
-
-# Grab the motech section from the config file
-motech_config = config['motech']
-
-motech_hostname = motech_config['host']
-
-local_audio_path = Audio(motech_config['audio_path'])
+local_audio_path = Audio(config.get_audio_path())
 
 # Define the starting voice URL of the application
-start_url = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='
-base_link = start_url.format(motech_hostname)
+base_link = config.get_starting_url()
 
 # Capture the incoming caller number and save it in the phone variable
 phone = str(agi.env['agi_callerid'])
