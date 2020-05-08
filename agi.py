@@ -1,4 +1,4 @@
-#!/home/arksnorman/Projects/ivr/venv/bin/python
+#!/usr/bin/env python3
 
 import asterisk.agi
 import os
