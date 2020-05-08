@@ -9,6 +9,23 @@ if [[ "$EUID" -ne 0 ]]
 	exit
 fi
 
+# Set timezone
+timedatectl set-timezone Africa/Kampala
+
+# Add execution permission for log rotation script
+chmod +x "$(pwd)/log-rotation.sh"
+
+# Define the cron file path
+cron_file=/etc/cron.d/ivr-log-rotation.cron
+
+# Check if log rotation cron-tab exists
+if [ ! -f $cron_file ]; then
+  # Install cron-tab for log rotation to run every night at 23:59
+  echo "59 23 * * * root $(pwd)/log-rotation.sh" > $cron_file
+  chown root:root $cron_file
+  chmod 600 $cron_file
+fi
+
 # Install any updates available in ubuntu repositories
 apt-get update > /dev/null
 
