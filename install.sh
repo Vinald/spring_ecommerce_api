@@ -27,4 +27,5 @@ cp ${new_service} ${old_service}
 
 systemctl daemon-reload
 systemctl enable ivr-api.service
+sleep 5
 systemctl start ivr-api.service
