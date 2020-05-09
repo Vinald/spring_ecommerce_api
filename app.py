@@ -3,36 +3,35 @@
 from flask import Flask, request, redirect
 from asterisk.ami import AMIClient
 from asterisk.ami import AMIClientAdapter
-from configparser import ConfigParser
 import os
 import time
+
+from src.Config import Config
 from src.Logger import Logger
 from src.AppWebListener import AppWebListener
 
 working_dir = os.path.dirname(os.path.realpath(__file__))
 
-config = ConfigParser()
-config.read(working_dir + '/config.ini')
-
 # Initiate Logger
 logger = Logger(working_dir)
 
-# Grab the ami section from the config file
-ami = config['ami']
-motech_config = config['motech']
+ami_config = Config(working_dir, logger, 'ami')
+motech_config = Config(working_dir, logger, 'motech')
 
-ami_host = ami['host']
-ami_user = ami['user']
-ami_pass = ami['pass']
-ami_port = int(ami['port'])
-ami_trunk = ami['trunk']
-motech_hostname = motech_config['host']
+ami_host = ami_config.get_ami_host()
+ami_user = ami_config.get_ami_user()
+ami_pass = ami_config.get_ami_pass()
+ami_port = ami_config.get_ami_port()
+ami_trunk = ami_config.get_sip_trunk()
+
+
 state = ''
-
-status_base_link = 'http://{}/motech-platform-server/module/callflows/status/'.format(motech_hostname)
+status_base_link = motech_config.get_status_base_url()
 
 
 app = Flask(__name__)
+
+
 client = AMIClient(address=ami_host, port=ami_port)
 client.login(username=ami_user, secret=ami_pass)
 
