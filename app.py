@@ -56,8 +56,6 @@ def event_listener(event, **kwargs):
             call_status_dict.update({"{} -- Duplicate".format(action_id): call_state})
         else:
             call_status_dict.update({action_id: call_state})
-    else:
-        pass
 
 
 # Clear call_status_dict every 37 minutes
@@ -97,10 +95,10 @@ def index():
     complete_status_counter = int(360)
 
     while len(call_status_dict) == 0:
-        time.sleep(0.5)
+        continue
 
     while call_id not in call_status_dict:
-        time.sleep(0.5)
+        continue
 
     state = call_status_dict.get(call_id, "NO_CALL_STATUS_OBTAINED")
     link = app_web_listener.gen_motech_reply(call_id, channel, state, complete_status_counter)
