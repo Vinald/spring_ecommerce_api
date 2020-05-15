@@ -4,7 +4,6 @@ from flask import Flask, request, redirect
 from asterisk.ami import AMIClient
 from asterisk.ami import AMIClientAdapter
 import os
-import time
 import threading
 from src.Config import Config
 from src.Logger import Logger
