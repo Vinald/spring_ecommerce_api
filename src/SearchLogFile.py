@@ -5,9 +5,9 @@ import os
 
 class SearchLogFile:
 
-    def __init__(self):
+    def __init__(self, log_dir: str ):
         print("Init search object")
-
+        self.log_dir = log_dir
         self.arguments = sys.argv
         self.search_text = ""
         self.file_name = ""
