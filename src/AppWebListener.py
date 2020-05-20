@@ -1,3 +1,4 @@
+import json
 import requests
 import datetime
 from asterisk.ami import Event
@@ -70,8 +71,8 @@ class AppWebListener:
     def update_call_status(self, call_id: str, status: str, reason: str):
         link = self.gen_status_link(call_id, status, reason)
         results = str(requests.get(link).content)
-        msg = "Call status update results: status: {}, call_id: {}, results: {}"
-        self.logger.log_info(msg.format(status, call_id, results))
+        log_msg = "Call status: {}, call_id: {}, external_app_results: {}"
+        self.logger.log_info(log_msg.format(status, call_id, results))
 
     def process_originate_event(self, event: Event):
         status = str(event.keys.get('Reason'))
@@ -79,11 +80,21 @@ class AppWebListener:
         unique_id = str(event.keys.get('Uniqueid'))
         state = self.get_channel_status(status)
 
-        phone = self.cache.get(call_id)
+        call_details = self.cache.get(call_id)
 
-        if phone is not None:
+        if call_details is not None:
+            data = json.loads(call_details)
+            phone = data['phone']
+            initiated = True if data['initiated'] == 'yes' else False
+
             self.logger.set_phone(phone)
 
+            if not initiated:
+                data = '{"phone": "%s", "initiated": "yes"}' % phone
+                self.cache.set(call_id, data, 1800)
+                self.__process_call(state, call_id, unique_id, phone)
+
+    def __process_call(self, state, call_id, unique_id, phone):
         if state == self.COMPLETED and unique_id != '<unknown>':
             key = Hash.hash(unique_id)
             reason = self.channel_reason(self.COMPLETED)

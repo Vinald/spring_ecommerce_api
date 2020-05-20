@@ -75,7 +75,9 @@ def index():
         Async=True
     )
 
-    cache.set(call_id, phone, 1800)
+    data = '{"phone": "%s", "initiated": "no"}' % phone
+    cache.set(call_id, data, 1800)
+
     client.add_event_listener(event_listener)
     return {}
 
