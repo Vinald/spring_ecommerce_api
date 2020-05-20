@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import json
 from os import path
 import requests
 from asterisk.agi import AGI
@@ -22,9 +22,14 @@ cache = Redis(host=redis_host, port=redis_port)
 
 key = Hash.hash(str(agi.env['agi_uniqueid']))
 channel = str(agi.env['agi_channel'])
-status_link = cache.get(key)
+cache_result = cache.get(key)
 
-if status_link is not None:
+if cache_result is not None:
     cache.delete(key)
-    results = str(requests.get(status_link).content)
-    logger.log_info("Call hangup detected for channel: {}".format(channel))
+    data = json.loads(cache_result)
+    link = data['link']
+    phone = data['phone']
+    results = str(requests.get(link).content)
+    log_msg = "Call hangup detected for channel: {} results: {}"
+    logger.set_phone(phone)
+    logger.log_info(log_msg.format(channel, results))

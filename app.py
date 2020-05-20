@@ -75,6 +75,7 @@ def index():
         Async=True
     )
 
+    cache.set(call_id, phone, 1800)
     client.add_event_listener(event_listener)
     return {}
 

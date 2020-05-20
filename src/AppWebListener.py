@@ -65,13 +65,13 @@ class AppWebListener:
     def in_progress(self, call_id):
         status = 'IN_PROGRESS'
         reason = self.channel_reason(self.COMPLETED)
-        self.logger.log_info("Channel answered: Call in progress")
         self.update_call_status(call_id, status, reason)
 
     def update_call_status(self, call_id: str, status: str, reason: str):
         link = self.gen_status_link(call_id, status, reason)
         results = str(requests.get(link).content)
-        self.logger.log_info("CALL STATUS UPDATE RESULTS: {}".format(results))
+        msg = "Call status update results: status: {}, call_id: {}, results: {}"
+        self.logger.log_info(msg.format(status, call_id, results))
 
     def process_originate_event(self, event: Event):
         status = str(event.keys.get('Reason'))
@@ -79,11 +79,17 @@ class AppWebListener:
         unique_id = str(event.keys.get('Uniqueid'))
         state = self.get_channel_status(status)
 
+        phone = self.cache.get(call_id)
+
+        if phone is not None:
+            self.logger.set_phone(phone)
+
         if state == self.COMPLETED and unique_id != '<unknown>':
             key = Hash.hash(unique_id)
             reason = self.channel_reason(self.COMPLETED)
             hangup_link = self.gen_status_link(call_id, self.COMPLETED, reason)
-            self.cache.set(key, hangup_link, 1800)
+            data = '{"link": "%s", "phone": "%s"}' % (hangup_link, phone)
+            self.cache.set(key, data, 1800)
             self.in_progress(call_id)
         else:
             reason = self.channel_reason(state)
