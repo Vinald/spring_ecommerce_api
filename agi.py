@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import asterisk.agi
 import os
+from asterisk.agi import AGI
 from src.Config import Config
 from src.IVR import IVR
 from src.Logger import Logger
@@ -15,7 +15,7 @@ working_dir = os.path.dirname(os.path.realpath(__file__))
 logger = Logger(working_dir)
 
 # Initialize the asterisk AGI
-agi = asterisk.agi.AGI()
+agi = AGI()
 
 # Set maximum call time to 5 minutes
 agi.set_autohangup(300)
