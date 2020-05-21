@@ -13,6 +13,10 @@
 ; For example, in "http://192.168.88.226/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone=256750046950"
 ; The host IP is "192.168.88.226"
 ; Simply replace <audio_path> with your home audio path e.g. /home/asteriskidi/audio
+[app]
+redis_host = 127.0.0.1
+redis_port = 6379
+
 [motech]
 host = 172.17.0.1
 audio_path = /var/www/html/audio
