@@ -53,6 +53,7 @@ def index():
     phone = request.args.get('phone')
     call_id = request.args.get('callId')
 
+    logger.set_phone(phone)
     logger.log_info("Call request from external app: {}".format(request.url))
     adapter = AMIClientAdapter(client)
 
