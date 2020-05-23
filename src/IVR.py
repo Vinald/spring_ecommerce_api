@@ -37,6 +37,7 @@ class IVR:
             # Incoming details set up
             self.link = str(self.link + self.phone)
 
+        self.agi.set_variable("CDR(call_direction)", call_direction)
         self.logger.set_phone(self.phone)
         self.logger.log_info('Starting call')
         self.logger.log_info('Call ID: {}'.format(call_id))
