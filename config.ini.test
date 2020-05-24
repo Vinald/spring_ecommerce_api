@@ -43,3 +43,6 @@ username = academysupport@idi.co.ug
 password = provide_email_password_here
 port = 587
 host = smtp.office365.com
+
+[daily_reports_email]
+to_recipients = [example1@gmail.com, example2@gmail.com] ; Must be in a list

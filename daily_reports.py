@@ -18,7 +18,7 @@ logger = Logger(working_dir)
 config = Config(working_dir, logger)
 config.set_section('host_machine')
 host_name = config.get('name')
-
+config.set_section('daily_reports_email')
 
 headers = ["Date", "App Name", "SIP Trunk Channel", "SIP Trunk Number", "Call Initiate Time", "Call Answer Time",
            "Call Ended", "Total Call Duration (s)", "Call Duration when Answered (s)", "Call State", "Dialed Number",
@@ -29,7 +29,7 @@ date_yesterday = date_today + timedelta(days=-1)
 date_today = date.today().strftime("%b-%d-%Y")
 date_yesterday = date_yesterday.strftime("%b-%d-%Y")
 
-to_recipients = ["ekisac10@gmail.com"]
+to_recipients = config.get('to_recipients')
 email_subject = '{}_IVR Call Detail Reports as of {}'.format(host_name, date_yesterday)
 email_body = dedent("""\
 Hello,
