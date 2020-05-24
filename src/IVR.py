@@ -11,7 +11,7 @@ class IVR:
         self.data = str(self.agi.get_variable('data'))
         self.audio = audio
         self.logger = logger
-        self.app_manger = app_manager
+        self.app_manager = app_manager
 
     def run(self):
         self.__initialize()
@@ -30,7 +30,7 @@ class IVR:
             token = data[3]
             call_id = data[0]
             jump_to = data[2]
-            voice_url = self.app_manger.get_voice_url(token)
+            voice_url = self.app_manager.get_voice_url(token)
             self.phone = data[1]
             call_direction = 'OUTGOING'
             outgoing_link = "{}?phone={}&callId={}&jumpTo={}"
@@ -38,7 +38,7 @@ class IVR:
         else:
             # Incoming details set up
             token = str(self.agi.get_variable('token'))
-            voice_url = self.app_manger.get_voice_url(token)
+            voice_url = self.app_manager.get_voice_url(token)
             self.phone = str(self.agi.env['agi_callerid'])
             self.link = "{}?phone={}".format(voice_url, self.phone)
 
