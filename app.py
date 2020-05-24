@@ -43,15 +43,15 @@ app_web_listener = AppWebListener(logger, cache)
 # Initialize database
 database = AppDatabase(config)
 
-ivr_app = AppManager(database, logger)
+app_manager = AppManager(database, logger)
 
 
 def is_valid_token(token: str):
     try:
-        results = ivr_app.get_data(token)
+        results = app_manager.get_data(token)
         if not results:
             return False
-        link = ivr_app.get_status_url(token)
+        link = app_manager.get_status_url(token)
         app_web_listener.set_status_link(link)
         return True
     except Exception as e:
