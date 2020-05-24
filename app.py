@@ -66,14 +66,13 @@ def index():
 
     date_today = date.today().strftime("%b-%d-%Y")
     sip_trunk_number = ami_sip_trunk_number
-    call_direction = "OUTGOING"
     data = 'data={}&{}&{}&{},' \
            'CDR(dialed_number)={},' \
            'CDR(date)={},' \
            'CDR(call_id)={},' \
            'CDR(sip_trunk_number)={},' \
            'CDR(sip_channel)={},' \
-           'CDR(call_direction)={}'
+           'CDR(call_direction)=OUTGOING'
 
     adapter.Originate(
         Channel=channel,
@@ -91,7 +90,6 @@ def index():
             call_id,
             sip_trunk_number,
             channel,
-            call_direction
         ),
         ActionID=call_id,
         Timeout=45000,

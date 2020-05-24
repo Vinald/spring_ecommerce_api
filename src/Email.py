@@ -34,13 +34,13 @@ class Email:
         self.attachment_paths = attachment_paths
         if self.to_recipients is not None and not isinstance(self.to_recipients, list):
             logger.log_info("[EMAIL]: 'To' Recipients not provided in list format")
-            raise TypeError("Email:To Recipients must be a list")
+            exit(1)
         if self.cc_recipients is not None and not isinstance(self.cc_recipients, list):
             logger.log_info("[EMAIL]: 'Cc' Recipients not provided in list format")
-            raise TypeError("Email:Cc Recipients must be a list")
+            exit(1)
         if self.attachment_paths is not None and not isinstance(self.attachment_paths, list):
             logger.log_info("[EMAIL]: Attached file paths not provided in list format")
-            raise TypeError("Attached file paths must be a list")
+            exit(1)
 
     def send_email(self):
         if self.cc_recipients is not None:
