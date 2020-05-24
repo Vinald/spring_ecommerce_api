@@ -1,28 +1,24 @@
-import string
-import random
+import json
 import requests
 import datetime
-import threading
+from asterisk.ami import Event
+from redis import Redis
+from src.Hash import Hash
 from src.Logger import Logger
 
 
 class AppWebListener:
-    def __init__(self, logger: Logger, status_base_link):
+    BUSY = 'BUSY'
+    FAILED = 'FAILED'
+    COMPLETED = 'COMPLETED'
+
+    def __init__(self, logger: Logger, link: str, cache: Redis):
+        self.cache = cache
         self.logger = logger
-        self.status_base_link = status_base_link
+        self.status_base_link = link
 
     @staticmethod
-    def channel_statuses(status):
-        """
-        Initial Originate Responses from Asterisk
-        codes = {
-            '0': 'NO EXTENSION',
-            '3': 'NO ANSWER',
-            '4': 'ANSWERED',
-            '5': 'BUSY',
-            '8': 'CHANNEL NOT AVAILABLE'
-        }
-        """
+    def get_channel_status(status: str):
         codes = {
             '0': 'FAILED',
             '3': 'NO_ANSWER',
@@ -30,46 +26,33 @@ class AppWebListener:
             '5': 'BUSY',
             '8': 'FAILED'
         }
-
-        for key in codes:
-            if status == key:
-                return codes[key]
-        return 'UNKNOWN'
+        return codes[status] if status in codes.keys() else 'UNKNOWN'
 
     @staticmethod
-    def channel_reason(status):
+    def channel_reason(status: str):
         reasons = {
             'BUSY': 'busy',
             'COMPLETED': 'application',
             'FAILED': 'unreachable',
             'NO_ANSWER': 'timeout'
         }
+        return reasons[status] if status in reasons.keys() else 'unknown'
 
-        for key in reasons:
-            if status == key:
-                return reasons[key]
-        return 'unknown'
-
-    @staticmethod
-    def current_timestamp():
-        timestamp = datetime.datetime.now()
-        timestamp = timestamp.timestamp()
-        timestamp = round(timestamp, 3)
-        timestamp = str(timestamp).replace('.', '')
-        return timestamp
-
-    def gen_status_link(self, call_id, timestamp, status, reason, **optional_params):
+    def gen_status_link(self, call_id, status, reason, **optional_params):
         """
         :param call_id:
-        :param timestamp:
         :param status: NO_ANSWER,COMPLETED,FAILED,BUSY
         :param reason: timeout,application,unreachable,busy
         :param optional_params: externalID, externalType >> Used is status == COMPLETED
         :return: status_link
         """
 
-        base_link = self.status_base_link + call_id
-        status_link = '{}.vxml?_dt={}&status={}&reason={}'.format(base_link, timestamp, status, reason)
+        stamp = "_dt={}".format(self.__current_timestamp())
+        status = "status={}".format(status)
+        reason = "reason={}".format(reason)
+
+        link = self.status_base_link + call_id
+        status_link = "{}.vxml?{}&{}&{}".format(link, stamp, status, reason)
 
         if 'externalID' and 'externalType' in optional_params:
             external_id = optional_params['externalID']
@@ -80,60 +63,53 @@ class AppWebListener:
 
         return status_link
 
-    def gen_motech_reply(self, call_id, channel, status, timer):
-        """
-        :param status: State of the call
-        :param call_id: MOTECH generated caller ID
-        :param channel: SIP Channel
-        :param timer: Time to wait before sending link to change MOTECH call state from IN_PROGRESS to COMPLETED
-        :return: Reply to MOTECH
-        """
+    def in_progress(self, call_id):
+        status = 'IN_PROGRESS'
+        reason = self.channel_reason(self.COMPLETED)
+        self.update_call_status(call_id, status, reason)
 
-        session_type = 'voxeoSessionId'
-        initial_state = 'IN_PROGRESS'
+    def update_call_status(self, call_id: str, status: str, reason: str):
+        link = self.gen_status_link(call_id, status, reason)
+        results = str(requests.get(link).content)
+        log_msg = "Call status: {}, call_id: {}, external_app_results: {}"
+        self.logger.log_info(log_msg.format(status, call_id, results))
 
-        log_msg = "ActionID: {}, Channel: {}, Channel state: {}\n"
-        self.logger.log_info(log_msg.format(call_id, channel, status))
+    def process_originate_event(self, event: Event):
+        status = str(event.keys.get('Reason'))
+        call_id = str(event.keys.get('ActionID'))
+        unique_id = str(event.keys.get('Uniqueid'))
+        state = self.get_channel_status(status)
 
-        if status == 'COMPLETED':
-            link = self.gen_status_link(
-                call_id,
-                self.current_timestamp(),
-                initial_state,
-                self.channel_reason(status),
-                externalID=self.random_alphanumeric_string(),
-                externalType=session_type
-            )
+        call_details = self.cache.get(call_id)
 
-            completed_link = self.gen_status_link(
-                call_id,
-                self.current_timestamp(),
-                status,
-                self.channel_reason(status),
-                externalID=self.random_alphanumeric_string(),
-                externalType=session_type
-            )
+        if call_details is not None:
+            data = json.loads(call_details)
+            phone = data['phone']
+            initiated = True if data['initiated'] == 'yes' else False
 
-            log_msg = 'COMPLETED_State Update to MOTECH: {}'.format(completed_link)
+            self.logger.set_phone(phone)
 
-            threading.Timer(timer, lambda: requests.get(completed_link)).start()
-            threading.Timer(timer, lambda: self.logger.log_info(log_msg)).start()
+            if not initiated:
+                data = '{"phone": "%s", "initiated": "yes"}' % phone
+                self.cache.set(call_id, data, 1800)
+                self.__process_call(state, call_id, unique_id, phone)
 
-            self.logger.log_info("Reply to MOTECH(Call Answered): {}\n".format(link))
-            return link
-
-        link = self.gen_status_link(
-            call_id,
-            self.current_timestamp(),
-            status,
-            self.channel_reason(status)
-        )
-
-        self.logger.log_info("Reply to MOTECH: {}\n".format(link))
-        return link
+    def __process_call(self, state, call_id, unique_id, phone):
+        if state == self.COMPLETED and unique_id != '<unknown>':
+            key = Hash.hash(unique_id)
+            reason = self.channel_reason(self.COMPLETED)
+            hangup_link = self.gen_status_link(call_id, self.COMPLETED, reason)
+            data = '{"link": "%s", "phone": "%s"}' % (hangup_link, phone)
+            self.cache.set(key, data, 1800)
+            self.in_progress(call_id)
+        else:
+            reason = self.channel_reason(state)
+            self.update_call_status(call_id, state, reason)
 
     @staticmethod
-    def random_alphanumeric_string(length=32):
-        char = string.ascii_lowercase + string.digits
-        generated_string = ''.join((random.choice(char) for i in range(length)))
-        return str(generated_string)
+    def __current_timestamp():
+        timestamp = datetime.datetime.now()
+        timestamp = timestamp.timestamp()
+        timestamp = round(timestamp, 3)
+        timestamp = str(timestamp).replace('.', '')
+        return timestamp
