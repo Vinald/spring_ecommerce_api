@@ -2,6 +2,8 @@
 
 import os
 from asterisk.agi import AGI
+from src.AppManager import AppManager
+from src.AppDatabase import AppDatabase
 from src.Config import Config
 from src.IVR import IVR
 from src.Logger import Logger
@@ -21,14 +23,16 @@ agi = AGI()
 agi.set_autohangup(300)
 
 # Initialize configuration parser
-config = Config(working_dir, logger, 'motech')
+config = Config(working_dir, logger, 'app')
 
 # Initialize the audio files parser
 audio = Audio(config.get_audio_path())
 
-# Define the starting voice URL of the application
-base_link = config.get_starting_url()
+# Initialize database
+database = AppDatabase(config)
+
+app_manager = AppManager(database, logger)
 
 # Start the Interactive Voice Response
-ivr = IVR(base_link, agi, logger, audio)
+ivr = IVR(agi, logger, app_manager, audio)
 ivr.run()

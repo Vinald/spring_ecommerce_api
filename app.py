@@ -6,6 +6,8 @@ from asterisk.ami import AMIClientAdapter
 from datetime import date
 import os
 from redis import Redis
+from src.AppManager import AppManager
+from src.AppDatabase import AppDatabase
 from src.Config import Config
 from src.Logger import Logger
 from src.AppWebListener import AppWebListener
@@ -25,9 +27,6 @@ ami_port = config.get_ami_port()
 ami_sip_trunk_number = config.get("sip_trunk_number")
 ami_trunk = config.get_sip_trunk()
 
-config.set_section('motech')
-status_base_link = config.get_status_base_url()
-
 config.set_section('app')
 redis_host = str(config.get('redis_host'))
 redis_port = config.get_int('redis_port')
@@ -41,7 +40,25 @@ client = AMIClient(address=ami_host, port=ami_port)
 client.login(username=ami_user, secret=ami_pass)
 
 # Initiate Web_Listener class
-app_web_listener = AppWebListener(logger, status_base_link, cache)
+app_web_listener = AppWebListener(logger, cache)
+
+# Initialize database
+database = AppDatabase(config)
+
+app_manager = AppManager(database, logger)
+
+
+def is_valid_token(token: str):
+    try:
+        results = app_manager.get_data(token)
+        if not results:
+            return False
+        link = app_manager.get_status_url(token)
+        app_web_listener.set_status_link(link)
+        return True
+    except Exception as e:
+        logger.log_info("Database error: {}".format(str(e)))
+        return False
 
 
 def event_listener(event, **kwargs):
@@ -53,10 +70,16 @@ def event_listener(event, **kwargs):
 def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')
+    token = str(request.args.get('token'))
     call_id = request.args.get('callId')
 
     logger.set_phone(phone)
     logger.log_info("Call request from external app: {}".format(request.url))
+
+    if not is_valid_token(token):
+        logger.log_info("Failed to route call: Reason: Invalid token")
+        return {'status': 'FAILED TO ROUTE CALL'}
+
     adapter = AMIClientAdapter(client)
 
     channel = 'SIP/' + phone
@@ -85,7 +108,7 @@ def index():
             call_id,
             phone,
             flow,
-            channel,
+            token,
             phone,
             date_today,
             call_id,
@@ -102,7 +125,7 @@ def index():
     cache.set(call_id, data, 1800)
 
     client.add_event_listener(event_listener)
-    return {}
+    return {'status': 'CALL_INITIATED'}
 
 
 if __name__ == '__main__':
