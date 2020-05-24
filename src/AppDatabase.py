@@ -7,7 +7,7 @@ class AppDatabase:
 
     def __init__(self, config: Config):
         self.config = config
-        self.__initializer()
+        self.__initialize()
 
     def insert(self, data: dict, table_name: str):
         key_list = []
@@ -33,7 +33,7 @@ class AppDatabase:
     def get_conn(self):
         return self.conn
 
-    def __initializer(self):
+    def __initialize(self):
         self.config.set_section('database')
         self.conn = pymysql.connect(
             db=self.config.get('database'),

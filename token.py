@@ -104,24 +104,30 @@ def add_new_application():
     }
 
     try:
+        cursor = database.get_cursor()
+        cursor.execute('SELECT name FROM apps WHERE name="{}"'.format(app_name))
+        if int(cursor.rowcount) > 0:
+            clear_screen()
+            print("    Application already exists\n")
+            return sub_menu()
         database.insert(data, AppDatabase.APPS_TABLE)
         clear_screen()
         print("    Application added successfully\n")
         print("    Please use this outbound token to make calls: {}\n".format(token))
-        sub_menu()
+        return sub_menu()
     except Exception as e:
         clear_screen()
         print("    An error occurred while adding application: {}\n".format(str(e)))
-        sub_menu()
+        return sub_menu()
 
 
 def display_applications(results):
     if not results or results is None:
         clear_screen()
         print("    No applications in the database")
-        sub_menu()
+        return sub_menu()
 
-    cols = ['App name', 'Token', 'Voice URL', 'Status URL', 'Date Created', 'Date Modified']
+    cols = ['App name', 'Token', 'Voice URL', 'Status URL', 'Date Created']
     pretty_table = PrettyTable(cols)
 
     for result in results:
@@ -131,7 +137,6 @@ def display_applications(results):
             result['voice_url'],
             result['status_url'],
             result['date_created'],
-            result['date_modified'],
         ])
 
     print("\n")
@@ -143,12 +148,13 @@ def show_applications():
     try:
         cursor = database.get_cursor()
         cursor.execute('SELECT * FROM apps')
+        clear_screen()
         display_applications(cursor.fetchall())
-        sub_menu()
+        return sub_menu()
     except Exception as e:
         clear_screen()
         print("    An error occurred while fetching results: {}\n".format(str(e)))
-        sub_menu()
+        return sub_menu()
 
 
 def delete_application():
@@ -165,11 +171,11 @@ def delete_application():
         conn.commit()
         clear_screen()
         print("    Application deleted successfully")
-        sub_menu()
+        return sub_menu()
     except Exception as e:
         clear_screen()
         print("    An error occurred while deleting app: {}\n".format(str(e)))
-        sub_menu()
+        return sub_menu()
 
 
 main_menu()
