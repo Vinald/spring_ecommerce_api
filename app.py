@@ -22,6 +22,7 @@ ami_host = config.get_ami_host()
 ami_user = config.get_ami_user()
 ami_pass = config.get_ami_pass()
 ami_port = config.get_ami_port()
+ami_sip_trunk_number = config.get("sip_trunk_number")
 ami_trunk = config.get_sip_trunk()
 
 config.set_section('motech')
@@ -64,7 +65,7 @@ def index():
         channel = 'SIP/{}/+{}'.format(ami_trunk, phone)
 
     date_today = date.today().strftime("%b-%d-%Y")
-    sip_trunk_number = "256206300462"
+    sip_trunk_number = ami_sip_trunk_number
     call_direction = "OUTGOING"
     data = 'data={}&{}&{}&{},' \
            'CDR(dialed_number)={},' \
@@ -80,9 +81,18 @@ def index():
         Priority=1,
         Context='ivr',
         CallerID='Call For Life Uganda',
-        Variable=data.format(call_id, phone, flow, channel,
-                             phone, date_today, call_id, sip_trunk_number,
-                             channel, call_direction),
+        Variable=data.format(
+            call_id,
+            phone,
+            flow,
+            channel,
+            phone,
+            date_today,
+            call_id,
+            sip_trunk_number,
+            channel,
+            call_direction
+        ),
         ActionID=call_id,
         Timeout=45000,
         Async=True

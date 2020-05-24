@@ -26,6 +26,7 @@ audio_path = /var/www/html/audio
 [ami]
 user = ivr
 pass = 1234
+sip_trunk_number =
 
 ; This IP typically doesnt change. Its the Motech Docker Container IP. So you typically wont 
 ; need to bother with this, unless your in the production environment and not testing environment.

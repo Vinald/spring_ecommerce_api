@@ -24,7 +24,7 @@ chown root:root $cron_file
 chmod 600 $cron_file
 
 # Install cron-tab for daily_reports to run every night at 00:00
-echo "00 00 * * * root /root/ivr/daily_reports.py" > $cron_file
+echo "0 0 * * * root /root/ivr/daily_reports.py" > $cron_file
 chown root:root $cron_file
 chmod 600 $cron_file
 
