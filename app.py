@@ -3,6 +3,7 @@
 from flask import Flask, request
 from asterisk.ami import AMIClient
 from asterisk.ami import AMIClientAdapter
+from datetime import date
 import os
 from redis import Redis
 from src.AppManager import AppManager
@@ -23,6 +24,7 @@ ami_host = config.get_ami_host()
 ami_user = config.get_ami_user()
 ami_pass = config.get_ami_pass()
 ami_port = config.get_ami_port()
+ami_sip_trunk_number = config.get("sip_trunk_number")
 ami_trunk = config.get_sip_trunk()
 
 config.set_section('app')
@@ -85,7 +87,15 @@ def index():
     if ami_trunk is not None and len(ami_trunk) > 0:
         channel = 'SIP/{}/+{}'.format(ami_trunk, phone)
 
-    data = 'data={}&{}&{}&{},CDR(dialed_number)={}'
+    date_today = date.today().strftime("%b-%d-%Y")
+    sip_trunk_number = ami_sip_trunk_number
+    data = 'data={}&{}&{}&{},' \
+           'CDR(dialed_number)={},' \
+           'CDR(date)={},' \
+           'CDR(call_id)={},' \
+           'CDR(sip_trunk_number)={},' \
+           'CDR(sip_channel)={},' \
+           'CDR(call_direction)=OUTGOING'
 
     adapter.Originate(
         Channel=channel,
@@ -93,7 +103,17 @@ def index():
         Priority=1,
         Context='ivr',
         CallerID='Call For Life Uganda',
-        Variable=data.format(call_id, phone, flow, token, phone),
+        Variable=data.format(
+            call_id,
+            phone,
+            flow,
+            token,
+            phone,
+            date_today,
+            call_id,
+            sip_trunk_number,
+            channel,
+        ),
         ActionID=call_id,
         Timeout=45000,
         Async=True

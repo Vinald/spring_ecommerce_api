@@ -8,5 +8,6 @@ gevent
 flake8
 autopep8
 redis
+pandas
 pymysql
 PrettyTable
