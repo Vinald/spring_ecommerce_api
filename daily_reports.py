@@ -51,7 +51,7 @@ def send_email_at(attachment: list):
     email.send_email()
 
 
-def generate_csv(file: str, header_names: list, call_cost: int, yesterday_date, report_path: str):
+def generate_csv(file: str, header_names: list, call_cost: int, report_path: str):
     csv_file = pandas.read_csv(file, names=header_names)
     csv_file["Call Initiate Time"] = csv_file["Call Initiate Time"].str.split(r" ").str.get(1)
     csv_file["Call Answer Time"] = csv_file["Call Answer Time"].str.split(r" ").str.get(1)
@@ -64,17 +64,17 @@ def generate_csv(file: str, header_names: list, call_cost: int, yesterday_date, 
 
     if report_path[-1] != "/":
         report_path = str(report_path + "/")
-    new_formatted_csv = report_path + report_name.format(host_name, yesterday_date)
+    new_formatted_csv = report_path + report_name.format(host_name, latest_date_value)
     csv_file.to_csv(new_formatted_csv, index=False)
 
-    if latest_date_value == date_yesterday and latest_date_value != date_today:
+    if latest_date_value != date_today:
         csv_file.to_csv(new_formatted_csv, index=False)
         email = Email(to_recipients, email_subject, email_body, attachment_paths=[new_formatted_csv])
         email.send_email()
 
 
 create_reports_dir()
-generate_csv(file_path, headers, call_cost_per_second, date_yesterday, reports_path)
+generate_csv(file_path, headers, call_cost_per_second, reports_path)
 
 
 
