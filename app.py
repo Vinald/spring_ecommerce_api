@@ -75,6 +75,7 @@ def index():
     logger.log_info("Call request from external app: {}".format(request.url))
 
     if not is_valid_token(token):
+        logger.log_info("Failed to route call: Reason: Invalid token")
         return {'status': 'FAILED TO ROUTE CALL'}
 
     adapter = AMIClientAdapter(client)
