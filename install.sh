@@ -13,24 +13,26 @@ fi
 timedatectl set-timezone Africa/Kampala
 
 # Add execution permission for log rotation script
-chmod +x "$(pwd)/log-rotation.sh"
+chmod +x "/root/ivr/log-rotation.sh"
 
 # Define the cron file path
-cron_file=/etc/cron.d/ivr-log-rotation.cron
+cron_file="/etc/cron.d/ivr-log-rotation.cron"
 
-# Check if log rotation cron-tab exists
-if [ ! -f $cron_file ]; then
-  # Install cron-tab for log rotation to run every night at 23:59
-  echo "59 23 * * * root $(pwd)/log-rotation.sh" > $cron_file
-  chown root:root $cron_file
-  chmod 600 $cron_file
-fi
+# Install cron-tab for log rotation to run every night at 23:59
+echo "59 23 * * * root /root/ivr/log-rotation.sh" > $cron_file
+chown root:root $cron_file
+chmod 600 $cron_file
+
+# Install cron-tab for daily_reports to run every night at 00:00
+echo "0 0 * * * root /root/ivr/daily_reports.py" > $cron_file
+chown root:root $cron_file
+chmod 600 $cron_file
 
 # Install any updates available in ubuntu repositories
 apt-get update > /dev/null
 
-# Install python 3 and pip 3
-apt-get install python3 python3-pip -y > /dev/null
+# Install python 3, pip 3, and redis server for in-memory (RAM) caching
+apt-get install python3 python3-pip redis-server -y > /dev/null
 
 # Install all dependencies listed in the requirements file
 pip3 install -r requirements.txt

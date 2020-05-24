@@ -38,7 +38,6 @@ class VXMLParser:
                     if prompt is not None and prompt.find('audio') is not None:
                         audio = prompt.find('audio').attrs['src']
                         audio_file = self.audio.gen_audio_file(audio)
-                        self.logger.log_info('Streaming Audio: {}'.format(audio_file))
                         try:
                             self.logger.log_info('Streaming audio: {}'.format(audio_file))
                             self.agi.stream_file(audio_file)
