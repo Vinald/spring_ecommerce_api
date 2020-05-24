@@ -12,9 +12,12 @@ class AppWebListener:
     FAILED = 'FAILED'
     COMPLETED = 'COMPLETED'
 
-    def __init__(self, logger: Logger, link: str, cache: Redis):
+    def __init__(self, logger: Logger, cache: Redis):
         self.cache = cache
         self.logger = logger
+        self.status_base_link = None
+
+    def set_status_link(self, link: str):
         self.status_base_link = link
 
     @staticmethod

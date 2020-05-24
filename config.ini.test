@@ -8,18 +8,18 @@
 ; This is ths file you shall modify with the existing configs you have on your machine.
 ; Its been ignored in .gitignore so any changes to "config.ini" wont be commited.
 
-
-; This is the host IP that your MOTECH is attached to. 
-; For example, in "http://192.168.88.226/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone=256750046950"
-; The host IP is "192.168.88.226"
 ; Simply replace <audio_path> with your home audio path e.g. /home/asteriskidi/audio
 [app]
+audio_path = /var/www/html/audio
 redis_host = 127.0.0.1
 redis_port = 6379
 
-[motech]
-host = 172.17.0.1
-audio_path = /var/www/html/audio
+[database]
+port = 3306
+hostname = 172.17.0.1
+username = root
+password = root
+database = ivr
 
 
 ; Navigate to /etc/asterisk/manager.conf and modify your AMI credentials as you see fit
