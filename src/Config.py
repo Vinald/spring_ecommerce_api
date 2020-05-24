@@ -15,14 +15,6 @@ class Config:
     def get_audio_path(self):
         return self.get('audio_path')
 
-    def get_starting_url(self):
-        start_url = 'http://{}/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml?phone='
-        return start_url.format(self.get('host'))
-
-    def get_status_base_url(self):
-        status_url = 'http://{}/motech-platform-server/module/callflows/status/'
-        return status_url.format(self.get('host'))
-
     def get_ami_host(self):
         return self.get('host')
 
