@@ -8,7 +8,7 @@
 ; This is ths file you shall modify with the existing configs you have on your machine.
 ; Its been ignored in .gitignore so any changes to "config.ini" wont be commited.
 
-; Simply replace <audio_path> with your home audio path e.g. /home/asteriskidi/audio
+; Simply replace audio_path with your home audio path e.g. /home/asteriskidi/audio
 [app]
 audio_path = /var/www/html/audio
 redis_host = 127.0.0.1
@@ -26,9 +26,24 @@ database = ivr
 [ami]
 user = ivr
 pass = 1234
+sip_trunk_number =
 
 ; This IP typically doesnt change. Its the Motech Docker Container IP. So you typically wont 
 ; need to bother with this, unless your in the production environment and not testing environment.
 host = 172.17.0.1
 port = 5038
 trunk =
+
+; This is the name of the Machine this IVR Repo is running on e.g. "Staging_MKC"
+[host_machine]
+name = name_of_host_machine
+
+; Configure email credentials
+[email]
+username = academysupport@idi.co.ug
+password = provide_email_password_here
+port = 587
+host = smtp.office365.com
+
+[daily_reports_email]
+to_recipients = [example1@gmail.com, example2@gmail.com] ; Must be in a list
