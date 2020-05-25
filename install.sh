@@ -23,10 +23,11 @@ echo "59 23 * * * root /root/ivr/log-rotation.sh" > $cron_file
 chown root:root $cron_file
 chmod 600 $cron_file
 
+reports_cron_file="/etc/cron.d/ivr-daily-reports.cron"
 # Install cron-tab for daily_reports to run every night at 00:00
-echo "0 0 * * * root /root/ivr/daily_reports.py" > $cron_file
-chown root:root $cron_file
-chmod 600 $cron_file
+echo "0 0 * * * root /root/ivr/daily_reports.py" > $reports_cron_file
+chown root:root $reports_cron_file
+chmod 600 $reports_cron_file
 
 # Install any updates available in ubuntu repositories
 apt-get update > /dev/null
