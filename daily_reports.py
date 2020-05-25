@@ -21,7 +21,7 @@ config.set_section('daily_reports_email')
 
 headers = ["Date", "App Name", "SIP Trunk Channel", "SIP Trunk Number", "Call Initiate Time", "Call Answer Time",
            "Call Ended", "Total Call Duration (s)", "Call Duration when Answered (s)", "Call State", "Dialed Number",
-           "Call_ID", "Call_Direction"]
+           "Call_ID", "Call_Direction", "Token", "Application Name"]
 
 date_today = date.today().strftime("%b-%d-%Y")
 to_recipients = config.get('to_recipients')
