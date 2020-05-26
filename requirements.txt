@@ -1,3 +1,4 @@
+dateutil
 flask
 pyst2
 beautifulsoup4==4.8.2
@@ -11,3 +12,4 @@ redis
 pandas
 pymysql
 PrettyTable
+dateutil

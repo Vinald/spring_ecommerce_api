@@ -7,14 +7,19 @@ from src.Config import Config
 import os
 from textwrap import dedent
 from src.Logger import Logger
+import sys
+from dateutil.parser import parse
 
 
 reports_path = "/root/ivr/reports"
-file_path = "/var/log/asterisk/cdr-custom/ivr_reports.csv"
+custom_reports_path = "/root/ivr/reports/custom"
+file_path = "/var/log/asterisk/cdr-custom/ivr_report.csv"
 call_cost_per_second = 3
+
 working_dir = os.path.dirname(os.path.realpath(__file__))
 logger = Logger(working_dir)
 config = Config(working_dir, logger)
+
 config.set_section('host_machine')
 host_name = config.get('name')
 config.set_section('daily_reports_email')
@@ -24,7 +29,7 @@ headers = ["Date", "App Name", "SIP Trunk Channel", "SIP Trunk Number", "Call In
            "Call_ID", "Call_Direction", "Token", "Application Name"]
 
 date_today = date.today().strftime("%b-%d-%Y")
-to_recipients = config.get('to_recipients')
+to_recipients = list(config.get('to_recipients').split(','))
 
 
 def create_reports_dir():
@@ -32,7 +37,30 @@ def create_reports_dir():
     os.system("mkdir -p reports")
 
 
+def create_custom_reports_dir():
+    os.system("cd {}".format(working_dir))
+    os.system("mkdir -p reports/custom")
+
+
+def is_date(string, fuzzy=False):
+    try:
+        parse(string, fuzzy=fuzzy)
+        return True
+    except ValueError:
+        return False
+
+
+def check_date_format(date_to_check: str):
+    try:
+        datetime.strptime(date_to_check, '%b-%d-%Y')
+        return True
+    except ValueError:
+        print("Incorrect data format, should be MMM-DD-YYYY")
+        return False
+
+
 def generate_csv(file: str, header_names: list, call_cost: int, report_path: str):
+
     csv_file = pandas.read_csv(file, names=header_names)
     csv_file["Call Initiate Time"] = csv_file["Call Initiate Time"].str.split(r" ").str.get(1)
     csv_file["Call Answer Time"] = csv_file["Call Answer Time"].str.split(r" ").str.get(1)
@@ -57,17 +85,53 @@ def generate_csv(file: str, header_names: list, call_cost: int, report_path: str
         report_path = str(report_path + "/")
     new_formatted_csv = report_path + report_name.format(host_name, latest_date_value)
     csv_file.to_csv(new_formatted_csv, index=False)
-
-    if latest_date_value != date_today:
-        csv_file.to_csv(new_formatted_csv, index=False)
-        email = Email(to_recipients, email_subject, email_body, attachment_paths=[new_formatted_csv])
-        email.send_email()
+    email = Email(to_recipients, email_subject, email_body, attachment_paths=[new_formatted_csv])
+    email.send_email()
 
 
-create_reports_dir()
-generate_csv(file_path, headers, call_cost_per_second, reports_path)
+def generate_csv_for_particular_day(file: str, report_date: str, header_names: list, call_cost: int,
+                                    custom_report_path: str):
+
+    csv_file = pandas.read_csv(file, names=header_names)
+    csv_file["Call Initiate Time"] = csv_file["Call Initiate Time"].str.split(r" ").str.get(1)
+    csv_file["Call Answer Time"] = csv_file["Call Answer Time"].str.split(r" ").str.get(1)
+    csv_file["Call Ended"] = csv_file["Call Ended"].str.split(r" ").str.get(1)
+    csv_file["Total Charge (UGX)"] = csv_file["Call Duration when Answered (s)"] * call_cost
+    report_name = "{}_Daily_IVR_Report.{}.csv"
+    csv_file = csv_file.loc[csv_file["Date"] == report_date]
+
+    email_subject = '{} Call Detail Reports for {}'.format(host_name, report_date)
+    email_body = dedent("""\
+    Hello,
+
+    Please find attached the {} Call Detail Records for {} for your reference.
+
+    Best Regards,
+    Academy IS Team.
+    """).format(host_name, report_date)
+
+    if custom_report_path[-1] != "/":
+        custom_report_path = str(custom_report_path + "/")
+    new_formatted_csv = custom_report_path + report_name.format(host_name, report_date)
+    csv_file.to_csv(new_formatted_csv, index=False)
+    email = Email(to_recipients, email_subject, email_body, attachment_paths=[new_formatted_csv])
+    email.send_email()
 
 
+if len(sys.argv) - 1 == 1:
+    arg1 = sys.argv[1]
+    if is_date(arg1) is False:
+        print("Invalid Argument!! Only takes a date argument in the format [May-22-2020]")
+        exit(1)
+    if check_date_format(arg1) is False:
+        exit(1)
+    create_custom_reports_dir()
+    generate_csv_for_particular_day(file_path, arg1, headers, call_cost_per_second, custom_reports_path)
 
+elif len(sys.argv) - 1 == 0:
+    create_reports_dir()
+    generate_csv(file_path, headers, call_cost_per_second, reports_path)
 
-
+else:
+    print("Invalid Syntax")
+    exit(1)
