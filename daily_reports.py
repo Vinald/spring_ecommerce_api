@@ -70,6 +70,7 @@ def generate_csv(file: str, header_names: list, call_cost: int, report_path: str
     dates_column = csv_file["Date"].to_dict()
     latest_date_key = max(dates_column.keys())
     latest_date_value = dates_column[latest_date_key]
+    csv_file = csv_file[csv_file["SIP Trunk Channel"].notnull()]
 
     email_subject = '{}_IVR Call Detail Reports as of {}'.format(host_name, latest_date_value)
     email_body = dedent("""\
