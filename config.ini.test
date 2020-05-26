@@ -46,5 +46,7 @@ port = 587
 host = smtp.office365.com
 
 [daily_reports_email]
-to_recipients = example1@gmail.com,example2@gmail.com ; Must be in this format
-cc_recipients = example1@gmail.com,example2@gmail.com ; Must be in a format
+;to_recipients = example1@gmail.com,example2@gmail.com
+; Must be in this format
+;cc_recipients = example1@gmail.com,example2@gmail.com ; Must be in this format
+; Must be in this format

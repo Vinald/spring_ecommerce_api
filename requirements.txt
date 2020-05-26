@@ -12,4 +12,3 @@ redis
 pandas
 pymysql
 PrettyTable
-dateutil
