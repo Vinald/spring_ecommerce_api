@@ -1,7 +1,5 @@
 import os
-
 from asterisk.agi import AGI
-
 from src.Logger import Logger
 
 
