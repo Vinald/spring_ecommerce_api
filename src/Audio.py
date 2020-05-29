@@ -1,4 +1,6 @@
 import os
+from asterisk.agi import AGI
+from src.Logger import Logger
 
 
 class Audio:
@@ -19,3 +21,12 @@ class Audio:
         if not os.path.exists(path):
             return link
         return os.path.splitext(path)[0]
+
+    @staticmethod
+    def stream(audio_file: str, agi: AGI, logger: Logger):
+        try:
+            logger.log_info('Streaming audio: {}'.format(audio_file))
+            agi.stream_file(audio_file)
+        except Exception as e:
+            msg = 'Failed to stream audio file -> {}: {}'
+            logger.log_warning(msg.format(audio_file, str(e)))
