@@ -3,37 +3,49 @@ import logging
 
 class Logger:
     def __init__(self, log_dir, phone=None):
-        self.phone = phone
-        self.log_dir = log_dir
-        self.check_if_log_file_is_writable()
+        self.__phone = phone
+        self.__log_dir = log_dir
+        self.__check_if_log_file_is_writable()
         logging.basicConfig(
             level=logging.INFO,
             format='[%(asctime)s] %(levelname)s: %(message)s',
             datefmt='%m/%d/%Y %H:%M:%S',
-            filename=self.log_dir + '/app.log',
+            filename=self.__log_dir + '/app.log',
             filemode='a',
         )
         self.logger = logging.getLogger()
 
+    def log_info(self, message: str):
+        self.__custom_logger(logging.INFO, message)
+
+    def log_warning(self, message: str):
+        self.__custom_logger(logging.WARNING, message)
+
+    def log_error(self, message: str):
+        self.__custom_logger(logging.ERROR, message)
+
+    def log_critical(self, message: str):
+        self.__custom_logger(logging.CRITICAL, message)
+
     def get_logger(self):
         return self.logger
 
-    def set_phone(self, phone):
-        self.phone = phone
+    def set_phone(self, phone: str):
+        self.__phone = phone
 
-    def log_info(self, message):
+    def __custom_logger(self, level: int, message: str):
         try:
-            if self.phone:
-                self.logger.info('[Number: {}]: {}'.format(self.phone, str(message)))
+            if self.__phone:
+                self.logger.log(level, "[Number: {}]: {}".format(self.__phone, message))
             else:
-                self.logger.info('{}'.format(str(message)))
+                self.logger.log(level, "{}".format(message))
         except Exception as e:
             print('Failed to start the logger: {}'.format(str(e)))
             exit()
 
-    def check_if_log_file_is_writable(self):
+    def __check_if_log_file_is_writable(self):
         try:
-            with open(self.log_dir + '/app.log', 'a+') as f:
+            with open(self.__log_dir + '/app.log', 'a+') as f:
                 f.close()
                 pass
         except Exception as e:
