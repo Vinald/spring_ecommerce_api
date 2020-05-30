@@ -34,14 +34,14 @@ class Config:
         try:
             return str(self.config[self.section][key])
         except Exception as e:
-            self.logger.log_info('Config key error: {}'.format(str(e)))
+            self.logger.log_warning('Config key not found: {}'.format(str(e)))
             return default
 
     def get_int(self, key: str, default=0):
         try:
             return int(self.get(key, default))
         except Exception as e:
-            self.logger.log_info('Conversion error: {}'.format(str(e)))
+            self.logger.log_warning('Conversion failed: {}'.format(str(e)))
             return default
 
     def set_section(self, section: str):
@@ -52,5 +52,5 @@ class Config:
             self.config.read(os.path.join(self.working_dir, self.config_file))
         except Exception as e:
             log_msg = 'Failed to read config file: {}'.format(str(e))
-            self.logger.log_info(log_msg)
-            exit()
+            self.logger.log_critical(log_msg)
+            exit(1)
