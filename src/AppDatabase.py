@@ -27,6 +27,9 @@ class AppDatabase:
         self.cursor.execute(sql, tuple_values)
         self.conn.commit()
 
+    def reconnect(self):
+        self.conn.ping(reconnect=True)
+
     def get_cursor(self):
         return self.cursor
 
@@ -44,5 +47,4 @@ class AppDatabase:
             port=self.config.get_int('port'),
             cursorclass=pymysql.cursors.DictCursor
         )
-        self.conn.ping(reconnect=True)
         self.cursor = self.conn.cursor()
