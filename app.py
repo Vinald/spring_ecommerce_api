@@ -76,6 +76,10 @@ def index():
     logger.set_phone(phone)
     logger.log_info("Call request from external app: {}".format(request.url))
 
+    #  Database has tendency of disconnecting making it seem like every token is invalid.
+    #  So we shall try to reconnect on every request only if the connection closed
+    database.reconnect()
+
     if not is_valid_token(token):
         logger.log_info("Failed to route call: Reason: Invalid token")
         return {'status': 'FAILED TO ROUTE CALL'}
