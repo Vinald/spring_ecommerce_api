@@ -6,6 +6,7 @@ class AppManager:
     def __init__(self, database: AppDatabase, logger: Logger):
         self.logger = logger
         self.database = database
+        self.database.reconnect()
 
     def get_voice_url(self, token):
         data = self.get_data(token)
