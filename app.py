@@ -55,6 +55,8 @@ def is_valid_token(token: str):
             return False
         link = app_manager.get_status_url(token)
         app_web_listener.set_status_link(link)
+        app_web_listener.set_app(results['name'])
+        app_web_listener.set_token(results['token'])
         return True
     except Exception as e:
         logger.log_info("Database error: {}".format(str(e)))

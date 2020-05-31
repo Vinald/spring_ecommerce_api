@@ -3,6 +3,8 @@ import logging
 
 class Logger:
     def __init__(self, log_dir, phone=None):
+        self.__app = None
+        self.__token = None
         self.__phone = phone
         self.__log_dir = log_dir
         self.__check_if_log_file_is_writable()
@@ -33,15 +35,24 @@ class Logger:
     def set_phone(self, phone: str):
         self.__phone = phone
 
+    def set_app(self, app: str):
+        self.__app = app
+
+    def set_token(self, token: str):
+        self.__token = token
+
     def __custom_logger(self, level: int, message: str):
         try:
-            if self.__phone:
-                self.logger.log(level, "[Number: {}]: {}".format(self.__phone, message))
-            else:
-                self.logger.log(level, "{}".format(message))
+            msg = "[Application: {}, Token: {}, Number: {}] {}".format(
+                self.__app,
+                self.__token,
+                self.__phone,
+                message
+            )
+            self.logger.log(level, msg)
         except Exception as e:
             print('Failed to start the logger: {}'.format(str(e)))
-            exit()
+            exit(1)
 
     def __check_if_log_file_is_writable(self):
         try:
@@ -50,4 +61,4 @@ class Logger:
                 pass
         except Exception as e:
             print('Log file not writable or does not exist: {}'.format(str(e)))
-            exit()
+            exit(1)
