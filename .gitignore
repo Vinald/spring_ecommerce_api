@@ -1,4 +1,3 @@
-
 app.log
 app_py.log
 .vscode
@@ -12,4 +11,3 @@ src/__pycache__/
 __pycache__
 app.pyc
 logs
-reports
