@@ -97,6 +97,12 @@ class AppWebListener:
                 self.cache.set(call_id, data, 1800)
                 self.__process_call(state, call_id, unique_id, phone)
 
+    def set_token(self, token):
+        self.logger.set_token(token)
+
+    def set_app(self, app):
+        self.logger.set_app(app)
+
     def __process_call(self, state, call_id, unique_id, phone):
         if state == self.COMPLETED and unique_id != '<unknown>':
             key = Hash.hash(unique_id)

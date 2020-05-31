@@ -4,6 +4,7 @@ from asterisk.agi import AGI
 from bs4 import BeautifulSoup
 from src.Audio import Audio
 from src.Logger import Logger
+from src.elements.Block import Block
 
 
 class VXMLParser:
@@ -28,22 +29,17 @@ class VXMLParser:
             self.logger.log_info('Starting Audio Dialogue')
             return self.process_audio_dialogue(form)
 
-    def process_finished_hearing(self, blocks):
+    def process_blocks(self, blocks):
+        block_parser = Block(self.agi, self.audio, self.logger)
         for index in range(len(blocks)):
             block = blocks[index]
-            prompts = block.find_all('prompt', recursive=False)
+            block_parser.process(block)
 
-            if len(prompts) > 0:
-                for prompt in prompts:
-                    if prompt is not None and prompt.find('audio') is not None:
-                        audio = prompt.find('audio').attrs['src']
-                        audio_file = self.audio.gen_audio_file(audio)
-                        try:
-                            self.logger.log_info('Streaming audio: {}'.format(audio_file))
-                            self.agi.stream_file(audio_file)
-                        except Exception as e:
-                            msg = 'Failed to stream audio file -> {}: {}'
-                            self.logger.log_info(msg.format(audio_file, str(e)))
+    def process_finished_hearing(self, blocks):
+        block_parser = Block(self.agi, self.audio, self.logger)
+        for index in range(len(blocks)):
+            block = blocks[index]
+            block_parser.process(block)
 
             has_attributes = len(block.attrs) > 0
 
@@ -61,6 +57,8 @@ class VXMLParser:
 
     def process_audio_dialogue(self, form, input_attempts=0, no_match_attempts=0):
         field = form.find('field')
+        blocks = form.find_all('block', recursive=False)
+        self.process_blocks(blocks)
 
         try:
             # Capture the length of DTMF, lets say like 4 digits

@@ -42,6 +42,9 @@ class IVR:
             self.phone = str(self.agi.env['agi_callerid'])
             self.link = "{}?phone={}".format(voice_url, self.phone)
 
+        results = self.app_manager.get_data(token)
+        self.logger.set_app(results['name'])
+        self.logger.set_token(results['token'])
         self.agi.set_variable("CDR(call_direction)", call_direction)
         self.logger.set_phone(self.phone)
         self.logger.log_info('Starting call')
