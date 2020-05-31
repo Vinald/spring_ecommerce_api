@@ -230,5 +230,3 @@ def run_checks():
 
 
 run_checks()
-
-
