@@ -11,8 +11,10 @@
 ; Simply replace audio_path with your home audio path e.g. /home/asteriskidi/audio
 [app]
 audio_path = /var/www/html/audio
-redis_host = 127.0.0.1
-redis_port = 6379
+
+[redis]
+host = 172.17.0.1
+port = 6379
 
 [database]
 port = 3306
@@ -27,10 +29,7 @@ database = ivr
 user = ivr
 pass = 1234
 sip_trunk_number =
-
-; This IP typically doesnt change. Its the Motech Docker Container IP. So you typically wont 
-; need to bother with this, unless your in the production environment and not testing environment.
-host = 172.17.0.1
+host = 127.0.0.1
 port = 5038
 trunk =
 
