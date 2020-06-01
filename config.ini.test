@@ -9,10 +9,9 @@
 ; Its been ignored in .gitignore so any changes to "config.ini" wont be commited.
 
 ; Simply replace audio_path with your home audio path e.g. /home/asteriskidi/audio
+; Do not use this config (redis_host, redis_port) for any new feature. Use the config under redis section
 [app]
 audio_path = /var/www/html/audio
-
-; Do not use this config (redis_host, redis_port) for any new feature. Use the config under redis section [redis]
 redis_host = 127.0.0.1
 redis_port = 6379
 
