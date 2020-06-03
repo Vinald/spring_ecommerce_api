@@ -29,7 +29,7 @@ daily_reports_cron_file="/etc/cron.d/ivr-daily-reports"
 reports_job="echo '\$(date '+%F %T'): daily_reports.py cron job has ran successfully' >> /root/ivr/logs/cron_jobs.log"
 
 # Install cron-tab for daily_reports to run every night at 00:00
-echo "0 0 * * * root /root/ivr/daily_reports.py && ${reports_job}" > $daily_reports_cron_file
+echo "0 0 * * * root python3 /root/ivr/daily_reports.py && ${reports_job}" > $daily_reports_cron_file
 chown root:root $daily_reports_cron_file
 chmod 600 $daily_reports_cron_file
 
