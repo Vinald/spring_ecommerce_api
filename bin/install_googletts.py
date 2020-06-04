@@ -53,10 +53,11 @@ print("""
 Configure Google TTS
 ============================================
 """)
-os.system("cd ~/")
+os.system("cd /root")
 os.system("git clone https://github.com/zaf/asterisk-googletts.git")
 os.system("cd asterisk-googletts*")
 os.system("cp googletts.agi /var/lib/asterisk/agi-bin/")
+os.system("cd .. && rm -Rf asterisk-googletts*")
 
 print("""
 Successfully installed Google TTS on your machine. You should be all good to go...
