@@ -14,7 +14,33 @@ This script shall install the needed dependencies for the Asterisk Google TTS En
 5. MPG123
 
 Reference guide available at: https://github.com/zaf/asterisk-googletts
+
+NOTE:
+--------
+- If you have redis installed using Docker, you may see afew error messages during this installation.
+  Most of the dependencies use redis and as such try to restart redis during the installation.
+  Simply ignore the errors during the install process and restart your redis docker instance manually 
+  after the installation.
+  
+- If redis is installed on the host itself, the installation should go smoothly.
+
+- You may need to accept a prompt during the 'perl-LWP-Protocol-https' installation so look out for that.
+
+Press 'return' or 'enter' if you wish to proceed with the installation or 'q' to cancel and exit.
 """)
+
+
+user_input = input(">> ")
+
+if user_input == "":
+    pass
+elif user_input == "q" or "Q":
+    print("Exiting Installation Script")
+    exit(0)
+else:
+    print('Invalid Input. Exiting Script')
+    exit(0)
+
 
 os.system("apt update && apt upgrade -y")
 
