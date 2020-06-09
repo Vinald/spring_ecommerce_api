@@ -49,7 +49,8 @@ Please note that these requirements maybe provisioned to a virtual machine (**Hy
 | Ubuntu Server OS | 18.04 or higher | [Download from here](https://ubuntu.com/download/server) |
 | MOTECH | 9.3 or higher | [Installation Instructions](http://gitlab.theacademy.co.ug/theacademy/scripts) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
 | Asterisk | 16 or higher | [Installation Instructions](https://computingforgeeks.com/how-to-install-asterisk-16-lts-on-ubuntu-18-04-16-04-debian-9/) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
-
+| MySQL| 5.7 or higher | [Installation Instructions](https://support.rackspace.com/how-to/install-mysql-server-on-the-ubuntu-operating-system/) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
+| MariaDB | 10.4 or higher | [Installation Instructions](https://linuxize.com/post/how-to-install-mariadb-on-ubuntu-18-04/) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
 
 Installation
 ============
@@ -115,28 +116,12 @@ $ sudo bash asterisk.sh
 **Fourth step**  
 
 You shall need to create an IVR database. This database shall store the tokens against which requests from MOTECH shall
-be authenticated against. Your IVR can run and routes calls from multiple MOTECH instances simultaneously with the help of 
+be authenticated against. Your IVR shall then be able to run and routes calls from multiple MOTECH instances simultaneously with the help of 
 this feature. 
 
-The guide below details how to can create your IVR database. The credentials used here are the database credentials that should
+The credentials used in this step should be the database credentials that should
 be entered under `[database]` in `config.ini`
 
-```bash
-$ apt install -y mysql-server
-$ systemctl start mysql
-$ systemctl enable mysql
-
-$ mysql -u root -p
-mysql> CREATE DATABASE ivr;
-mysql> INSERT INTO mysql.user (User,Host,authentication_string,ssl_cipher,x509_issuer,x509_subject)
-       VALUES('your_username','localhost',PASSWORD('your_password'),'','','');
-mysql> FLUSH PRIVILEGES;
-mysql> GRANT ALL PRIVILEGES ON ivr.* to your_username@localhost;
-mysql> FLUSH PRIVILEGES;
-
-$ mysql -u root -p ivr << apps.sql
-
-```
 
 Run the command below to view and add new MOTECH applications accordingly. There is a default token that has been created for you
 but you can create a new one should you wish to.
@@ -147,7 +132,7 @@ $ python3 app-token.py
 The token created from here shall be added in the MOTECH >> Call Flows >> Providers >> Outgoing Call URI Template.
 Your outgoing URI template should look like:
 
-`http://127.0.0.1:5000?numbertodial=[phone]&jumpTo=[internal.jumpTo]&callId=[internal.callId]&phone=[phone]&token=69b5f1543847d34cda10bc3cd29d56dc`
+`http://your-ip-address:port?numbertodial=[phone]&jumpTo=[internal.jumpTo]&callId=[internal.callId]&phone=[phone]&token=69b5f1543847d34cda10bc3cd29d56dc`
 
 
 **Fifth step**
