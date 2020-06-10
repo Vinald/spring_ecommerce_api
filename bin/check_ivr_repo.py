@@ -117,6 +117,18 @@ def check_asterisk_sip_trunk():
     return True
 
 
+def check_googletts():
+    print("""
+    ****** Checking if Asterisk GoogleTTS is Installed *****
+    ---------------------------------------------------------
+    """)
+    if check_if_package_installed("Perl") is True and check_if_package_installed("sox") is True and \
+            check_if_package_installed("mpg123") and os.path.exists('/var/lib/asterisk/agi-bin/googletts.agi'):
+        print("Asterisk Google TTS is installed")
+    else:
+        print('Asterisk Google TTS may not be installed. Run "install_googletts.py" to fix this')
+
+
 def check_config_ini():
     print("""
     ***** Checking config.ini settings *****
@@ -205,7 +217,8 @@ def prerequisites():
     
     3. This script shall check that your SIP Trunk is running
     4. This script shall check that files in IVR repo are owned by asterisk user 
-    5. This script shall cross check your config.ini
+    5. This script shall check that Asterisk Google TTS in installed
+    6. This script shall cross check your config.ini
     -----------------------------------------
     """)
 
@@ -219,6 +232,7 @@ def run_checks():
     check_motech_running()
     check_asterisk_sip_trunk()
     find_owner_for_multiple_files()
+    check_googletts()
     check_config_ini()
     print("""
     Closing Notes:

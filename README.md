@@ -13,6 +13,7 @@ Table of Contents
    * [Prerequisites](#prerequisites)
    * [Installation](#installation)
    * [Development](#development)
+   * [Useful Scripts](#useful-scripts)
    * [References](#references)
 
 Setting up your GitLab SSH  
@@ -49,7 +50,8 @@ Please note that these requirements maybe provisioned to a virtual machine (**Hy
 | Ubuntu Server OS | 18.04 or higher | [Download from here](https://ubuntu.com/download/server) |
 | MOTECH | 9.3 or higher | [Installation Instructions](http://gitlab.theacademy.co.ug/theacademy/scripts) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
 | Asterisk | 16 or higher | [Installation Instructions](https://computingforgeeks.com/how-to-install-asterisk-16-lts-on-ubuntu-18-04-16-04-debian-9/) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
-
+| MySQL| 5.7 or higher | [Installation Instructions](https://support.rackspace.com/how-to/install-mysql-server-on-the-ubuntu-operating-system/) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
+| MariaDB | 10.4 or higher | [Installation Instructions](https://linuxize.com/post/how-to-install-mariadb-on-ubuntu-18-04/) | This is to be installed on the ubuntu server os mentioned in the first row of the table |
 
 Installation
 ============
@@ -77,6 +79,8 @@ This file must be created by the user as shown in the command below. In this fil
 + AMI Configurations, needed by `app.py`  
 + The audio directory path  
 + The trunk name if one is configured on the system  
++ The email recipient addresses that the daily Call Detail Records (CDRs) should be sent to
++ The database configs needed to create and store the tokens for your IVR instance
 
 
 Well here is the command to create the `config.ini` file out of its template `config.ini.test`
@@ -110,6 +114,43 @@ Run the following command to setup your asterisk configuration (dialplan, sip co
 $ sudo bash asterisk.sh
 ```
 
+**Fourth step**  
+
+You shall need to create an IVR database. This database shall store the tokens against which requests from MOTECH shall
+be authenticated against. Your IVR shall then be able to run and routes calls from multiple MOTECH instances simultaneously with the help of 
+this feature. 
+
+The credentials used in this step should be the database credentials that should
+be entered under `[database]` in `config.ini`
+
+
+Run the command below to view and add new MOTECH applications accordingly. There is a default token that has been created for you
+but you can create a new one should you wish to.
+```python3
+$ python3 app-token.py
+```
+
+The token created from here shall be added in the MOTECH >> Call Flows >> Providers >> Outgoing Call URI Template.
+Your outgoing URI template should look like:
+
+`http://your-ip-address:port?numbertodial=[phone]&jumpTo=[internal.jumpTo]&callId=[internal.callId]&phone=[phone]&token=69b5f1543847d34cda10bc3cd29d56dc`
+
+
+**Fifth step**
+
+Run the command below to automatically configure Google TTS. This is needed for particular areas of the call flow e.g. when the date is being said.
+
+```python3
+python3 /bin/install_googletts.py
+```
+
+**Sixth step**  
+
+Run the following command to check your IVR installation and configurations 
+
+```python3
+$ python3 /bin/check_ivr_repo.py
+```
 
 **Last step**  
 Configure your SIP phone / Soft phone  
@@ -124,6 +165,43 @@ Below are the default details to be used while configuring the phone
 
 
 After a successful configuration, make a call to `100` from your SIP or Soft phone, you should be able to connect to the IVR.
+
+
+Useful Scripts
+=============
+**Log_searcher.py**
+>>>
+Logs are automatically populated per day in a `logs` directory. These logs in particular contain information about call requests from
+MOTECH, call statuses and the call flows followed plus any errors and additional log info.
+
+The `log-searcher.py` is an interactive script helps you quickly search the logs files for particular strings. It can search
+by date, and time as well. A guide on how to use the script is included in the script.
+
+Usage:
+```python3
+python3 log-searcher.py
+```
+
+>>>
+
+**Daily_reports.py**
+>>>
+Call Detail Records (CDRs) are created by Asterisk and stored in the `var/log/asterisk/cdr-custom` directory. This script automatically
+sends an email everyday with all the CDR records up to the date before the current date (yesterday). This email shall typically be sent at midnight.
+
+This process runs automatically as a cron job has been created for it in `isntall.sh`. However, you may wish to manually generate CDRs from Asterisk 
+for a particular day. To do this, the same script can also be used as below.
+
+```python3
+python3 daily_reports.py Jun-04-2020
+```
+
+An email shall immediately be sent to the recipients specified in `config.ini` with the CDRS for `Jun-04-2020`.
+You can specify any date you like.
+
+>>>
+
+
 
 
 Development
@@ -197,6 +275,9 @@ This is the library we use to develop the IVR API
 
 Flake8 [Reference](http://flake8.pycqa.org/en/latest/user/configuration.html)  
 Used for code style linting (checking).
+
+Redis-Server [Reference](https://redis.io/documentation)    
+The in-memory data structure store of preference used heavily in app.py
 
 Autopep8 [Reference](https://pypi.org/project/autopep8/)  
 Auto fixes code style errors
