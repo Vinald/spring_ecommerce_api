@@ -13,6 +13,7 @@ Table of Contents
    * [Prerequisites](#prerequisites)
    * [Installation](#installation)
    * [Development](#development)
+   * [Useful Scripts](#useful-scripts)
    * [References](#references)
 
 Setting up your GitLab SSH  
