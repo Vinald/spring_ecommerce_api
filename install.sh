@@ -33,6 +33,20 @@ echo "0 0 * * * root python3 /root/ivr/daily_reports.py && ${reports_job}" > $da
 chown root:root $daily_reports_cron_file
 chmod 600 $daily_reports_cron_file
 
+# Define the get-sip-responses cron file path
+get_sip_responses_cron_file="/etc/cron.d/get-sip-responses"
+get_sip_responses_job="echo '\$(date '+%F %T'): get_sip_responses.py cron job has ran successfully' >> /root/ivr/logs/cron_jobs.log"
+
+# Install cron-tab for get-sip-responses to run every night at 23:59
+echo "59 23 * * * root python3 /root/ivr/bin/get-sip-responses.py && ${get_sip_responses_job}" > $get_sip_responses_cron_file
+chown root:root $get_sip_responses_cron_file
+chmod 600 $get_sip_responses_cron_file
+
+# Setup asterisk logging
+cp asterisk/logger.conf /etc/asterisk/logger.conf
+asterisk -rx "core set verbose 3"
+asterisk -rx "logger reload"
+
 # Install any updates available in ubuntu repositories
 apt-get update > /dev/null
 
