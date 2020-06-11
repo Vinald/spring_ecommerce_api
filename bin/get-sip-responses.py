@@ -160,6 +160,9 @@ def gen_sip_responses_by_date(custom_path_to_new_csv: str, custom_date: str):
     return path_to_new_csv
 
 
+date_now = datetime.now().strftime('%b-%d-%Y %X')
+update_cron_log = "echo {}: get-sip-responses.py has ran successfully >> /root/ivr/logs/cron_jobs.log".format(date_now)
+
 # Generate all SIP Response till current date
 if len(sys.argv) - 1 == 1:
     arg1 = sys.argv[1]
@@ -171,12 +174,14 @@ if len(sys.argv) - 1 == 1:
     os.system("mkdir -p {}".format(custom_sip_responses_csv))
     format_asterisk_log(asterisk_log_file)
     gen_sip_responses_by_date(custom_sip_responses_csv, arg1)
+    os.system(update_cron_log)
 
 # Generate custom SIP Response per date
 elif len(sys.argv) - 1 == 0:
     format_asterisk_log(asterisk_log_file)
     os.system("mkdir -p {}".format(general_sip_responses_csv))
     gen_sip_responses_csv(general_sip_responses_csv)
+    os.system(update_cron_log)
 
 else:
     print("Invalid Syntax")

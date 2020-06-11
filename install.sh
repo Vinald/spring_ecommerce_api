@@ -26,19 +26,17 @@ chmod 600 $log_rotation_cron_file
 
 # Define the daily_reports.py cron file path
 daily_reports_cron_file="/etc/cron.d/ivr-daily-reports"
-reports_job="echo \$(date '+%F %T'): daily_reports.py cron job has ran successfully >> /root/ivr/logs/cron_jobs.log"
 
 # Install cron-tab for daily_reports to run every night at 00:00
-echo "0 0 * * * root python3 /root/ivr/daily_reports.py && ${reports_job}" > $daily_reports_cron_file
+echo "0 0 * * * root python3 /root/ivr/daily_reports.py" > $daily_reports_cron_file
 chown root:root $daily_reports_cron_file
 chmod 600 $daily_reports_cron_file
 
 # Define the get-sip-responses cron file path
 get_sip_responses_cron_file="/etc/cron.d/get-sip-responses"
-get_sip_responses_job="echo \$(date '+%F %T'): get_sip_responses.py cron job has ran successfully >> /root/ivr/logs/cron_jobs.log"
 
 # Install cron-tab for get-sip-responses to run every night at 23:59
-echo "59 23 * * * root python3 /root/ivr/bin/get-sip-responses.py && ${get_sip_responses_job}" > $get_sip_responses_cron_file
+echo "59 23 * * * root cd /root/ivr/bin && python3 get-sip-responses.py" > $get_sip_responses_cron_file
 chown root:root $get_sip_responses_cron_file
 chmod 600 $get_sip_responses_cron_file
 
