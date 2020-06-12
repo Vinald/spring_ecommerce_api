@@ -16,6 +16,11 @@ timedatectl set-timezone Africa/Kampala
 chmod +x "/root/ivr/log-rotation.sh"
 chmod +x "/root/ivr/call-request-queue.py"
 
+# Install asterisk ARI config files.
+cp /root/ivr/asterisk/ari.conf /root/ivr/asterisk/http.conf /root/ivr/asterisk
+# Restart asterisk
+asterisk -rx 'core restart now'
+
 call_request_queue_cron_file="/etc/cron.d/call-request-queue"
 echo "*/5 * * * * root /root/ivr/call-request-queue.py" > $call_request_queue_cron_file
 chown root:root $call_request_queue_cron_file
