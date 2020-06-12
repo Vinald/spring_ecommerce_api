@@ -7,6 +7,8 @@ if [[ "$EUID" -ne 0 ]]
 	exit
 fi
 
+cp /etc/asterisk/ari.conf /etc/asterisk/ari.conf.backup
+cp /etc/asterisk/http.conf /etc/asterisk/http.conf.backup
 cp /etc/asterisk/sip.conf /etc/asterisk/sip.conf.backup
 cp /etc/asterisk/extensions.conf /etc/asterisk/extensions.conf.backup
 cp /etc/asterisk/cdr.conf /etc/asterisk/cdr.conf.backup
@@ -15,7 +17,7 @@ cp /etc/asterisk/manager.conf /etc/asterisk/manager.conf.backup
 
 
 # Change working directory to asterisk
-cd ./asterisk
+cd ./asterisk || exit
 
 echo
 echo "+------------------------------------------------------------+"
@@ -24,7 +26,7 @@ echo "+------------------------------------------------------------+"
 echo
 
 # Copy new config file to asterisk directory
-cp -r * /etc/asterisk
+cp -r ./* /etc/asterisk
 chown -R asterisk:asterisk /root
 
 
