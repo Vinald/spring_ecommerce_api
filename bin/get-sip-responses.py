@@ -115,8 +115,8 @@ def gen_sip_responses_csv(path_to_new_csv: str):
         print("Path provided to save sip_responses.csv doesnt exist")
     csv_headers = ["Date", "Call Initiate Time", "Dialed Number", "Call Status", "SIP Response"]
     current_date = datetime.now().strftime('%b-%d-%Y')
-    file_name = "sip_responses.{}.csv"
-    path_to_new_csv = path_to_new_csv + file_name.format(current_date)
+    file_name = "{}-SIP-Responses.{}.csv"
+    path_to_new_csv = path_to_new_csv + file_name.format(host_name, current_date)
     try:
         with open(path_to_new_csv, "w") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=csv_headers)
@@ -137,9 +137,9 @@ def gen_sip_responses_by_date(custom_path_to_new_csv: str, custom_date: str):
         print("Path provided to save sip_responses.csv doesnt exist")
 
     csv_headers = ["Date", "Call Initiate Time", "Dialed Number", "Call Status", "SIP Response"]
-    file_name = "sip_responses.{}.{}.csv"
+    file_name = "{}-SIP-Responses.{}.{}.csv"
     current_time = datetime.now().strftime('%X')
-    path_to_new_csv = custom_sip_responses_csv + file_name.format(custom_date, current_time)
+    path_to_new_csv = custom_sip_responses_csv + file_name.format(host_name, custom_date, current_time)
     try:
         with open(path_to_new_csv, "w") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=csv_headers)
@@ -148,8 +148,6 @@ def gen_sip_responses_by_date(custom_path_to_new_csv: str, custom_date: str):
             for values in output_dict.values():
                 if custom_date == values.split(",")[0]:
                     csv_file.write('{}\n'.format(values))
-                else:
-                    csv_file.write('"N/A","N/A","N/A","N/A","N/A"')
         email = Email(to_recipients, custom_sip_response_subject.format(custom_date, current_time),
                       custom_sip_responses_body.format(host_name, custom_date, current_time),
                       attachment_paths=[path_to_new_csv])
