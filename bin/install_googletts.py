@@ -84,6 +84,8 @@ os.system("git clone https://github.com/zaf/asterisk-googletts.git")
 os.system("cd asterisk-googletts*")
 os.system("cp googletts.agi /var/lib/asterisk/agi-bin/")
 os.system("cd .. && rm -Rf asterisk-googletts*")
+os.system("asterisk -rx 'core restart now'")
+os.system("service ivr-api restart")
 
 print("""
 Successfully installed Google TTS on your machine. You should be all good to go...
