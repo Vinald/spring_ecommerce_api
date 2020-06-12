@@ -17,9 +17,7 @@ chmod +x "/root/ivr/log-rotation.sh"
 chmod +x "/root/ivr/call-request-queue.py"
 
 # Install asterisk ARI config files.
-cp /root/ivr/asterisk/ari.conf /root/ivr/asterisk/http.conf /root/ivr/asterisk
-# Restart asterisk
-asterisk -rx 'core restart now'
+cp /root/ivr/asterisk/ari.conf /root/ivr/asterisk/http.conf /etc/asterisk
 
 call_request_queue_cron_file="/etc/cron.d/call-request-queue"
 echo "*/5 * * * * root /root/ivr/call-request-queue.py" > $call_request_queue_cron_file
@@ -60,10 +58,13 @@ asterisk -rx "logger reload"
 apt-get update > /dev/null
 
 # Install python 3, pip 3, and redis server for in-memory (RAM) caching
-apt-get install python3 python3-pip redis-server -y > /dev/null
+apt-get install python3 python3-pip -y > /dev/null
 
 # Install all dependencies listed in the requirements file
 pip3 install -r requirements.txt
+
+# Restart asterisk
+asterisk -rx 'core restart now'
 
 systemctl stop ivr-api.service
 
