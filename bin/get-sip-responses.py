@@ -95,7 +95,7 @@ def format_asterisk_log(asterisk_log_path: str):
 
         result = [ele for ele in statuses if(ele in output_list[i]["logmsg"]["message"])]
         if bool(result) is True:
-            call_status = output_list[i]["logmsg"]["message"].rstrip("\n").split("is ")[1]
+            call_status = output_list[i]["logmsg"]["message"].rstrip("\n").split("is ")[1].upper()
             sip_response = output_list[i-1]["logmsg"]["message"].split('"')[1]
             id_number = output_list[i]["identifiers"]["lwp"]
             if str(id_number) in output_dict.keys():
