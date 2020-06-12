@@ -105,7 +105,7 @@ def format_asterisk_log(asterisk_log_path: str):
         if "answered" in output_list[i]["logmsg"]["message"] and \
                 str(output_list[i]["identifiers"]["lwp"]) in output_dict.keys():
             id_number = str(output_list[i]["identifiers"]["lwp"])
-            answered_status = output_list[i]["logmsg"]["message"].rstrip("\n").split(" ")[1]
+            answered_status = output_list[i]["logmsg"]["message"].rstrip("\n").split(" ")[1].upper()
             new_record = output_dict[id_number] + ',"{}"'.format(answered_status)
             output_dict[id_number] = new_record
 
@@ -136,7 +136,7 @@ def gen_sip_responses_by_date(custom_path_to_new_csv: str, custom_date: str):
     if not os.path.exists(custom_path_to_new_csv):
         print("Path provided to save sip_responses.csv doesnt exist")
 
-    csv_headers = ["Date", "Call Initiate Time", "Dialed Number", "Call Status", "SIP Response"]
+    csv_headers = ["Date", "Call Initiate Time", "Dialed Number", "Call State", "SIP Response"]
     file_name = "{}-SIP-Responses.{}.{}.csv"
     current_time = datetime.now().strftime('%X')
     path_to_new_csv = custom_sip_responses_csv + file_name.format(host_name, custom_date, current_time)
