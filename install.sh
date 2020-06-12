@@ -12,8 +12,14 @@ fi
 # Set timezone
 timedatectl set-timezone Africa/Kampala
 
-# Add execution permission for log rotation script
+# Add execution permissions
 chmod +x "/root/ivr/log-rotation.sh"
+chmod +x "/root/ivr/call-request-queue.py"
+
+call_request_queue_cron_file="/etc/cron.d/call-request-queue"
+echo "*/5 * * * * root /root/ivr/call-request-queue.py" > $call_request_queue_cron_file
+chown root:root $call_request_queue_cron_file
+chmod 600 $call_request_queue_cron_file
 
 # Define the log-rotation.sh cron file path
 log_rotation_cron_file="/etc/cron.d/ivr-log-rotation"
