@@ -88,5 +88,5 @@ os.system("asterisk -rx 'core restart now'")
 os.system("service ivr-api restart")
 
 print("""
-Successfully installed Google TTS on your machineas. You should be all good to go...
+Successfully installed Google TTS on your machine. You should be all good to go...
 """)
