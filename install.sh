@@ -17,7 +17,7 @@ chmod +x "/root/ivr/log-rotation.sh"
 
 # Define the log-rotation.sh cron file path
 log_rotation_cron_file="/etc/cron.d/ivr-log-rotation"
-log_rotate_job="echo '\$(date '+%F %T'): log-rotation.sh cron job has ran successfully' >> /root/ivr/logs/cron_jobs.log"
+log_rotate_job="echo \$(date '+%F %T'): log-rotation.sh cron job has ran successfully >> /root/ivr/logs/cron_jobs.log"
 
 # Install cron-tab for log rotation to run every night at 23:59
 echo "59 23 * * * root cd /root/ivr && ./log-rotation.sh && ${log_rotate_job}" > $log_rotation_cron_file
@@ -26,12 +26,24 @@ chmod 600 $log_rotation_cron_file
 
 # Define the daily_reports.py cron file path
 daily_reports_cron_file="/etc/cron.d/ivr-daily-reports"
-reports_job="echo '\$(date '+%F %T'): daily_reports.py cron job has ran successfully' >> /root/ivr/logs/cron_jobs.log"
 
 # Install cron-tab for daily_reports to run every night at 00:00
-echo "0 0 * * * root python3 /root/ivr/daily_reports.py && ${reports_job}" > $daily_reports_cron_file
+echo "0 0 * * * root python3 /root/ivr/daily_reports.py" > $daily_reports_cron_file
 chown root:root $daily_reports_cron_file
 chmod 600 $daily_reports_cron_file
+
+# Define the get-sip-responses cron file path
+get_sip_responses_cron_file="/etc/cron.d/get-sip-responses"
+
+# Install cron-tab for get-sip-responses to run every night at 23:59
+echo "59 23 * * * root cd /root/ivr/bin && python3 get-sip-responses.py" > $get_sip_responses_cron_file
+chown root:root $get_sip_responses_cron_file
+chmod 600 $get_sip_responses_cron_file
+
+# Setup asterisk logging
+cp asterisk/logger.conf /etc/asterisk/logger.conf
+asterisk -rx "core set verbose 3"
+asterisk -rx "logger reload"
 
 # Install any updates available in ubuntu repositories
 apt-get update > /dev/null
