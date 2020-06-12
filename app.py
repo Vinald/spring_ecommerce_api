@@ -1,51 +1,22 @@
 #!/usr/bin/env python3
 
 from flask import Flask, request
-from asterisk.ami import AMIClient
-from asterisk.ami import AMIClientAdapter
-from datetime import date
-import os
-from redis import Redis
-from src.AppManager import AppManager
-from src.AppDatabase import AppDatabase
-from src.Config import Config
-from src.Logger import Logger
-from src.AppWebListener import AppWebListener
-
-working_dir = os.path.dirname(os.path.realpath(__file__))
-
-# Initiate Logger
-logger = Logger(working_dir)
-
-config = Config(working_dir, logger)
-
-config.set_section('ami')
-ami_host = config.get_ami_host()
-ami_user = config.get_ami_user()
-ami_pass = config.get_ami_pass()
-ami_port = config.get_ami_port()
-ami_sip_trunk_number = config.get("sip_trunk_number")
-ami_trunk = config.get_sip_trunk()
-
-config.set_section('app')
-redis_host = str(config.get('redis_host'))
-redis_port = config.get_int('redis_port')
-
-# connect to redis
-cache = Redis(host=redis_host, port=redis_port)
+import core
+from src.AsteriskARI import AsteriskARI
+from src.manager.QueueManager import QueueManager
 
 app = Flask(__name__)
 
-client = AMIClient(address=ami_host, port=ami_port)
-client.login(username=ami_user, secret=ami_pass)
+logger = core.logger
+config = core.config
 
-# Initiate Web_Listener class
-app_web_listener = AppWebListener(logger, cache)
+database = core.database
+app_manager = core.app_manager
 
-# Initialize database
-database = AppDatabase(config)
+queue = QueueManager(core.cache)
+asterisk_ari = AsteriskARI(config, logger)
 
-app_manager = AppManager(database, logger)
+app_web_listener = core.app_web_listener
 
 
 def is_valid_token(token: str):
@@ -68,6 +39,11 @@ def event_listener(event, **kwargs):
         app_web_listener.process_originate_event(event)
 
 
+def queue_event_listener(event, **kwargs):
+    if str(event.name) == 'OriginateResponse':
+        app_web_listener.process_originate_event(event)
+
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     flow = request.args.get('jumpTo')
@@ -86,57 +62,37 @@ def index():
         logger.log_info("Failed to route call: Reason: Invalid token")
         return {'status': 'FAILED TO ROUTE CALL'}
 
-    adapter = AMIClientAdapter(client)
+    if not asterisk_ari.has_free_channels():
+        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow}
+        queue.queue_call(data)
+        return {'status': 'CALL_QUEUED'}
 
-    channel = 'SIP/' + phone
-
-    if ami_trunk is not None and len(ami_trunk) > 0:
-        channel = 'SIP/{}/+{}'.format(ami_trunk, phone)
-
-    date_today = date.today().strftime("%b-%d-%Y")
-    sip_trunk_number = ami_sip_trunk_number
-
-    application_name = app_manager.get_data(token)['name']
-
-    data = 'data={}&{}&{}&{},' \
-           'CDR(dialed_number)={},' \
-           'CDR(date)={},' \
-           'CDR(call_id)={},' \
-           'CDR(sip_trunk_number)={},' \
-           'CDR(sip_channel)={},' \
-           'CDR(call_direction)=OUTGOING,' \
-           'CDR(token)={},' \
-           'CDR(application_name)={}'
-
-    adapter.Originate(
-        Channel=channel,
-        Exten='100',
-        Priority=1,
-        Context='ivr',
-        CallerID='Call For Life Uganda',
-        Variable=data.format(
-            call_id,
-            phone,
-            flow,
-            token,
-            phone,
-            date_today,
-            call_id,
-            sip_trunk_number,
-            channel,
-            token,
-            application_name,
-        ),
-        ActionID=call_id,
-        Timeout=45000,
-        Async=True
-    )
-
-    data = '{"phone": "%s", "initiated": "no"}' % phone
-    cache.set(call_id, data, 1800)
-
-    client.add_event_listener(event_listener)
+    core.initiate_call(phone, token, call_id, flow)
+    core.client.add_event_listener(event_listener)
     return {'status': 'CALL_INITIATED'}
+
+
+@app.route('/queue', methods=['GET'])
+def process_queue():
+    if request.remote_addr != '127.0.0.1':
+        return {'status': 'error', 'message': 'Unauthorized Access'}
+
+    empty_queue = queue.is_empty()
+    has_free_channels = asterisk_ari.has_free_channels()
+
+    if has_free_channels and not empty_queue:
+        call_data = queue.get_next_call_in_queue()
+        logger.log_info('Initiating queued call: {}'.format(str(call_data)))
+        core.initiate_call(
+            call_data['phone'],
+            call_data['token'],
+            call_data['call_id'],
+            call_data['flow']
+        )
+        core.client.add_event_listener(queue_event_listener)
+        return {'status': 'CALL_INITIATED', 'data': call_data}
+
+    return {'has_free_channels': has_free_channels, 'empty_queue': empty_queue}
 
 
 if __name__ == '__main__':
