@@ -82,7 +82,7 @@ def format_asterisk_log(asterisk_log_path: str):
                 box = ast.literal_eval(file_content[i])
                 output_list.append(box)
 
-    statuses = ["busy", "congested"]
+    statuses = ["busy", "congested", "circuit-busy"]
     for i in range(len(output_list)):
         if "Called" in output_list[i]["logmsg"]["message"]:
             id_number = output_list[i]["identifiers"]["lwp"]
@@ -96,7 +96,11 @@ def format_asterisk_log(asterisk_log_path: str):
         result = [ele for ele in statuses if(ele in output_list[i]["logmsg"]["message"])]
         if bool(result) is True:
             call_status = output_list[i]["logmsg"]["message"].rstrip("\n").split("is ")[1].upper()
-            sip_response = output_list[i-1]["logmsg"]["message"].split('"')[1]
+            print("{}\n".format(output_list[i-1]))
+            if "SIP response" in output_list[i-1]["logmsg"]["message"]:
+                sip_response = output_list[i-1]["logmsg"]["message"].split('"')[1]
+            else:
+                sip_response = "No SIP Response obtained from SIP Trunk"
             id_number = output_list[i]["identifiers"]["lwp"]
             if str(id_number) in output_dict.keys():
                 new_record = output_dict[str(id_number)] + ',"{}","{}"'.format(call_status, sip_response)
@@ -108,6 +112,12 @@ def format_asterisk_log(asterisk_log_path: str):
             answered_status = output_list[i]["logmsg"]["message"].rstrip("\n").split(" ")[1].upper()
             new_record = output_dict[id_number] + ',"{}"'.format(answered_status)
             output_dict[id_number] = new_record
+
+        else:
+            id_number = output_list[i]["identifiers"]["lwp"]
+            if str(id_number) in output_dict.keys():
+                new_record = output_dict[id_number] + ',"{}"'.format("NO ANSWER")
+                output_dict[id_number] = new_record
 
 
 def gen_sip_responses_csv(path_to_new_csv: str):
