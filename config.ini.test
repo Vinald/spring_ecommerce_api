@@ -51,3 +51,10 @@ host = smtp.office365.com
 ; Must be in this format
 to_recipients = example1@gmail.com,example2@gmail.com
 cc_recipients = example1@gmail.com,example2@gmail.com
+
+[ari]
+port = 8088
+hostname = 127.0.0.1
+username = ivr
+password = 1234
+max_channels = 30
