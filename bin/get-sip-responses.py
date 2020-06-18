@@ -12,8 +12,8 @@ from src.Logger import Logger
 
 
 asterisk_log_file = "/var/log/asterisk/ivr_verbose_log"
-general_sip_responses_csv = "/root/ivr/logs/sip_responses_logs/"
-custom_sip_responses_csv = "/root/ivr/logs/sip_responses_logs/custom/"
+general_sip_responses_csv = "/root/ivr/reports/Daily_SIP_Response_Reports/"
+custom_sip_responses_csv = "/root/ivr/reports/Daily_SIP_Response_Reports/custom/"
 output_dict = {}
 
 working_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))

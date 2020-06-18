@@ -11,8 +11,8 @@ import sys
 from dateutil.parser import parse
 
 
-reports_path = "/root/ivr/reports"
-custom_reports_path = "/root/ivr/reports/custom"
+reports_path = "/root/ivr/reports/CDRs/"
+custom_reports_path = "/root/ivr/reports/CDRs/custom"
 file_path = "/var/log/asterisk/cdr-custom/ivr_report.csv"
 call_cost_per_second = 3
 
@@ -86,6 +86,7 @@ def generate_csv(file: str, header_names: list, call_cost: int, report_path: str
         report_path = str(report_path + "/")
     new_formatted_csv = report_path + report_name.format(host_name, latest_date_value)
     csv_file.to_csv(new_formatted_csv, index=False)
+    os.system("")
     email = Email(to_recipients, email_subject, email_body, attachment_paths=[new_formatted_csv])
     email.send_email()
 
@@ -98,22 +99,23 @@ def generate_csv_for_particular_day(file: str, report_date: str, header_names: l
     csv_file["Call Answer Time"] = csv_file["Call Answer Time"].str.split(r" ").str.get(1)
     csv_file["Call Ended"] = csv_file["Call Ended"].str.split(r" ").str.get(1)
     csv_file["Total Charge (UGX)"] = csv_file["Call Duration when Answered (s)"] * call_cost
-    report_name = "{}_Daily_IVR_Report.{}.csv"
+    current_time = datetime.now().strftime('%X')
+    report_name = "{}_Daily_IVR_Report.{}.{}.csv"
     csv_file = csv_file.loc[csv_file["Date"] == report_date]
 
-    email_subject = '{} Call Detail Reports for {}'.format(host_name, report_date)
+    email_subject = '{} Call Detail Reports for {} at {}'.format(host_name, report_date, current_time)
     email_body = dedent("""\
     Hello,
 
-    Please find attached the {} Call Detail Records for {} for your reference.
+    Please find attached the {} Call Detail Records for {} taken at for your reference.
 
     Best Regards,
     Academy IS Team.
-    """).format(host_name, report_date)
+    """).format(host_name, report_date, current_time)
 
     if custom_report_path[-1] != "/":
         custom_report_path = str(custom_report_path + "/")
-    new_formatted_csv = custom_report_path + report_name.format(host_name, report_date)
+    new_formatted_csv = custom_report_path + report_name.format(host_name, report_date, current_time)
     csv_file.to_csv(new_formatted_csv, index=False)
     email = Email(to_recipients, email_subject, email_body, attachment_paths=[new_formatted_csv])
     email.send_email()
