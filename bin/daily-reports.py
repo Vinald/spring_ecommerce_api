@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 
-from datetime import date, timedelta, datetime
+from datetime import date, datetime
 import pandas
-from src.Email import Email
-from src.Config import Config
 import os
 from textwrap import dedent
-from src.Logger import Logger
-import sys
 from dateutil.parser import parse
+import sys
+sys.path.append('../')
+from src.Email import Email
+from src.Config import Config
+from src.Logger import Logger
 
 
 reports_path = "/root/ivr/reports/CDRs/"
-custom_reports_path = "/root/ivr/reports/CDRs/custom"
+custom_reports_path = "/root/ivr/reports/CDRs/custom/"
 file_path = "/var/log/asterisk/cdr-custom/ivr_report.csv"
 call_cost_per_second = 3
 
-working_dir = os.path.dirname(os.path.realpath(__file__))
+working_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 logger = Logger(working_dir)
 config = Config(working_dir, logger)
 
@@ -33,13 +34,11 @@ to_recipients = list(config.get('to_recipients').split(','))
 
 
 def create_reports_dir():
-    os.system("cd {}".format(working_dir))
-    os.system("mkdir -p reports")
+    os.system("mkdir -p {}".format(reports_path))
 
 
 def create_custom_reports_dir():
-    os.system("cd {}".format(working_dir))
-    os.system("mkdir -p reports/custom")
+    os.system("mkdir -p {}".format(custom_reports_path))
 
 
 def is_date(string, fuzzy=False):
@@ -122,7 +121,7 @@ def generate_csv_for_particular_day(file: str, report_date: str, header_names: l
 
 
 date_now = datetime.now().strftime('%b-%d-%Y %X')
-update_cron_log = "echo {}: daily_reports.py has ran successfully >> /root/ivr/logs/cron_jobs.log".format(date_now)
+update_cron_log = "echo {}: daily-reports.py has ran successfully >> /root/ivr/logs/cron_jobs.log".format(date_now)
 
 if len(sys.argv) - 1 == 1:
     arg1 = sys.argv[1]
