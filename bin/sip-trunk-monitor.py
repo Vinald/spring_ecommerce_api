@@ -16,6 +16,18 @@ cursor = database.get_cursor()
 host = 'sip.simbanet.co.ug'
 table_name = 'sip_trunk_monitor_records'
 
+create_table = """CREATE TABLE IF NOT EXISTS `{}` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `date_created` datetime NOT NULL,
+  `status` varchar(100) NOT NULL,
+  `host` varchar(255) NOT NULL,
+  `downtime` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1""".format(table_name)
+
+cursor.execute(create_table)
+connection.commit()
+
 # Query used to select the last trunk status entry from the database
 sql = "SELECT * FROM `{}` ORDER BY `id` DESC LIMIT 1".format(table_name)
 cursor.execute(sql)
@@ -108,7 +120,7 @@ def send_alert_server_offline_email():
 
 if result is None:
     if sip_trunk_is_online():
-        log_server_online()
+        log_server_online(0)
     else:
         log_server_offline()
 
@@ -135,4 +147,5 @@ else:
         log_server_offline()
         send_alert_server_offline_email()
 
+connection.close()
 exit(0)
