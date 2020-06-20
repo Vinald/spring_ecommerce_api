@@ -8,6 +8,10 @@
     <div class="row mt-4">
       <div class="col-md-3">
         <div class="usage-monitor mb-3">
+          <div>Server Up Time</div>
+          <div class="text-primary">{{ serverUpTime }}</div>
+        </div>
+        <div class="usage-monitor mb-3">
           <div>
             SIP Trunk Channel Usage
             <span class="badge badge-secondary">{{ activeCalls }}/{{ maxSIPChannels }}</span>
@@ -60,6 +64,30 @@
         </div>
       </div>
     </div>
+    <div class="row mt-4">
+      <div class="col-md-3">
+        <div class="custom-card">
+          <h5 class="text-center">Asterisk</h5>
+          <hr />
+          <div>Status:
+            <span v-if="asteriskUpTime !== 'n/a'" class="text-success float-right">Active (Online)</span>
+            <span v-else class="text-danger float-right">Offline</span>
+          </div>
+          <div>Up time: <span class="float-right">{{ asteriskUpTime }}</span></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="custom-card">
+          <h5 class="text-center">IVR API</h5>
+          <hr />
+          <div>Status:
+            <span v-if="ivrApiUpTime !== 'n/a'" class="text-success float-right">Active (Online)</span>
+            <span v-else class="text-danger float-right">Offline</span>
+          </div>
+          <div>Up time: <span class="float-right">{{ ivrApiUpTime }}</span></div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -77,6 +105,9 @@ export default {
       queuedCalls: 0,
       maxSIPChannels: 0,
       processedCalls: 0,
+      serverUpTime: 'n/a',
+      asteriskUpTime: 'n/a',
+      ivrApiUpTime: 'n/a',
     };
   },
   mounted() {
@@ -94,6 +125,9 @@ export default {
         this.queuedCalls = response.data.queued_calls;
         this.maxSIPChannels = response.data.max_sip_channels;
         this.processedCalls = response.data.processed_calls;
+        this.serverUpTime = response.data.server_up_time;
+        this.asteriskUpTime = response.data.asterisk_up_time;
+        this.ivrApiUpTime = response.data.ivr_api_up_time;
       });
     },
     variant(value) {

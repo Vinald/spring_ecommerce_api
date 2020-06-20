@@ -14,3 +14,8 @@ $font-family-base: -apple-system, BlinkMacSystemFont, Ubuntu, "Open Sans", Robot
   -moz-appearance: none;
   appearance: none;
 }
+
+.custom-card {
+  border: 2px solid $body-color;
+  padding: 1rem;
+}

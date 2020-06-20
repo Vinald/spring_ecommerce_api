@@ -9,7 +9,6 @@ from src.manager.QueueManager import QueueManager
 
 app = Flask(__name__)
 
-# enable CORS
 CORS(app, resources={r'/*': {'origins': '*'}})
 
 logger = core.logger
@@ -102,7 +101,7 @@ def process_queue():
 
 @app.route('/api/dashboard-stats', methods=['GET'])
 def dashboard_stats():
-    dashboard = Dashboard(asterisk_ari, queue)
+    dashboard = Dashboard(asterisk_ari, queue, logger)
     return jsonify(dashboard.get_stats())
 
 
