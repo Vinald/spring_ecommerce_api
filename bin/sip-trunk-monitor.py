@@ -2,13 +2,12 @@
 
 import datetime
 import math
-import smtplib
 import subprocess
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 import sys
+
 sys.path.append('..')
 from core import config, logger, database
+from src.Email import Email
 
 connection = database.get_conn()
 cursor = database.get_cursor()
@@ -46,40 +45,21 @@ def sip_trunk_is_online():
 
 
 def send_mail(msg, subject):
-    config.set_section('email')
-    mail_port = config.get('port')
-    mail_host = config.get('host')
-    mail_user = config.get('username')
-    mail_pass = config.get('password')
-
     config.set_section('daily_reports_email')
-    mail_send_to = config.get('to_recipients').split(',')
-    mail_send_cc = config.get('cc_recipients').split(',')
-    recipients = mail_send_to + mail_send_cc
-
-    message = MIMEMultipart("alternative")
-    message["Cc"] = ','.join(mail_send_cc)
-    message["To"] = ','.join(mail_send_to)
-    message["From"] = mail_user
-    message["Subject"] = subject
-
-    body = MIMEText(msg, "plain")
-    server = smtplib.SMTP(mail_host, mail_port)
-    message.attach(body)
-    mail_sent = 0
+    try:
+        mail_send_to = config.get('to_recipients').split(',')
+    except Exception as e:
+        mail_send_to = None
+        logger.log_error("SIP Trunk monitor email To: {}".format(str(e)))
 
     try:
-        server.ehlo()
-        server.starttls()
-        server.login(mail_user, mail_pass)
-        server.sendmail(mail_user, recipients, message.as_string())
-        mail_sent = 1
+        mail_send_cc = config.get('cc_recipients').split(',')
     except Exception as e:
-        logger.log_error("SIP Trunk Monitor: {}".format(str(e)))
-        mail_sent = 0
-    finally:
-        server.quit()
-        return mail_sent
+        mail_send_cc = None
+        logger.log_error("SIP Trunk monitor email Cc: {}".format(str(e)))
+
+    email = Email(mail_send_to, subject, msg, mail_send_cc)
+    email.send_email()
 
 
 def log_server_online(downtime):
@@ -109,12 +89,24 @@ def send_alert_server_online_email(downtime):
         minutes = downtime % 60
         formatted_downtime = "{} hour(s) and {} minute(s).".format(hours, math.ceil(minutes))
 
-    msg = "{} is back online. There was a downtime of {}"
+    msg = """Hello,
+
+SIP Trunk ({}) is back online. There was a downtime of {}.
+
+Regards,
+Academy IS Team
+"""
     return send_mail(msg.format(host, formatted_downtime), 'SIP Trunk Status')
 
 
 def send_alert_server_offline_email():
-    msg = "{} has gone offline. Please check SIP registration."
+    msg = """Hello,
+
+SIP Trunk ({}) has gone offline. Please check SIP registration.
+
+Regards,
+Academy IS Team
+"""
     return send_mail(msg.format(host), 'Critical SIP Trunk Status')
 
 
