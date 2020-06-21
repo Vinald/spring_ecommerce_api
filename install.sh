@@ -55,7 +55,7 @@ sip_trunk_monitor_cron_file="/etc/cron.d/sip-trunk-monitor"
 sip_trunk_monitor_job="echo \$(date '+%F %T'): sip-trunk-monitor.py cron job has ran successfully >> /root/ivr/logs/cron_jobs.log"
 
 # Install cron-tab for monitoring the sip trunk to run every after 1 minute
-echo "*/1 * * * * root cd /root/ivr/bin && python3 sip-trunk-monitor.py && ${sip_trunk_monitor_job}" > $sip_trunk_monitor_cron_file
+echo "* * * * * root cd /root/ivr/bin && python3 sip-trunk-monitor.py && ${sip_trunk_monitor_job}" > $sip_trunk_monitor_cron_file
 chown root:root $sip_trunk_monitor_cron_file
 chmod 600 $sip_trunk_monitor_cron_file
 
