@@ -85,7 +85,6 @@ def generate_csv(file: str, header_names: list, call_cost: int, report_path: str
         report_path = str(report_path + "/")
     new_formatted_csv = report_path + report_name.format(host_name, latest_date_value)
     csv_file.to_csv(new_formatted_csv, index=False)
-    os.system("")
     email = Email(to_recipients, email_subject, email_body, attachment_paths=[new_formatted_csv])
     email.send_email()
 
