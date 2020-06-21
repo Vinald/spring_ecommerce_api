@@ -2,12 +2,20 @@
 
 import datetime
 import math
+import os
+import pathlib
 import subprocess
 import sys
 
 sys.path.append('..')
 from core import config, logger, database
 from src.Email import Email
+
+base_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
+logs_dir = os.path.join(base_dir, 'logs')
+
+if not os.path.exists(logs_dir):
+    os.makedirs(logs_dir)
 
 connection = database.get_conn()
 cursor = database.get_cursor()
@@ -138,6 +146,10 @@ else:
     if last_status == 'online' and time_gap >= 5:
         log_server_offline()
         send_alert_server_offline_email()
+
+date_now = datetime.datetime.now().strftime('%b-%d-%Y %X')
+update_cron_log = "echo {}: sip-trunk-monitor.py has ran successfully >> {}"
+os.system(update_cron_log.format(date_now, os.path.join(logs_dir, 'cron_jobs.log')))
 
 connection.close()
 exit(0)
