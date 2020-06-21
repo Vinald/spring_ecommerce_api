@@ -33,11 +33,11 @@ echo "59 23 * * * root cd /root/ivr && ./log-rotation.sh && ${log_rotate_job}" >
 chown root:root $log_rotation_cron_file
 chmod 600 $log_rotation_cron_file
 
-# Define the daily_reports.py cron file path
+# Define the daily-reports.py cron file path
 daily_reports_cron_file="/etc/cron.d/ivr-daily-reports"
 
 # Install cron-tab for daily_reports to run every night at 00:00
-echo "0 0 * * * root python3 /root/ivr/daily_reports.py" > $daily_reports_cron_file
+echo "0 0 * * * root cd /root/ivr/bin && python3 daily-reports.py" > $daily_reports_cron_file
 chown root:root $daily_reports_cron_file
 chmod 600 $daily_reports_cron_file
 
@@ -48,6 +48,16 @@ get_sip_responses_cron_file="/etc/cron.d/get-sip-responses"
 echo "59 23 * * * root cd /root/ivr/bin && python3 get-sip-responses.py" > $get_sip_responses_cron_file
 chown root:root $get_sip_responses_cron_file
 chmod 600 $get_sip_responses_cron_file
+
+# Define the sip trunk monitor cron file path
+sip_trunk_monitor_cron_file="/etc/cron.d/sip-trunk-monitor"
+
+sip_trunk_monitor_job="echo \$(date '+%F %T'): sip-trunk-monitor.py cron job has ran successfully >> /root/ivr/logs/cron_jobs.log"
+
+# Install cron-tab for monitoring the sip trunk to run every after 1 minute
+echo "*/1 * * * * root cd /root/ivr/bin && python3 sip-trunk-monitor.py && ${sip_trunk_monitor_job}" > $sip_trunk_monitor_cron_file
+chown root:root $sip_trunk_monitor_cron_file
+chmod 600 $sip_trunk_monitor_cron_file
 
 # Setup asterisk logging
 cp asterisk/logger.conf /etc/asterisk/logger.conf

@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 import os
 import ast
 import csv
@@ -12,8 +14,8 @@ from src.Logger import Logger
 
 
 asterisk_log_file = "/var/log/asterisk/ivr_verbose_log"
-general_sip_responses_csv = "/root/ivr/logs/sip_responses_logs/"
-custom_sip_responses_csv = "/root/ivr/logs/sip_responses_logs/custom/"
+general_sip_responses_csv = "/root/ivr/reports/Daily_SIP_Response_Reports/"
+custom_sip_responses_csv = "/root/ivr/reports/Daily_SIP_Response_Reports/custom/"
 output_dict = {}
 
 working_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -73,6 +75,9 @@ def format_asterisk_log(asterisk_log_path: str):
         exit(1)
 
     output_list = []
+    no_answer_dict = {}
+    statuses = ["busy", "congested", "circuit-busy"]
+
     file = open(asterisk_log_path, "r")
     file_content = file.readlines()
 
@@ -82,7 +87,6 @@ def format_asterisk_log(asterisk_log_path: str):
                 box = ast.literal_eval(file_content[i])
                 output_list.append(box)
 
-    statuses = ["busy", "congested"]
     for i in range(len(output_list)):
         if "Called" in output_list[i]["logmsg"]["message"]:
             id_number = output_list[i]["identifiers"]["lwp"]
@@ -96,7 +100,10 @@ def format_asterisk_log(asterisk_log_path: str):
         result = [ele for ele in statuses if(ele in output_list[i]["logmsg"]["message"])]
         if bool(result) is True:
             call_status = output_list[i]["logmsg"]["message"].rstrip("\n").split("is ")[1].upper()
-            sip_response = output_list[i-1]["logmsg"]["message"].split('"')[1]
+            if "SIP response" in output_list[i-1]["logmsg"]["message"]:
+                sip_response = output_list[i-1]["logmsg"]["message"].split('"')[1]
+            else:
+                sip_response = "No SIP Response from SIP Trunk"
             id_number = output_list[i]["identifiers"]["lwp"]
             if str(id_number) in output_dict.keys():
                 new_record = output_dict[str(id_number)] + ',"{}","{}"'.format(call_status, sip_response)
@@ -106,8 +113,22 @@ def format_asterisk_log(asterisk_log_path: str):
                 str(output_list[i]["identifiers"]["lwp"]) in output_dict.keys():
             id_number = str(output_list[i]["identifiers"]["lwp"])
             answered_status = output_list[i]["logmsg"]["message"].rstrip("\n").split(" ")[1].upper()
-            new_record = output_dict[id_number] + ',"{}"'.format(answered_status)
+            sip_response = "No SIP Response from SIP Trunk"
+            new_record = output_dict[id_number] + ',"{}","{}"'.format(answered_status, sip_response)
             output_dict[id_number] = new_record
+
+    for key in output_dict.keys():
+        cnt = 0
+        for i in range(len(output_list)):
+            if key == str(output_list[i]["identifiers"]["lwp"]) and str(output_list[i]["identifiers"]["callid"]) == "":
+                cnt += 1
+                no_answer_dict[key] = cnt
+
+    for key, value in no_answer_dict.items():
+        if value <= 2 and key in output_dict.keys() and "BUSY" not in output_dict[key]:
+            sip_response = "No SIP Response from SIP Trunk"
+            new_record = output_dict[key] + ',"{}","{}"'.format("NO ANSWER", sip_response)
+            output_dict[key] = new_record
 
 
 def gen_sip_responses_csv(path_to_new_csv: str):
@@ -161,7 +182,7 @@ def gen_sip_responses_by_date(custom_path_to_new_csv: str, custom_date: str):
 date_now = datetime.now().strftime('%b-%d-%Y %X')
 update_cron_log = "echo {}: get-sip-responses.py has ran successfully >> /root/ivr/logs/cron_jobs.log".format(date_now)
 
-# Generate all SIP Response till current date
+# Generate custom SIP Response per date
 if len(sys.argv) - 1 == 1:
     arg1 = sys.argv[1]
     if is_date(arg1) is False:
@@ -174,7 +195,7 @@ if len(sys.argv) - 1 == 1:
     gen_sip_responses_by_date(custom_sip_responses_csv, arg1)
     os.system(update_cron_log)
 
-# Generate custom SIP Response per date
+# Generate all SIP Response till current date
 elif len(sys.argv) - 1 == 0:
     format_asterisk_log(asterisk_log_file)
     os.system("mkdir -p {}".format(general_sip_responses_csv))
