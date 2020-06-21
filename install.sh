@@ -33,11 +33,11 @@ echo "59 23 * * * root cd /root/ivr && ./log-rotation.sh && ${log_rotate_job}" >
 chown root:root $log_rotation_cron_file
 chmod 600 $log_rotation_cron_file
 
-# Define the daily_reports.py cron file path
+# Define the daily-reports.py cron file path
 daily_reports_cron_file="/etc/cron.d/ivr-daily-reports"
 
 # Install cron-tab for daily_reports to run every night at 00:00
-echo "0 0 * * * root python3 /root/ivr/daily_reports.py" > $daily_reports_cron_file
+echo "0 0 * * * root cd /root/ivr/bin && python3 daily-reports.py" > $daily_reports_cron_file
 chown root:root $daily_reports_cron_file
 chmod 600 $daily_reports_cron_file
 
