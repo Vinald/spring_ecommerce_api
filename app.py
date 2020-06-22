@@ -4,6 +4,8 @@ from flask import Flask, request
 import core
 from src.AsteriskARI import AsteriskARI
 from src.manager.QueueManager import QueueManager
+from datetime import datetime
+from src.Hash import Hash
 
 app = Flask(__name__)
 
@@ -50,6 +52,9 @@ def index():
     phone = request.args.get('phone')
     token = str(request.args.get('token'))
     call_id = request.args.get('callId')
+    timestamp = datetime.now().timestamp()
+    timestamp = round(timestamp)
+    unique_id = Hash.hash(str(timestamp))
 
     logger.set_phone(phone)
     logger.log_info("Call request from external app: {}".format(request.url))
@@ -63,11 +68,11 @@ def index():
         return {'status': 'FAILED TO ROUTE CALL'}
 
     if not asterisk_ari.has_free_channels():
-        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow}
+        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow, 'unique_id': unique_id}
         queue.queue_call(data)
         return {'status': 'CALL_QUEUED'}
 
-    core.initiate_call(phone, token, call_id, flow)
+    core.initiate_call(phone, token, call_id, flow, unique_id)
     core.client.add_event_listener(event_listener)
     return {'status': 'CALL_INITIATED'}
 
