@@ -108,6 +108,7 @@ export default {
       serverUpTime: 'n/a',
       asteriskUpTime: 'n/a',
       ivrApiUpTime: 'n/a',
+      statsURL: process.env.VUE_APP_ROOT_API,
     };
   },
   mounted() {
@@ -117,7 +118,7 @@ export default {
   },
   methods: {
     stats() {
-      axios.get('http://127.0.0.1:5000/api/dashboard-stats').then((response) => {
+      axios.get(`${this.statsURL}/dashboard-stats`).then((response) => {
         this.cpuUsage = response.data.cpu;
         this.diskUsage = response.data.disk;
         this.memoryUsage = response.data.memory;
