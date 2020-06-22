@@ -42,7 +42,7 @@ result = cursor.fetchone()
 
 
 def sip_trunk_is_online():
-    cmd = "asterisk -rx 'sip show registry'"
+    cmd = "sudo asterisk -rx 'sip show registry'"
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     output = process.stdout
     for line in output:
