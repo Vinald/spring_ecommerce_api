@@ -45,6 +45,8 @@ class IVR:
         results = self.app_manager.get_data(token)
         self.logger.set_app(results['name'])
         self.logger.set_token(results['token'])
+        data = self.data.split('&')
+        self.logger.set_unique_id(data[11])
         self.agi.set_variable("CDR(call_direction)", call_direction)
         self.logger.set_phone(self.phone)
         self.logger.log_info('Starting call')
