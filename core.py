@@ -50,7 +50,7 @@ def initiate_call(phone, token, call_id, flow, unique_id):
 
     application_name = app_manager.get_data(token)['name']
 
-    data = 'data={}&{}&{}&{},' \
+    data = 'data={}&{}&{}&{}&{},' \
            'CDR(dialed_number)={},' \
            'CDR(date)={},' \
            'CDR(call_id)={},' \
@@ -72,6 +72,7 @@ def initiate_call(phone, token, call_id, flow, unique_id):
             phone,
             flow,
             token,
+            unique_id,
             phone,
             date_today,
             call_id,
