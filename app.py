@@ -52,9 +52,9 @@ def index():
     phone = request.args.get('phone')
     token = str(request.args.get('token'))
     call_id = request.args.get('callId')
-    timestamp = datetime.now().timestamp()
-    timestamp = round(timestamp)
+    timestamp = round(datetime.now().timestamp())
     unique_id = Hash.hash(str(timestamp))
+    app_web_listener.set_unique_id(unique_id)
 
     logger.set_phone(phone)
     logger.log_info("Call request from external app: {}".format(request.url))
@@ -92,7 +92,8 @@ def process_queue():
             call_data['phone'],
             call_data['token'],
             call_data['call_id'],
-            call_data['flow']
+            call_data['flow'],
+            call_data['unique_id']
         )
         core.client.add_event_listener(queue_event_listener)
         return {'status': 'CALL_INITIATED', 'data': call_data}

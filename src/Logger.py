@@ -5,6 +5,7 @@ class Logger:
     def __init__(self, log_dir, phone=None):
         self.__app = None
         self.__token = None
+        self.__unique_id = None
         self.__phone = phone
         self.__log_dir = log_dir
         self.__check_if_log_file_is_writable()
@@ -41,12 +42,16 @@ class Logger:
     def set_token(self, token: str):
         self.__token = token
 
+    def set_unique_id(self, unique_id: str):
+        self.__unique_id = unique_id
+
     def __custom_logger(self, level: int, message: str):
         try:
-            msg = "[Application: {}, Token: {}, Number: {}] {}".format(
+            msg = "[Application: {}, Token: {}, Number: {}, Unique ID: {}] {}".format(
                 self.__app,
                 self.__token,
                 self.__phone,
+                self.__unique_id,
                 message
             )
             self.logger.log(level, msg)

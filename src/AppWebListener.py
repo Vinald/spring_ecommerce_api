@@ -11,6 +11,7 @@ class AppWebListener:
     BUSY = 'BUSY'
     FAILED = 'FAILED'
     COMPLETED = 'COMPLETED'
+    call_link_uganda = "Call Link Uganda"
 
     def __init__(self, logger: Logger, cache: Redis):
         self.cache = cache
@@ -62,7 +63,7 @@ class AppWebListener:
             external_type = optional_params['externalType']
 
             params = '&externalId={}&externalType={}'.format(external_id, external_type)
-            return str(status_link + params)
+            return status_link + params
 
         return status_link
 
@@ -88,6 +89,7 @@ class AppWebListener:
         if call_details is not None:
             data = json.loads(call_details)
             phone = data['phone']
+            redis_unique_id = data['unique_id']
             initiated = True if data['initiated'] == 'yes' else False
 
             self.logger.set_phone(phone)
@@ -95,7 +97,7 @@ class AppWebListener:
             if not initiated:
                 data = '{"phone": "%s", "initiated": "yes"}' % phone
                 self.cache.set(call_id, data, 1800)
-                self.__process_call(state, call_id, unique_id, phone)
+                self.__process_call(state, call_id, unique_id, phone, redis_unique_id)
 
     def set_token(self, token):
         self.logger.set_token(token)
@@ -103,11 +105,15 @@ class AppWebListener:
     def set_app(self, app):
         self.logger.set_app(app)
 
-    def __process_call(self, state, call_id, unique_id, phone):
-        if state == self.COMPLETED and unique_id != '<unknown>':
-            key = Hash.hash(unique_id)
+    def set_unique_id(self, unique_id):
+        self.logger.set_unique_id(unique_id)
+
+    def __process_call(self, state, call_id, asterisk_unique_id, phone, redis_unique_id):
+        if state == self.COMPLETED and asterisk_unique_id != '<unknown>':
+            key = Hash.hash(asterisk_unique_id)
             reason = self.channel_reason(self.COMPLETED)
-            hangup_link = self.gen_status_link(call_id, self.COMPLETED, reason)
+            hangup_link = self.gen_status_link(call_id, self.COMPLETED, reason,
+                                               externalID=str(redis_unique_id), externalType=self.call_link_uganda)
             data = '{"link": "%s", "phone": "%s"}' % (hangup_link, phone)
             self.cache.set(key, data, 1800)
             self.in_progress(call_id)
