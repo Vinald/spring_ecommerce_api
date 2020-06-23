@@ -47,7 +47,7 @@ class Logger:
 
     def __custom_logger(self, level: int, message: str):
         try:
-            msg = "[Application: {}, Token: {}, Number: {}, Unique ID: {}] {}".format(
+            msg = "[Application: {}, Token: {}, Number: {}, External ID: {}] {}".format(
                 self.__app,
                 self.__token,
                 self.__phone,

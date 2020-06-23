@@ -89,7 +89,7 @@ class AppWebListener:
         if call_details is not None:
             data = json.loads(call_details)
             phone = data['phone']
-            redis_unique_id = data['unique_id']
+            redis_unique_id = data['external_id']
             initiated = True if data['initiated'] == 'yes' else False
 
             self.logger.set_phone(phone)

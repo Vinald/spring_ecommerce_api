@@ -52,7 +52,7 @@ def index():
     phone = request.args.get('phone')
     token = str(request.args.get('token'))
     call_id = request.args.get('callId')
-    timestamp = round(datetime.now().timestamp())
+    timestamp = datetime.now().timestamp()
     unique_id = Hash.hash(str(timestamp))
     app_web_listener.set_unique_id(unique_id)
 
@@ -68,7 +68,7 @@ def index():
         return {'status': 'FAILED TO ROUTE CALL'}
 
     if not asterisk_ari.has_free_channels():
-        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow, 'unique_id': unique_id}
+        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow, 'external_id': unique_id}
         queue.queue_call(data)
         return {'status': 'CALL_QUEUED'}
 
@@ -93,7 +93,7 @@ def process_queue():
             call_data['token'],
             call_data['call_id'],
             call_data['flow'],
-            call_data['unique_id']
+            call_data['external_id']
         )
         core.client.add_event_listener(queue_event_listener)
         return {'status': 'CALL_INITIATED', 'data': call_data}
