@@ -39,7 +39,7 @@ client.login(username=ami_user, secret=ami_pass)
 adapter = AMIClientAdapter(client)
 
 
-def initiate_call(phone, token, call_id, flow, unique_id):
+def initiate_call(phone, token, call_id, flow, external_id):
     channel = 'SIP/' + phone
 
     if ami_trunk is not None and len(ami_trunk) > 0:
@@ -59,7 +59,7 @@ def initiate_call(phone, token, call_id, flow, unique_id):
            'CDR(call_direction)=OUTGOING,' \
            'CDR(token)={},' \
            'CDR(application_name)={},' \
-           'CDR(unique_id)={}'
+           'CDR(external_id)={}'
 
     adapter.Originate(
         Channel=channel,
@@ -72,7 +72,7 @@ def initiate_call(phone, token, call_id, flow, unique_id):
             phone,
             flow,
             token,
-            unique_id,
+            external_id,
             phone,
             date_today,
             call_id,
@@ -80,12 +80,12 @@ def initiate_call(phone, token, call_id, flow, unique_id):
             channel,
             token,
             application_name,
-            unique_id,
+            external_id,
         ),
         ActionID=call_id,
         Timeout=45000,
         Async=True
     )
 
-    data = json.dumps({'phone': phone, 'initiated': 'no', 'unique_id': unique_id})
+    data = json.dumps({'phone': phone, 'initiated': 'no', 'external_id': external_id})
     cache.set(call_id, data, 3600)
