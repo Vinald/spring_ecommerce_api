@@ -105,8 +105,8 @@ class AppWebListener:
     def set_app(self, app):
         self.logger.set_app(app)
 
-    def set_unique_id(self, unique_id):
-        self.logger.set_unique_id(unique_id)
+    def set_external_id(self, external_id):
+        self.logger.set_external_id(external_id)
 
     def __process_call(self, state, call_id, asterisk_unique_id, phone, external_id):
         if state == self.COMPLETED and asterisk_unique_id != '<unknown>':
