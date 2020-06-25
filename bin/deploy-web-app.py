@@ -47,7 +47,7 @@ config = """server {{
         }}
 }}"""
 
-file = open('/etc/nginx/sites-available/webapp', 'w')
+file = open('/etc/nginx/sites-available/ivr-web-app', 'w')
 file.write(config.format(web_root_dir))
 file.close()
 
