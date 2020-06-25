@@ -1,5 +1,6 @@
 import os
 import pathlib
+import sys
 
 working_dir = os.path.dirname(os.path.realpath(__file__))
 project_dir = pathlib.Path(working_dir).parent
@@ -65,3 +66,5 @@ os.system("chmod -R 775 {}".format(web_root_dir))
 os.system("ln -s /etc/nginx/sites-available/ivr-web-app /etc/nginx/sites-enabled/")
 os.system("nginx -t")
 os.system("systemctl reload nginx")
+
+sys.exit()
