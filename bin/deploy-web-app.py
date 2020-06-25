@@ -9,7 +9,7 @@ env_file = os.path.join(web_dir, '.env')
 env_local_file = os.path.join(web_dir, '.env.development')
 
 # nginx web root directory for the web app
-web_root_dir = os.path.join(web_dir, 'dist')
+web_build_dir = os.path.join(web_dir, 'dist')
 
 if not os.path.exists(env_file):
     os.system("cp {} {}".format(env_local_file, env_file))
@@ -30,28 +30,36 @@ os.system("npm install")
 os.system("npm run build")
 
 config = """server {{
-        listen 8000 default_server;
-        listen [::]:8000 default_server;
+    listen 8000;
 
-        root {};
+    root {};
 
-        # Add index.php to the list if you are using PHP
-        index index.html index.htm index.nginx-debian.html;
-
-        server_name _;
-
-        location / {{
-                # First attempt to serve request as file, then
-                # as directory, then fall back to displaying a 404.
-                try_files $uri $uri/ =404;
-        }}
+    index index.html;
+    
+    server_name _;
+    
+    location / {{
+        # First attempt to serve request as file, then
+        # as directory, then fall back to displaying a 404.
+        try_files $uri $uri/ /index.html;
+    }}
+    
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {{
+        root /usr/share/nginx/html;
+    }}
 }}"""
+
+web_root_dir = "/var/www/html/ivr-web-app"
+
+os.system("rm -rf {}".format(web_root_dir))
+os.system("mv {} {}".format(web_build_dir, web_root_dir))
 
 file = open('/etc/nginx/sites-available/ivr-web-app', 'w')
 file.write(config.format(web_root_dir))
 file.close()
 
-os.system("chown -R asterisk:www-data /root")
+os.system("chown -R www-data:www-data {}".format(web_root_dir))
 os.system("chmod -R 775 {}".format(web_root_dir))
 
 os.system("ln -s /etc/nginx/sites-available/ivr-web-app /etc/nginx/sites-enabled/")
