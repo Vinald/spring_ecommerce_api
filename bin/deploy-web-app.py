@@ -36,7 +36,7 @@ config = """server {{
         root {};
 
         # Add index.php to the list if you are using PHP
-        index.html;
+        index index.html index.htm index.nginx-debian.html;
 
         server_name _;
 
