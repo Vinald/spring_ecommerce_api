@@ -19,6 +19,9 @@ chmod +x "/root/ivr/call-request-queue.py"
 # Install asterisk ARI config files.
 cp /root/ivr/asterisk/ari.conf /root/ivr/asterisk/http.conf /etc/asterisk
 
+# Install asterisk cdr_custom files
+cp /root/ivr/asterisk/cdr_custom.conf /etc/asterisk
+
 call_request_queue_cron_file="/etc/cron.d/call-request-queue"
 echo "*/5 * * * * root /root/ivr/call-request-queue.py" > $call_request_queue_cron_file
 chown root:root $call_request_queue_cron_file
