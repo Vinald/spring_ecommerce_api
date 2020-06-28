@@ -40,7 +40,8 @@ deploy-staging:
     - sudo chown -R gitlab-runner /root
     - cd /root/ivr
     - sudo /bin/bash install.sh
-    - cd /root/ivr && sudo /usr/bin/python3 bin/deploy-web-app.py
+    - cd /root/ivr/bin
+    - sudo /usr/bin/python3 deploy-web-app.py
     - sudo chown -R asterisk:asterisk /root
   tags:
     - ivr-staging
@@ -53,7 +54,8 @@ deploy-production:
     - sudo chown -R gitlab-runner /root
     - cd /root/ivr
     - sudo /bin/bash install.sh
-    - cd /root/ivr && sudo /usr/bin/python3 bin/deploy-web-app.py
+    - cd /root/ivr/bin
+    - sudo /usr/bin/python3 deploy-web-app.py
     - sudo chown -R asterisk:asterisk /root
   tags:
     - ivr-production
