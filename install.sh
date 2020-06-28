@@ -76,10 +76,11 @@ pip3 install -r requirements.txt
 
 # Check whether Google TTS has been installed
 google_tts_file=/var/lib/asterisk/agi-bin/googletts.agi
-if test -f "$google_tts_file" ; then
+
+if test -f "$google_tts_file"; then
     echo "GoogleTTS has already been installed on this host."
 else
-    echo "$google_tts_file does not exist. Run 'python3 /bin/install-googletts.py' to setup GoogleTTS."
+    echo "$google_tts_file does not exist. Run 'python3 bin/install-googletts.py' to setup GoogleTTS."
 fi
 
 # Restart asterisk
