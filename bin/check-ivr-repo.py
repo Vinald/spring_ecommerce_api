@@ -126,7 +126,7 @@ def check_googletts():
             check_if_package_installed("mpg123") and os.path.exists('/var/lib/asterisk/agi-bin/googletts.agi'):
         print("Asterisk Google TTS is installed")
     else:
-        print('Asterisk Google TTS may not be installed. Run "install_googletts.py" to fix this')
+        print('Asterisk Google TTS may not be installed. Run "install-googletts.py" to fix this')
 
 
 def check_config_ini():
