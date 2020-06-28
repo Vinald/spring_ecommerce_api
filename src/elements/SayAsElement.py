@@ -8,7 +8,7 @@ class SayAsElement:
         self.__logger = logger
 
     def parse(self, say_as):
-        # To parse format: <say-as type="address"> 1310 Villa St </say-as>
+        # To parse format: <say-as type="address"> 1310 Villa Sti </say-as>
         try:
             tts_type = str(say_as["say-as"])
             allowed_tts_types = ["address", "currency", "date:mdy", "date:y", "number:digit", "telephone", "time:h",
