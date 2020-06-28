@@ -43,8 +43,7 @@ class IVR:
             token = str(self.agi.get_variable('token'))
             voice_url = self.app_manager.get_voice_url(token)
             self.phone = str(self.agi.env['agi_callerid'])
-            external_id = str(self.agi.env['agi_uniqueid'])
-            external_id = Hash.hash(external_id)
+            external_id = Hash.hash(str(self.agi.env['agi_uniqueid']))
             self.logger.set_external_id(external_id)
             self.link = "{}?phone={}".format(voice_url, self.phone)
 
