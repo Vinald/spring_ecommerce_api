@@ -52,8 +52,7 @@ def index():
     phone = request.args.get('phone')
     token = str(request.args.get('token'))
     call_id = request.args.get('callId')
-    timestamp = datetime.now().timestamp()
-    external_id = Hash.hash(str(timestamp))
+    external_id = Hash.hash(str(datetime.now().timestamp()))
     app_web_listener.set_external_id(external_id)
 
     logger.set_phone(phone)

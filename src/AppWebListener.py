@@ -112,8 +112,13 @@ class AppWebListener:
         if state == self.COMPLETED and asterisk_unique_id != '<unknown>':
             key = Hash.hash(asterisk_unique_id)
             reason = self.channel_reason(self.COMPLETED)
-            hangup_link = self.gen_status_link(call_id, self.COMPLETED, reason,
-                                               externalID=str(external_id), externalType=self.call_link_uganda)
+            hangup_link = self.gen_status_link(
+                call_id,
+                self.COMPLETED,
+                reason,
+                externalID=str(external_id),
+                externalType=self.call_link_uganda
+            )
             data = '{"link": "%s", "phone": "%s"}' % (hangup_link, phone)
             self.cache.set(key, data, 1800)
             self.in_progress(call_id)
