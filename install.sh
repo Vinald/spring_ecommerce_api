@@ -69,7 +69,7 @@ asterisk -rx "logger reload"
 apt-get update > /dev/null
 
 # Install python 3, pip 3, and redis server for in-memory (RAM) caching
-apt-get install python3 python3-pip -y > /dev/null
+apt-get install python3 python3-dev python3-pip -y > /dev/null
 
 # Install all dependencies listed in the requirements file
 pip3 install -r requirements.txt

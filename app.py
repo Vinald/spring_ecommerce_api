@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import core
 from src.AsteriskARI import AsteriskARI
+from src.Dashboard import Dashboard
 from src.manager.QueueManager import QueueManager
 from datetime import datetime
 from src.Hash import Hash
 
 app = Flask(__name__)
+
+CORS(app, resources={r'/*': {'origins': '*'}})
 
 logger = core.logger
 config = core.config
@@ -98,6 +102,12 @@ def process_queue():
         return {'status': 'CALL_INITIATED', 'data': call_data}
 
     return {'has_free_channels': has_free_channels, 'empty_queue': empty_queue}
+
+
+@app.route('/api/dashboard-stats', methods=['GET'])
+def dashboard_stats():
+    dashboard = Dashboard(asterisk_ari, queue, logger)
+    return jsonify(dashboard.get_stats())
 
 
 if __name__ == '__main__':
