@@ -13,6 +13,9 @@ class QueueManager:
         self.redis.expire(self.QUEUE_NAME, 3600)
         self.redis.rpush(self.QUEUE_NAME, json.dumps(call_details))
 
+    def get_number_of_queued_calls(self):
+        return int(self.redis.llen(self.QUEUE_NAME))
+
     def get_next_call_in_queue(self):
         if self.is_empty():
             return None

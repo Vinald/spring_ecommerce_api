@@ -14,4 +14,3 @@ logs/
 reports/
 bin/asterisk-googletts
 app.log.*
-web/.env

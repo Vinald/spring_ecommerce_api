@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import core
 from src.AsteriskARI import AsteriskARI
+from src.Dashboard import Dashboard
 from src.manager.QueueManager import QueueManager
+from datetime import datetime
+from src.Hash import Hash
 
 app = Flask(__name__)
+
+CORS(app, resources={r'/*': {'origins': '*'}})
 
 logger = core.logger
 config = core.config
@@ -50,6 +56,8 @@ def index():
     phone = request.args.get('phone')
     token = str(request.args.get('token'))
     call_id = request.args.get('callId')
+    external_id = Hash.hash(str(datetime.now().timestamp()))
+    app_web_listener.set_external_id(external_id)
 
     logger.set_phone(phone)
     logger.log_info("Call request from external app: {}".format(request.url))
@@ -63,11 +71,11 @@ def index():
         return {'status': 'FAILED TO ROUTE CALL'}
 
     if not asterisk_ari.has_free_channels():
-        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow}
+        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow, 'external_id': external_id}
         queue.queue_call(data)
         return {'status': 'CALL_QUEUED'}
 
-    core.initiate_call(phone, token, call_id, flow)
+    core.initiate_call(phone, token, call_id, flow, external_id)
     core.client.add_event_listener(event_listener)
     return {'status': 'CALL_INITIATED'}
 
@@ -87,12 +95,19 @@ def process_queue():
             call_data['phone'],
             call_data['token'],
             call_data['call_id'],
-            call_data['flow']
+            call_data['flow'],
+            call_data['external_id']
         )
         core.client.add_event_listener(queue_event_listener)
         return {'status': 'CALL_INITIATED', 'data': call_data}
 
     return {'has_free_channels': has_free_channels, 'empty_queue': empty_queue}
+
+
+@app.route('/api/dashboard-stats', methods=['GET'])
+def dashboard_stats():
+    dashboard = Dashboard(asterisk_ari, queue, logger)
+    return jsonify(dashboard.get_stats())
 
 
 if __name__ == '__main__':
