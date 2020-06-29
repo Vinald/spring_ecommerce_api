@@ -1,6 +1,6 @@
 from asterisk.agi import AGI
 from src.Logger import Logger
-from datetime import datetime
+from src.elements.SayAsElement import SayAsElement
 
 
 class ProsodyElement:
@@ -10,12 +10,5 @@ class ProsodyElement:
 
     def parse(self, say_as):
         # To parse format: <prosody rate="-20%"><say-as interpret-as="vxml:date">20200625</say-as></prosody>
-        try:
-            interpret = str(say_as['interpret-as'])
-            if interpret == 'vxml:date':
-                date = say_as.get_text()
-                timestamp = datetime.strptime(date, '%Y%m%d').strftime('%A %d %B %Y')
-                self.__agi.appexec('AGI', "googletts.agi,'{}',en,,0.8".format(timestamp))
-        except Exception:
-            raise Exception
-            pass
+        say_as_parser = SayAsElement(self.__agi, self.__logger)
+        say_as_parser.parse(str(say_as))
