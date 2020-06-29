@@ -26,5 +26,4 @@ class SayAsElement:
                     timestamp = datetime.strptime(date, '%Y%m%d').strftime('%A %d %B %Y')
                     self.__agi.appexec('AGI', "googletts.agi,'{}',en,,0.8".format(timestamp))
         except Exception as e:
-            self.__logger.log_warning("VXML parse error: {}".format(str(e)))
-            pass
+            self.__logger.log_warning("SayAs Element VXML parse error: {}".format(str(e)))

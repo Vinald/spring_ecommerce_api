@@ -16,7 +16,7 @@ class Block:
         try:
             self.__parse_block(block)
         except Exception as e:
-            self.__logger.log_warning("VXML parse error: {}".format(str(e)))
+            self.__logger.log_warning("Block Element VXML parse error: {}".format(str(e)))
 
     def __parse_block(self, block: Tag):
         prompts = block.find_all('prompt', recursive=False)
@@ -36,7 +36,7 @@ class Block:
                         self.__audio.stream(audio_file, self.__agi, self.__logger)
 
                     if prosody_element is not None:
-                        prosody_parser.parse(prosody_element.find('say-as'))
+                        prosody_parser.parse(prosody_element)
 
                     if say_as_element is not None and not prosody_element:
                         say_as_parser.parse(say_as_element)

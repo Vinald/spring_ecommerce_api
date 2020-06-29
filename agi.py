@@ -35,4 +35,8 @@ app_manager = AppManager(database, logger)
 
 # Start the Interactive Voice Response
 ivr = IVR(agi, logger, app_manager, audio)
-ivr.run()
+
+try:
+    ivr.run()
+except Exception as e:
+    logger.log_warning("Error executing IVR.py: {}".format(str(e)))
