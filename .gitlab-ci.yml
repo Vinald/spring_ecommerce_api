@@ -5,8 +5,6 @@ stages:
   - build-production
   - deploy-staging
   - deploy-production
-  - clean-up-staging
-  - clean-up-production
 
 build-staging:
   stage: build-staging
@@ -15,7 +13,7 @@ build-staging:
     - cd /root/ivr
     - sudo git reset --hard
     - sudo git fetch -p --all
-    - sudo git checkout master
+    - sudo git checkout $CI_COMMIT_REF_NAME
     - sudo git pull
   tags:
     - ivr-staging
@@ -39,7 +37,11 @@ build-production:
 deploy-staging:
   stage: deploy-staging
   script:
+    - sudo chown -R gitlab-runner /root
+    - cd /root/ivr
     - sudo /bin/bash install.sh
+    - sudo /usr/bin/python3 bin/deploy-web-app.py
+    - sudo chown -R asterisk:asterisk /root
   tags:
     - ivr-staging
   only:
@@ -48,7 +50,11 @@ deploy-staging:
 deploy-production:
   stage: deploy-production
   script:
+    - sudo chown -R gitlab-runner /root
+    - cd /root/ivr
     - sudo /bin/bash install.sh
+    - sudo /usr/bin/python3 bin/deploy-web-app.py
+    - sudo chown -R asterisk:asterisk /root
   tags:
     - ivr-production
   only:
@@ -57,6 +63,8 @@ deploy-production:
 code-quality-staging:
   stage: code-quality-staging
   script:
+    - sudo chown -R gitlab-runner /root
+    - cd /root/ivr
     - sudo pip3 install -r requirements.txt
     - sudo flake8 --max-line-length=120 --statistics ./app.py ./agi.py ./src
   tags:
@@ -67,26 +75,10 @@ code-quality-staging:
 code-quality-production:
   stage: code-quality-production
   script:
+    - sudo chown -R gitlab-runner /root
+    - cd /root/ivr
     - sudo pip3 install -r requirements.txt
     - sudo flake8 --max-line-length=120 --statistics ./app.py ./agi.py ./src
-  tags:
-    - ivr-production
-  only:
-    - master
-
-clean-up-staging:
-  stage: clean-up-staging
-  script:
-    - sudo chown -R asterisk:asterisk /root
-  tags:
-    - ivr-staging
-  only:
-    - /^v.*$/i
-
-clean-up-production:
-  stage: clean-up-production
-  script:
-    - sudo chown -R asterisk:asterisk /root
   tags:
     - ivr-production
   only:

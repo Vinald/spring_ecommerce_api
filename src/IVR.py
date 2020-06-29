@@ -2,6 +2,7 @@ from asterisk.agi import AGI
 from src.AppManager import AppManager
 from src.Audio import Audio
 from src.Logger import Logger
+from src.Hash import Hash
 from src.VXMLParser import VXMLParser
 
 
@@ -30,6 +31,8 @@ class IVR:
             token = data[3]
             call_id = data[0]
             jump_to = data[2]
+            external_id = data[4]
+            self.logger.set_external_id(external_id)
             voice_url = self.app_manager.get_voice_url(token)
             self.phone = data[1]
             call_direction = 'OUTGOING'
@@ -40,6 +43,8 @@ class IVR:
             token = str(self.agi.get_variable('token'))
             voice_url = self.app_manager.get_voice_url(token)
             self.phone = str(self.agi.env['agi_callerid'])
+            external_id = Hash.hash(str(self.agi.env['agi_uniqueid']))
+            self.logger.set_external_id(external_id)
             self.link = "{}?phone={}".format(voice_url, self.phone)
 
         results = self.app_manager.get_data(token)
