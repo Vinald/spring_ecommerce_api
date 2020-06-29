@@ -69,10 +69,19 @@ asterisk -rx "logger reload"
 apt-get update > /dev/null
 
 # Install python 3, pip 3, and redis server for in-memory (RAM) caching
-apt-get install python3 python3-pip -y > /dev/null
+apt-get install python3 python3-dev python3-pip -y > /dev/null
 
 # Install all dependencies listed in the requirements file
 pip3 install -r requirements.txt
+
+# Check whether Google TTS has been installed
+google_tts_file=/var/lib/asterisk/agi-bin/googletts.agi
+
+if test -f "$google_tts_file"; then
+    echo "GoogleTTS has already been installed on this host."
+else
+    echo "$google_tts_file does not exist. Run 'python3 bin/install-googletts.py' to setup GoogleTTS."
+fi
 
 # Restart asterisk
 asterisk -rx 'core restart now'
