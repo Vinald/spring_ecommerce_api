@@ -39,6 +39,13 @@ client.login(username=ami_user, secret=ami_pass)
 adapter = AMIClientAdapter(client)
 
 
+def initialize_log():
+    logger.set_app()
+    logger.set_token()
+    logger.set_phone()
+    logger.set_external_id()
+
+
 def initiate_call(phone, token, call_id, flow, external_id):
     channel = 'SIP/' + phone
 
@@ -49,6 +56,11 @@ def initiate_call(phone, token, call_id, flow, external_id):
     sip_trunk_number = ami_sip_trunk_number
 
     application_name = app_manager.get_data(token)['name']
+
+    logger.set_app(app_manager)
+    logger.set_token(token)
+    logger.set_phone(phone)
+    logger.set_external_id(external_id)
 
     data = 'data={}&{}&{}&{}&{},' \
            'CDR(dialed_number)={},' \

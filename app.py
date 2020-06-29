@@ -54,12 +54,11 @@ def queue_event_listener(event, **kwargs):
 def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')
-    token = str(request.args.get('token'))
+    token = request.args.get('token')
     call_id = request.args.get('callId')
-    external_id = Hash.hash(str(datetime.now().timestamp()))
-    app_web_listener.set_external_id(external_id)
 
-    logger.set_phone(phone)
+    core.initialize_log()
+
     logger.log_info("Call request from external app: {}".format(request.url))
 
     #  Database has tendency of disconnecting making it seem like every token is invalid.
@@ -69,6 +68,10 @@ def index():
     if not is_valid_token(token):
         logger.log_info("Failed to route call: Reason: Invalid token")
         return {'status': 'FAILED TO ROUTE CALL'}
+
+    # Set external ID only when a valid token is supplied
+    external_id = Hash.hash(str(datetime.now().timestamp()))
+    app_web_listener.set_external_id(external_id)
 
     if not asterisk_ari.has_free_channels():
         data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow, 'external_id': external_id}
@@ -84,6 +87,8 @@ def index():
 def process_queue():
     if request.remote_addr != '127.0.0.1':
         return {'status': 'error', 'message': 'Unauthorized Access'}
+
+    core.initialize_log()
 
     empty_queue = queue.is_empty()
     has_free_channels = asterisk_ari.has_free_channels()
