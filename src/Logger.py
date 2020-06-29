@@ -33,16 +33,16 @@ class Logger:
     def get_logger(self):
         return self.logger
 
-    def set_phone(self, phone: str):
+    def set_phone(self, phone=None):
         self.__phone = phone
 
-    def set_app(self, app: str):
+    def set_app(self, app=None):
         self.__app = app
 
-    def set_token(self, token: str):
+    def set_token(self, token=None):
         self.__token = token
 
-    def set_external_id(self, external_id: str):
+    def set_external_id(self, external_id=None):
         self.__external_id = external_id
 
     def __custom_logger(self, level: int, message: str):
