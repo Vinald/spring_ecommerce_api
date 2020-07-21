@@ -27,3 +27,13 @@ class AppManager:
         except Exception as e:
             self.logger.log_info("Database fetch error: {}".format(str(e)))
             return {}
+
+    def get_all_apps(self):
+        try:
+            self.database.reconnect()
+            sql = 'SELECT id, name, voice_url, date_created FROM apps'
+            self.database.cursor.execute(sql)
+            return self.database.cursor.fetchall()
+        except Exception as e:
+            self.logger.log_info("Database fetch error: {}".format(str(e)))
+            return []

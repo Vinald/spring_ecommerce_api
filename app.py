@@ -110,5 +110,10 @@ def dashboard_stats():
     return jsonify(dashboard.get_stats())
 
 
+@app.route('/api/apps', methods=['GET'])
+def ivr_apps():
+    return jsonify({'apps': app_manager.get_all_apps()})
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
