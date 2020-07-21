@@ -10,6 +10,8 @@ class ProsodyElement:
 
     def parse(self, prosody):
         # To parse format: <prosody rate="-20%"><say-as interpret-as="vxml:date">20200625</say-as></prosody>
-        say_as_element = prosody.find('say-as')
-        say_as_parser = SayAsElement(self.__agi, self.__logger)
-        say_as_parser.parse(say_as_element)
+        try:
+            say_as_parser = SayAsElement(self.__agi, self.__logger)
+            say_as_parser.parse(prosody.find('say-as'))
+        except Exception as e:
+            self.__logger.log_warning('Prosody Element parse error: {}'.format(str(e)))
