@@ -34,7 +34,8 @@ pass = 1234
 sip_trunk_number =
 host = 127.0.0.1
 port = 5038
-trunk =
+; Use this format: peer1:host1,peer2:host2 if you want to call outside. Leave it empty if your doing local sip calls
+trunk_list =
 
 ; This is the name of the Machine this IVR Repo is running on e.g. "Staging_MKC"
 [host_machine]

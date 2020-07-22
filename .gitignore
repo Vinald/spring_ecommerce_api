@@ -10,7 +10,6 @@ config.ini
 src/__pycache__/
 __pycache__
 app.pyc
-logs/
 reports/
 bin/asterisk-googletts
 app.log.*
