@@ -29,10 +29,9 @@ chmod 600 $call_request_queue_cron_file
 
 # Define the log-rotation.sh cron file path
 log_rotation_cron_file="/etc/cron.d/ivr-log-rotation"
-log_rotate_job="echo \$(date '+%F %T'): log-rotation.sh cron job has ran successfully >> /root/ivr/logs/cron_jobs.log"
 
 # Install cron-tab for log rotation to run every night at 23:59
-echo "59 23 * * * root cd /root/ivr && ./log-rotation.sh && ${log_rotate_job}" > $log_rotation_cron_file
+echo "59 23 * * * root cd /root/ivr/bin && python3 log-rotation.py" > $log_rotation_cron_file
 chown root:root $log_rotation_cron_file
 chmod 600 $log_rotation_cron_file
 
