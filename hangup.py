@@ -11,10 +11,10 @@ from src.Logger import Logger
 
 agi = AGI()
 
-working_dir = path.dirname(path.realpath(__file__))
+project_dir = path.dirname(path.realpath(__file__))
 
-logger = Logger(working_dir)
-config = Config(working_dir, logger, 'app')
+logger = Logger(path.join(project_dir, 'logs'))
+config = Config(project_dir, logger, 'app')
 
 redis_host = str(config.get('redis_host'))
 redis_port = config.get_int('redis_port')

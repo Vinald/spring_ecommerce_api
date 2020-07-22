@@ -9,11 +9,11 @@ from src.AppWebListener import AppWebListener
 from src.Config import Config
 from src.Logger import Logger
 
-working_dir = os.path.dirname(os.path.realpath(__file__))
+project_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Initiate Logger
-logger = Logger(working_dir)
-config = Config(working_dir, logger)
+logger = Logger(os.path.join(project_dir, 'logs'))
+config = Config(project_dir, logger)
 
 config.set_section('ami')
 ami_host = config.get_ami_host()

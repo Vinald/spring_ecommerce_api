@@ -83,6 +83,8 @@ else
     echo "$google_tts_file does not exist. Run 'python3 bin/install-googletts.py' to setup GoogleTTS."
 fi
 
+mkdir "./logs"
+
 # Restart asterisk
 asterisk -rx 'core restart now'
 
