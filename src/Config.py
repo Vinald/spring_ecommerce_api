@@ -27,8 +27,8 @@ class Config:
     def get_ami_pass(self):
         return self.get('pass')
 
-    def get_sip_trunk(self):
-        return self.get('trunk')
+    def get_sip_trunk_list(self):
+        return self.get('trunk_list')
 
     def get(self, key: str, default=None):
         try:
