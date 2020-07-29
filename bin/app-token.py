@@ -1,7 +1,11 @@
 import datetime
 import os
+import sys
 import uuid
 from prettytable import PrettyTable
+
+sys.path.append('..')
+
 from src.AppDatabase import AppDatabase
 from src.Config import Config
 from src.Hash import Hash
