@@ -8,7 +8,7 @@ class Logger:
         self.__token = None
         self.__external_id = None
         self.__phone = phone
-        self.__log_file = os.path.join(project_dir, 'logs', 'app.log')
+        self.__log_file = os.path.join(project_dir, 'app.log')
         self.__check_if_log_file_is_writable()
         logging.basicConfig(
             level=logging.INFO,
