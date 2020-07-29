@@ -1,4 +1,5 @@
 import logging
+import os
 
 
 class Logger:
@@ -13,7 +14,7 @@ class Logger:
             level=logging.INFO,
             format='[%(asctime)s] %(levelname)s: %(message)s',
             datefmt='%m/%d/%Y %H:%M:%S',
-            filename=self.__log_dir + '/app.log',
+            filename=os.path.join(self.__log_dir, 'app.log'),
             filemode='a',
         )
         self.logger = logging.getLogger()
