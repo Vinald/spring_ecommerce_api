@@ -3,18 +3,18 @@ import os
 
 
 class Logger:
-    def __init__(self, log_dir, phone=None):
+    def __init__(self, project_dir, phone=None):
         self.__app = None
         self.__token = None
         self.__external_id = None
         self.__phone = phone
-        self.__log_dir = log_dir
         self.__check_if_log_file_is_writable()
+        self.__log_file = os.path.join(project_dir, 'logs', 'app.log')
         logging.basicConfig(
             level=logging.INFO,
             format='[%(asctime)s] %(levelname)s: %(message)s',
             datefmt='%m/%d/%Y %H:%M:%S',
-            filename=os.path.join(self.__log_dir, 'app.log'),
+            filename=self.__log_file,
             filemode='a',
         )
         self.logger = logging.getLogger()
@@ -62,7 +62,7 @@ class Logger:
 
     def __check_if_log_file_is_writable(self):
         try:
-            with open(self.__log_dir + '/app.log', 'a+') as f:
+            with open(self.__log_file, 'a+') as f:
                 f.close()
                 pass
         except Exception as e:
