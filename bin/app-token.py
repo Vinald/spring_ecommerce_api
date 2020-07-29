@@ -1,5 +1,6 @@
 import datetime
 import os
+import pathlib
 import sys
 import uuid
 from prettytable import PrettyTable
@@ -11,10 +12,10 @@ from src.Config import Config
 from src.Hash import Hash
 from src.Logger import Logger
 
-working_dir = os.path.dirname(os.path.realpath(__file__))
+project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 
-logger = Logger(working_dir)
-config = Config(working_dir, logger)
+logger = Logger(project_dir)
+config = Config(project_dir, logger)
 database = AppDatabase(config)
 
 
