@@ -1,19 +1,20 @@
 import logging
+import os
 
 
 class Logger:
-    def __init__(self, log_dir, phone=None):
+    def __init__(self, project_dir, phone=None):
         self.__app = None
         self.__token = None
         self.__external_id = None
         self.__phone = phone
-        self.__log_dir = log_dir
+        self.__log_file = os.path.join(project_dir, 'app.log')
         self.__check_if_log_file_is_writable()
         logging.basicConfig(
             level=logging.INFO,
             format='[%(asctime)s] %(levelname)s: %(message)s',
             datefmt='%m/%d/%Y %H:%M:%S',
-            filename=self.__log_dir + '/app.log',
+            filename=self.__log_file,
             filemode='a',
         )
         self.logger = logging.getLogger()
@@ -33,16 +34,16 @@ class Logger:
     def get_logger(self):
         return self.logger
 
-    def set_phone(self, phone: str):
+    def set_phone(self, phone=None):
         self.__phone = phone
 
-    def set_app(self, app: str):
+    def set_app(self, app=None):
         self.__app = app
 
-    def set_token(self, token: str):
+    def set_token(self, token=None):
         self.__token = token
 
-    def set_external_id(self, external_id: str):
+    def set_external_id(self, external_id=None):
         self.__external_id = external_id
 
     def __custom_logger(self, level: int, message: str):
@@ -61,7 +62,7 @@ class Logger:
 
     def __check_if_log_file_is_writable(self):
         try:
-            with open(self.__log_dir + '/app.log', 'a+') as f:
+            with open(self.__log_file, 'a+') as f:
                 f.close()
                 pass
         except Exception as e:

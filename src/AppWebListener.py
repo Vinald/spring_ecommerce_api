@@ -95,7 +95,7 @@ class AppWebListener:
             self.logger.set_phone(phone)
 
             if not initiated:
-                data = '{"phone": "%s", "initiated": "yes"}' % phone
+                data = json.dumps({'phone': phone, 'initiated': 'yes'})
                 self.cache.set(call_id, data, 1800)
                 self.__process_call(state, call_id, unique_id, phone, external_id)
 

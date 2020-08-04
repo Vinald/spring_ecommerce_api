@@ -11,10 +11,10 @@ from src.Audio import Audio
 
 
 # Get script directory
-working_dir = os.path.dirname(os.path.realpath(__file__))
+project_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Initialize Logger
-logger = Logger(working_dir)
+logger = Logger(os.path.join(project_dir, 'logs'))
 
 # Initialize the asterisk AGI
 agi = AGI()
@@ -23,7 +23,7 @@ agi = AGI()
 agi.set_autohangup(300)
 
 # Initialize configuration parser
-config = Config(working_dir, logger, 'app')
+config = Config(project_dir, logger, 'app')
 
 # Initialize the audio files parser
 audio = Audio(config.get_audio_path())
