@@ -115,5 +115,27 @@ def dashboard_stats():
     return jsonify(dashboard.get_stats())
 
 
+@app.route('/api/apps', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def ivr_apps():
+    if request.method == 'GET':
+        return jsonify({'apps': app_manager.get_all_apps()})
+    if request.method == 'POST':
+        app_name = request.form['name']
+        voice_url = request.form['voice_url']
+        status_url = request.form['status_url']
+        response = app_manager.create_app(app_name, voice_url, status_url)
+        return jsonify(response)
+    if request.method == 'DELETE':
+        app_id = int(request.args.get('id'))
+        return jsonify(app_manager.delete_app(app_id))
+    if request.method == 'PUT':
+        app_id = int(request.form['id'])
+        app_name = request.form['name']
+        voice_url = request.form['voice_url']
+        status_url = request.form['status_url']
+        response = app_manager.update_app(app_id, app_name, voice_url, status_url)
+        return jsonify(response)
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
