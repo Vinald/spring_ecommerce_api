@@ -1,4 +1,7 @@
+import datetime
+import uuid
 from src.AppDatabase import AppDatabase
+from src.Hash import Hash
 from src.Logger import Logger
 
 
@@ -21,6 +24,7 @@ class AppManager:
 
     def get_data(self, token):
         try:
+            self.database.reconnect()
             sql = 'SELECT * FROM apps WHERE token = "{}"'.format(token)
             self.database.cursor.execute(sql)
             return self.database.cursor.fetchone()
@@ -31,9 +35,64 @@ class AppManager:
     def get_all_apps(self):
         try:
             self.database.reconnect()
-            sql = 'SELECT id, name, voice_url, date_created FROM apps'
+            sql = 'SELECT * FROM apps'
             self.database.cursor.execute(sql)
             return self.database.cursor.fetchall()
         except Exception as e:
             self.logger.log_info("Database fetch error: {}".format(str(e)))
             return []
+
+    def create_app(self, app_name, app_voice_url, app_status_url):
+        token = self.token_generator()
+
+        data = {
+            'name': app_name,
+            'token': token,
+            'voice_url': app_voice_url,
+            'status_url': app_status_url,
+            'date_created': datetime.datetime.now()
+        }
+
+        try:
+            self.database.reconnect()
+            cursor = self.database.get_cursor()
+            cursor.execute('SELECT name FROM apps WHERE name="{}"'.format(app_name))
+            if int(cursor.rowcount) > 0:
+                return {'status': 'error', 'message': 'Application already exists'}
+            self.database.insert(data, AppDatabase.APPS_TABLE)
+            return {'status': 'success', 'message': 'Application added successfully'}
+        except Exception as e:
+            message = "An error occurred while adding application: {}".format(str(e))
+            return {'status': 'error', 'message': message}
+
+    def update_app(self, app_id: int, app_name, app_voice_url, app_status_url):
+        data = {
+            'name': app_name,
+            'voice_url': app_voice_url,
+            'status_url': app_status_url,
+            'date_modified': datetime.datetime.now()
+        }
+
+        try:
+
+            self.database.update(app_id, data, 'apps')
+            return {'status': 'success', 'message': 'Application updated successfully'}
+        except Exception as e:
+            message = "An error occurred while updating application: {}".format(str(e))
+            return {'status': 'error', 'message': message}
+
+    def delete_app(self, app_id: int):
+        try:
+            conn = self.database.get_conn()
+            cursor = self.database.get_cursor()
+            cursor.execute('DELETE FROM apps WHERE id={} LIMIT 1'.format(app_id))
+            conn.commit()
+            return {'status': 'success', 'message': 'Application deleted successfully'}
+        except Exception as e:
+            message = "An error occurred while deleting app: {}".format(str(e))
+            return {'status': 'error', 'message': message}
+
+    @staticmethod
+    def token_generator():
+        unique_id = str(uuid.uuid1())
+        return Hash.hash(unique_id)
