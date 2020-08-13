@@ -40,12 +40,19 @@ class IVR:
             self.link = outgoing_link.format(voice_url, self.phone, call_id, jump_to)
         else:
             # Incoming details set up
-            token = str(self.agi.get_variable('token'))
-            voice_url = self.app_manager.get_voice_url(token)
-            self.phone = str(self.agi.env['agi_callerid'])
-            external_id = Hash.hash(str(self.agi.env['agi_uniqueid']))
-            self.logger.set_external_id(external_id)
-            self.link = "{}?phone={}".format(voice_url, self.phone)
+            extension = str(self.agi.env['agi_dnid'])
+            token = self.app_manager.get_token_by_dialed_number(extension)
+            if token:
+                voice_url = self.app_manager.get_voice_url(token)
+                self.phone = str(self.agi.env['agi_callerid'])
+                external_id = Hash.hash(str(self.agi.env['agi_uniqueid']))
+                self.logger.set_external_id(external_id)
+                self.link = "{}?phone={}".format(voice_url, self.phone)
+            else:
+                exit_msg = "Extension does not exist: {}".format(extension)
+                self.logger.log_info(exit_msg)
+                self.agi.verbose(exit_msg)
+                self.agi.hangup()
 
         results = self.app_manager.get_data(token)
         self.logger.set_app(results['name'])
