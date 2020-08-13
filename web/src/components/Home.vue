@@ -114,7 +114,7 @@ export default {
   mounted() {
     window.setInterval(() => {
       this.stats();
-    }, 2000);
+    }, 1000);
   },
   methods: {
     stats() {

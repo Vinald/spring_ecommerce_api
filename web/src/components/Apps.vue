@@ -33,6 +33,10 @@
                         <td>{{ data.item.name }}</td>
                       </tr>
                       <tr>
+                        <th scope="row">Telephone</th>
+                        <td><code>{{ data.item.phone }}</code></td>
+                      </tr>
+                      <tr>
                         <th scope="row">Token</th>
                         <td><code>{{ data.item.token }}</code></td>
                       </tr>
@@ -69,6 +73,10 @@
                     <label for="app-edit-status-url">Application Status URL</label>
                     <input type="text" class="form-control" id="app-edit-status-url" v-model="editForm.status_url">
                   </div>
+                  <div class="form-group">
+                    <label for="app-edit-telephone">Application Telephone</label>
+                    <input type="text" class="form-control" id="app-edit-telephone" v-model="editForm.phone">
+                  </div>
                   <button type="submit" class="btn btn-primary float-right">Save</button>
                 </form>
               </b-modal>
@@ -83,15 +91,25 @@
             <form @submit.prevent="createNewApp">
               <div class="form-group">
                 <label for="app-name">Application name</label>
-                <input type="text" class="form-control" id="app-name" v-model="appName">
+                <input type="text" class="form-control" id="app-name" v-model="createAppForm.name">
               </div>
               <div class="form-group">
                 <label for="app-voice-url">Application Voice URL</label>
-                <input type="text" class="form-control" id="app-voice-url" v-model="appVoiceURL">
+                <input type="text" class="form-control" id="app-voice-url" v-model="createAppForm.voice_url">
               </div>
               <div class="form-group">
                 <label for="app-status-url">Application Status URL</label>
-                <input type="text" class="form-control" id="app-status-url" v-model="appStatusURL">
+                <input type="text" class="form-control" id="app-status-url" v-model="createAppForm.status_url">
+              </div>
+              <div class="form-group">
+                <label for="app-phone">Application Telephone</label>
+                <input
+                  type="text"
+                  id="app-phone"
+                  class="form-control"
+                  v-model="createAppForm.phone"
+                  placeholder="e.g 25678XX"
+                >
               </div>
               <b-button v-if="creatingApp" variant="primary" class="float-right">
                 <i class="fas fa-circle-notch fa-spin text-primary"></i> Creating new app...
@@ -115,20 +133,25 @@ export default {
     return {
       url: process.env.VUE_APP_ROOT_API,
       apps: [],
+      createAppForm: {
+        name: '',
+        phone: '',
+        voice_url: '',
+        status_url: '',
+      },
       editForm: {
         id: '',
         name: '',
+        phone: '',
         voice_url: '',
         status_url: '',
       },
       label: null,
       message: null,
       appName: null,
-      appStatusURL: null,
-      appVoiceURL: null,
       creatingApp: false,
       appsLoading: false,
-      fields: ['id', 'name', 'date_created', 'action'],
+      fields: ['id', 'name', 'date_created', 'phone', 'action'],
     };
   },
   mounted() {
@@ -137,12 +160,12 @@ export default {
   methods: {
     createNewApp() {
       this.creatingApp = true;
-      const data = { name: this.appName, voice_url: this.appVoiceURL, status_url: this.appStatusURL };
-      axios.post(`${this.url}/apps`, qs.stringify(data)).then((response) => {
+      axios.post(`${this.url}/apps`, qs.stringify(this.createAppForm)).then((response) => {
         const { status } = response.data;
         this.label = status === 'success' ? 'success' : 'danger';
         this.message = response.data.message;
         this.creatingApp = false;
+        this.initCreateForm();
         this.getApps();
         // eslint-disable-next-line no-unused-vars
       }).catch((error) => {
@@ -187,6 +210,12 @@ export default {
     editApp(data) {
       this.editForm = data;
       this.$bvModal.show(`${this.editForm.id}apps-edit-modal`);
+    },
+    initCreateForm() {
+      this.createAppForm.name = '';
+      this.createAppForm.phone = '';
+      this.createAppForm.voice_url = '';
+      this.createAppForm.status_url = '';
     },
   },
 };

@@ -121,9 +121,10 @@ def ivr_apps():
         return jsonify({'apps': app_manager.get_all_apps()})
     if request.method == 'POST':
         app_name = request.form['name']
+        app_phone = request.form['phone']
         voice_url = request.form['voice_url']
         status_url = request.form['status_url']
-        response = app_manager.create_app(app_name, voice_url, status_url)
+        response = app_manager.create_app(app_name, voice_url, status_url, app_phone)
         return jsonify(response)
     if request.method == 'DELETE':
         app_id = int(request.args.get('id'))
@@ -131,9 +132,10 @@ def ivr_apps():
     if request.method == 'PUT':
         app_id = int(request.form['id'])
         app_name = request.form['name']
+        app_phone = request.form['phone']
         voice_url = request.form['voice_url']
         status_url = request.form['status_url']
-        response = app_manager.update_app(app_id, app_name, voice_url, status_url)
+        response = app_manager.update_app(app_id, app_name, voice_url, status_url, app_phone)
         return jsonify(response)
 
 

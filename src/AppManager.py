@@ -11,6 +11,17 @@ class AppManager:
         self.database = database
         self.database.reconnect()
 
+    def get_token_by_dialed_number(self, dialed_num: str):
+        try:
+            self.database.reconnect()
+            sql = 'SELECT token FROM apps WHERE phone = "{}"'.format(dialed_num)
+            self.database.cursor.execute(sql)
+            data = self.database.cursor.fetchone()
+            return data['token']
+        except Exception as e:
+            self.logger.log_info("Database fetch error: {}".format(str(e)))
+            return None
+
     def get_voice_url(self, token):
         data = self.get_data(token)
         return str(data['voice_url'])
@@ -42,11 +53,12 @@ class AppManager:
             self.logger.log_info("Database fetch error: {}".format(str(e)))
             return []
 
-    def create_app(self, app_name, app_voice_url, app_status_url):
+    def create_app(self, app_name, app_voice_url, app_status_url, phone):
         token = self.token_generator()
 
         data = {
             'name': app_name,
+            'phone': phone,
             'token': token,
             'voice_url': app_voice_url,
             'status_url': app_status_url,
@@ -65,9 +77,10 @@ class AppManager:
             message = "An error occurred while adding application: {}".format(str(e))
             return {'status': 'error', 'message': message}
 
-    def update_app(self, app_id: int, app_name, app_voice_url, app_status_url):
+    def update_app(self, app_id: int, app_name, app_voice_url, app_status_url, phone):
         data = {
             'name': app_name,
+            'phone': phone,
             'voice_url': app_voice_url,
             'status_url': app_status_url,
             'date_modified': datetime.datetime.now()
