@@ -104,7 +104,7 @@ class VXMLParser:
                 if len(timeout) > 0 and timeout is not None:
                     timeout = int(float(timeout[:-1]) * 1000)
 
-                if field_length is not None:
+                if field_length is not None and field_length > 1:
                     self.logger.log_info('Streaming audio: {}'.format(audio_file))
                     input_digit = self.agi.get_data(audio_file, timeout, field_length)
                     time.sleep(2)
