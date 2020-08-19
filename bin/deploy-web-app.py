@@ -7,6 +7,7 @@ project_dir = pathlib.Path(working_dir).parent
 
 web_dir = os.path.join(project_dir, 'web')
 env_file = os.path.join(web_dir, '.env')
+htpasswd_file = os.path.join(project_dir, '.htpasswd')
 env_local_file = os.path.join(web_dir, '.env.development')
 
 # nginx web root directory for the web app
@@ -15,7 +16,7 @@ web_build_dir = os.path.join(web_dir, 'dist')
 if not os.path.exists(env_file):
     os.system("cp {} {}".format(env_local_file, env_file))
 
-os.system("apt-get update && apt install nginx curl -y")
+os.system("apt-get update && apt install nginx apache2-utils curl -y")
 os.system("curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - && sudo apt-get install -y nodejs")
 
 os.chdir(web_dir)
@@ -23,6 +24,7 @@ print("Current working dir: {}".format(os.getcwd()))
 
 old_api_route = 'http://127.0.0.1:5000/api'
 new_api_route = 'http://$(curl http://icanhazip.com):5000/api'
+
 cmd = 'sed -i "s+VUE_APP_ROOT_API={}+VUE_APP_ROOT_API={}+g" .env'
 os.system(cmd.format(old_api_route, new_api_route))
 
@@ -40,6 +42,8 @@ config = """server {{
     server_name _;
     
     location / {{
+        auth_basic "Administrator's Area";
+        auth_basic_user_file {}; 
         # First attempt to serve request as file, then
         # as directory, then fall back to displaying a 404.
         try_files $uri $uri/ /index.html;
@@ -55,9 +59,10 @@ web_root_dir = "/var/www/html/ivr-web-app"
 
 os.system("rm -rf {}".format(web_root_dir))
 os.system("mv {} {}".format(web_build_dir, web_root_dir))
+os.system("htpasswd -b -c {} ivr_admin 12345Uganda**".format(htpasswd_file))
 
 file = open('/etc/nginx/sites-available/ivr-web-app', 'w')
-file.write(config.format(web_root_dir))
+file.write(config.format(web_root_dir, htpasswd_file))
 file.close()
 
 os.system("chown -R www-data:www-data {}".format(web_root_dir))

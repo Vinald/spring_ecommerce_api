@@ -13,7 +13,6 @@ fi
 timedatectl set-timezone Africa/Kampala
 
 # Add execution permissions
-chmod +x "/root/ivr/log-rotation.sh"
 chmod +x "/root/ivr/call-request-queue.py"
 
 # Install asterisk ARI config files.
