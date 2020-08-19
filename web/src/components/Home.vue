@@ -73,7 +73,7 @@
             <span v-if="asteriskUpTime !== 'n/a'" class="text-success float-right">Active (Online)</span>
             <span v-else class="text-danger float-right">Offline</span>
           </div>
-          <div>Up time: <span class="float-right">{{ asteriskUpTime }}</span></div>
+          <div>Up time: <span class="text-primary float-right">{{ asteriskUpTime }}</span></div>
         </div>
       </div>
       <div class="col-md-3">
@@ -84,7 +84,7 @@
             <span v-if="ivrApiUpTime !== 'n/a'" class="text-success float-right">Active (Online)</span>
             <span v-else class="text-danger float-right">Offline</span>
           </div>
-          <div>Up time: <span class="float-right">{{ ivrApiUpTime }}</span></div>
+          <div>Up time: <span class="text-primary float-right">{{ ivrApiUpTime }}</span></div>
         </div>
       </div>
     </div>
@@ -114,7 +114,7 @@ export default {
   mounted() {
     window.setInterval(() => {
       this.stats();
-    }, 1000);
+    }, 2000);
   },
   methods: {
     stats() {

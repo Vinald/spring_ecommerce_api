@@ -7,8 +7,15 @@ project_dir = pathlib.Path(working_dir).parent
 
 web_dir = os.path.join(project_dir, 'web')
 env_file = os.path.join(web_dir, '.env')
-htpasswd_file = os.path.join(project_dir, '.htpasswd')
+
 env_local_file = os.path.join(web_dir, '.env.development')
+
+apache_dir = '/etc/apache2'
+
+if not os.path.exists(apache_dir):
+    os.system("mkdir -p {}".format(apache_dir))
+
+htpasswd_file = os.path.join(apache_dir, '.htpasswd')
 
 # nginx web root directory for the web app
 web_build_dir = os.path.join(web_dir, 'dist')
@@ -36,14 +43,13 @@ config = """server {{
     listen 8000;
 
     root {};
-
     index index.html;
-    
     server_name _;
+
+    auth_basic "Administrator's Area";
+    auth_basic_user_file {};
     
     location / {{
-        auth_basic "Administrator's Area";
-        auth_basic_user_file {}; 
         # First attempt to serve request as file, then
         # as directory, then fall back to displaying a 404.
         try_files $uri $uri/ /index.html;
@@ -65,8 +71,8 @@ file = open('/etc/nginx/sites-available/ivr-web-app', 'w')
 file.write(config.format(web_root_dir, htpasswd_file))
 file.close()
 
-os.system("chown -R www-data:www-data {}".format(web_root_dir))
-os.system("chmod -R 775 {}".format(web_root_dir))
+os.system("chown -R www-data:www-data {} {}".format(web_root_dir, htpasswd_file))
+os.system("chmod -R 775 {} {}".format(web_root_dir, htpasswd_file))
 
 os.system("ln -s /etc/nginx/sites-available/ivr-web-app /etc/nginx/sites-enabled/")
 os.system("nginx -t")
