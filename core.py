@@ -8,12 +8,13 @@ from src.AppManager import AppManager
 from src.AppWebListener import AppWebListener
 from src.Config import Config
 from src.Logger import Logger
+from src.manager.TrunkManager import TrunkManager
 
-working_dir = os.path.dirname(os.path.realpath(__file__))
+project_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Initiate Logger
-logger = Logger(working_dir)
-config = Config(working_dir, logger)
+logger = Logger(os.path.join(project_dir, 'logs'))
+config = Config(project_dir, logger)
 
 config.set_section('ami')
 ami_host = config.get_ami_host()
@@ -21,7 +22,7 @@ ami_user = config.get_ami_user()
 ami_pass = config.get_ami_pass()
 ami_port = config.get_ami_port()
 ami_sip_trunk_number = config.get("sip_trunk_number")
-ami_trunk = config.get_sip_trunk()
+trunk_list = config.get_sip_trunk_list()
 
 database = AppDatabase(config)
 app_manager = AppManager(database, logger)
@@ -39,18 +40,32 @@ client.login(username=ami_user, secret=ami_pass)
 adapter = AMIClientAdapter(client)
 
 
-def initiate_call(phone, token, call_id, flow):
+def initialize_log():
+    logger.set_app()
+    logger.set_token()
+    logger.set_phone()
+    logger.set_external_id()
+
+
+def initiate_call(phone, token, call_id, flow, external_id):
     channel = 'SIP/' + phone
 
-    if ami_trunk is not None and len(ami_trunk) > 0:
-        channel = 'SIP/{}/+{}'.format(ami_trunk, phone)
+    if trunk_list is not None and len(trunk_list) > 0:
+        trunk_manager = TrunkManager(trunk_list)
+        available_peer = trunk_manager.get_available_peer()
+        channel = 'SIP/+{}@{}'.format(phone, available_peer)
 
     date_today = date.today().strftime("%b-%d-%Y")
     sip_trunk_number = ami_sip_trunk_number
 
     application_name = app_manager.get_data(token)['name']
 
-    data = 'data={}&{}&{}&{},' \
+    logger.set_app(app_manager)
+    logger.set_token(token)
+    logger.set_phone(phone)
+    logger.set_external_id(external_id)
+
+    data = 'data={}&{}&{}&{}&{},' \
            'CDR(dialed_number)={},' \
            'CDR(date)={},' \
            'CDR(call_id)={},' \
@@ -58,7 +73,8 @@ def initiate_call(phone, token, call_id, flow):
            'CDR(sip_channel)={},' \
            'CDR(call_direction)=OUTGOING,' \
            'CDR(token)={},' \
-           'CDR(application_name)={}'
+           'CDR(application_name)={},' \
+           'CDR(external_id)={}'
 
     adapter.Originate(
         Channel=channel,
@@ -71,6 +87,7 @@ def initiate_call(phone, token, call_id, flow):
             phone,
             flow,
             token,
+            external_id,
             phone,
             date_today,
             call_id,
@@ -78,11 +95,12 @@ def initiate_call(phone, token, call_id, flow):
             channel,
             token,
             application_name,
+            external_id,
         ),
         ActionID=call_id,
         Timeout=45000,
         Async=True
     )
 
-    data = json.dumps({'phone': phone, 'initiated': 'no'})
+    data = json.dumps({'phone': phone, 'initiated': 'no', 'external_id': external_id})
     cache.set(call_id, data, 3600)

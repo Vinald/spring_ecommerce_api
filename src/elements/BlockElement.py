@@ -5,7 +5,7 @@ from src.Audio import Audio
 from src.Logger import Logger
 
 
-class Block:
+class BlockElement:
     def __init__(self, agi: AGI, audio: Audio, logger: Logger):
         self.__agi = agi
         self.__audio = audio

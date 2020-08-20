@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import core
 from src.AsteriskARI import AsteriskARI
+from src.Dashboard import Dashboard
 from src.manager.QueueManager import QueueManager
+from datetime import datetime
+from src.Hash import Hash
 
 app = Flask(__name__)
+
+CORS(app, resources={r'/*': {'origins': '*'}})
 
 logger = core.logger
 config = core.config
@@ -48,10 +54,11 @@ def queue_event_listener(event, **kwargs):
 def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')
-    token = str(request.args.get('token'))
+    token = request.args.get('token')
     call_id = request.args.get('callId')
 
-    logger.set_phone(phone)
+    core.initialize_log()
+
     logger.log_info("Call request from external app: {}".format(request.url))
 
     #  Database has tendency of disconnecting making it seem like every token is invalid.
@@ -62,12 +69,16 @@ def index():
         logger.log_info("Failed to route call: Reason: Invalid token")
         return {'status': 'FAILED TO ROUTE CALL'}
 
+    # Set external ID only when a valid token is supplied
+    external_id = Hash.hash(str(datetime.now().timestamp()))
+    app_web_listener.set_external_id(external_id)
+
     if not asterisk_ari.has_free_channels():
-        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow}
+        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow, 'external_id': external_id}
         queue.queue_call(data)
         return {'status': 'CALL_QUEUED'}
 
-    core.initiate_call(phone, token, call_id, flow)
+    core.initiate_call(phone, token, call_id, flow, external_id)
     core.client.add_event_listener(event_listener)
     return {'status': 'CALL_INITIATED'}
 
@@ -76,6 +87,8 @@ def index():
 def process_queue():
     if request.remote_addr != '127.0.0.1':
         return {'status': 'error', 'message': 'Unauthorized Access'}
+
+    core.initialize_log()
 
     empty_queue = queue.is_empty()
     has_free_channels = asterisk_ari.has_free_channels()
@@ -87,12 +100,43 @@ def process_queue():
             call_data['phone'],
             call_data['token'],
             call_data['call_id'],
-            call_data['flow']
+            call_data['flow'],
+            call_data['external_id']
         )
         core.client.add_event_listener(queue_event_listener)
         return {'status': 'CALL_INITIATED', 'data': call_data}
 
     return {'has_free_channels': has_free_channels, 'empty_queue': empty_queue}
+
+
+@app.route('/api/dashboard-stats', methods=['GET'])
+def dashboard_stats():
+    dashboard = Dashboard(asterisk_ari, queue, logger)
+    return jsonify(dashboard.get_stats())
+
+
+@app.route('/api/apps', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def ivr_apps():
+    if request.method == 'GET':
+        return jsonify({'apps': app_manager.get_all_apps()})
+    if request.method == 'POST':
+        app_name = request.form['name']
+        app_phone = request.form['phone']
+        voice_url = request.form['voice_url']
+        status_url = request.form['status_url']
+        response = app_manager.create_app(app_name, voice_url, status_url, app_phone)
+        return jsonify(response)
+    if request.method == 'DELETE':
+        app_id = int(request.args.get('id'))
+        return jsonify(app_manager.delete_app(app_id))
+    if request.method == 'PUT':
+        app_id = int(request.form['id'])
+        app_name = request.form['name']
+        app_phone = request.form['phone']
+        voice_url = request.form['voice_url']
+        status_url = request.form['status_url']
+        response = app_manager.update_app(app_id, app_name, voice_url, status_url, app_phone)
+        return jsonify(response)
 
 
 if __name__ == '__main__':

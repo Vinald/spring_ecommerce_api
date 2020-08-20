@@ -9,10 +9,15 @@
 ; Its been ignored in .gitignore so any changes to "config.ini" wont be commited.
 
 ; Simply replace audio_path with your home audio path e.g. /home/asteriskidi/audio
+; Do not use this config (redis_host, redis_port) for any new feature. Use the config under redis section
 [app]
 audio_path = /var/www/html/audio
 redis_host = 127.0.0.1
 redis_port = 6379
+
+[redis]
+host = 172.17.0.1
+port = 6379
 
 [database]
 port = 3306
@@ -27,12 +32,10 @@ database = ivr
 user = ivr
 pass = 1234
 sip_trunk_number =
-
-; This IP typically doesnt change. Its the Motech Docker Container IP. So you typically wont 
-; need to bother with this, unless your in the production environment and not testing environment.
-host = 172.17.0.1
+host = 127.0.0.1
 port = 5038
-trunk =
+; Use this format: peer1:host1,peer2:host2 if you want to call outside. Leave it empty if your doing local sip calls
+trunk_list =
 
 ; This is the name of the Machine this IVR Repo is running on e.g. "Staging_MKC"
 [host_machine]

@@ -4,7 +4,7 @@ from asterisk.agi import AGI
 from bs4 import BeautifulSoup
 from src.Audio import Audio
 from src.Logger import Logger
-from src.elements.Block import Block
+from src.elements.BlockElement import BlockElement
 
 
 class VXMLParser:
@@ -30,13 +30,13 @@ class VXMLParser:
             return self.process_audio_dialogue(form)
 
     def process_blocks(self, blocks):
-        block_parser = Block(self.agi, self.audio, self.logger)
+        block_parser = BlockElement(self.agi, self.audio, self.logger)
         for index in range(len(blocks)):
             block = blocks[index]
             block_parser.process(block)
 
     def process_finished_hearing(self, blocks):
-        block_parser = Block(self.agi, self.audio, self.logger)
+        block_parser = BlockElement(self.agi, self.audio, self.logger)
         for index in range(len(blocks)):
             block = blocks[index]
             block_parser.process(block)

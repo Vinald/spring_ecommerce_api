@@ -1,0 +1,21 @@
+$body-color: #707070;
+$font-size-base: 0.875rem;
+$font-family-base: -apple-system, BlinkMacSystemFont, Ubuntu, "Open Sans", Roboto, "Segoe UI", "Noto Sans", Cantarell, "Helvetica Neue", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+@import "~bootstrap/scss/bootstrap";
+@import '~bootstrap-vue';
+@import "~@fortawesome/fontawesome-free/css/fontawesome.min.css";
+@import "~@fortawesome/fontawesome-free/css/brands.min.css";
+@import "~@fortawesome/fontawesome-free/css/solid.min.css";
+
+// Fix double dropdown icons on select fields
+.custom-select{
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.custom-card {
+  border: 2px solid $body-color;
+  padding: 1rem;
+}

@@ -13,11 +13,13 @@ fi
 timedatectl set-timezone Africa/Kampala
 
 # Add execution permissions
-chmod +x "/root/ivr/log-rotation.sh"
 chmod +x "/root/ivr/call-request-queue.py"
 
 # Install asterisk ARI config files.
 cp /root/ivr/asterisk/ari.conf /root/ivr/asterisk/http.conf /etc/asterisk
+
+# Install asterisk cdr_custom files
+cp /root/ivr/asterisk/cdr_custom.conf /etc/asterisk
 
 call_request_queue_cron_file="/etc/cron.d/call-request-queue"
 echo "*/5 * * * * root /root/ivr/call-request-queue.py" > $call_request_queue_cron_file
@@ -26,10 +28,9 @@ chmod 600 $call_request_queue_cron_file
 
 # Define the log-rotation.sh cron file path
 log_rotation_cron_file="/etc/cron.d/ivr-log-rotation"
-log_rotate_job="echo \$(date '+%F %T'): log-rotation.sh cron job has ran successfully >> /root/ivr/logs/cron_jobs.log"
 
 # Install cron-tab for log rotation to run every night at 23:59
-echo "59 23 * * * root cd /root/ivr && ./log-rotation.sh && ${log_rotate_job}" > $log_rotation_cron_file
+echo "59 23 * * * root cd /root/ivr/bin && python3 log-rotation.py" > $log_rotation_cron_file
 chown root:root $log_rotation_cron_file
 chmod 600 $log_rotation_cron_file
 
@@ -66,10 +67,21 @@ asterisk -rx "logger reload"
 apt-get update > /dev/null
 
 # Install python 3, pip 3, and redis server for in-memory (RAM) caching
-apt-get install python3 python3-pip -y > /dev/null
+apt-get install python3 python3-dev python3-pip -y > /dev/null
 
 # Install all dependencies listed in the requirements file
 pip3 install -r requirements.txt
+
+# Check whether Google TTS has been installed
+google_tts_file=/var/lib/asterisk/agi-bin/googletts.agi
+
+if test -f "$google_tts_file"; then
+    echo "GoogleTTS has already been installed on this host."
+else
+    echo "$google_tts_file does not exist. Run 'python3 bin/install-googletts.py' to setup GoogleTTS."
+fi
+
+mkdir "./logs"
 
 # Restart asterisk
 asterisk -rx 'core restart now'
