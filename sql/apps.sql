@@ -26,6 +26,7 @@ CREATE TABLE `apps` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   `token` varchar(255) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
   `voice_url` varchar(255) NOT NULL,
   `status_url` varchar(255) NOT NULL,
   `date_created` datetime NOT NULL,
@@ -41,7 +42,7 @@ CREATE TABLE `apps` (
 
 LOCK TABLES `apps` WRITE;
 /*!40000 ALTER TABLE `apps` DISABLE KEYS */;
-INSERT INTO `apps` VALUES (1,'default','e1826b23c1f23176f4ee510c849e1d81','http://127.0.0.1/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml','http://127.0.0.1/motech-platform-server/module/callflows/status','2020-05-24 20:00:16',NULL);
+INSERT INTO `apps` VALUES (1,'default','e1826b23c1f23176f4ee510c849e1d81',NULL,'http://127.0.0.1/motech-platform-server/module/callflows/in/voxeo/flows/MainFlow.vxml','http://127.0.0.1/motech-platform-server/module/callflows/status','2020-05-24 20:00:16',NULL);
 /*!40000 ALTER TABLE `apps` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
