@@ -9,5 +9,5 @@ fi
 python bin/asterisk.py
 /etc/init.d/asterisk start
 asterisk -rx 'core restart now'
-sleep 10
+sleep 60
 python app.py
