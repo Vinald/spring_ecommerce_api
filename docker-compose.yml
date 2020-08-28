@@ -28,12 +28,9 @@ services:
   ivr:
     container_name: ivr
     build: .
+    network_mode: "host"
     volumes:
       - .:/root/ivr
-      - ./asterisk:/etc/asterisk
-    ports:
-      - "5060:5060"
-      - "5000:5000"
 
 volumes:
   node_modules:
