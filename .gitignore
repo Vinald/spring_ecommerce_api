@@ -14,3 +14,4 @@ reports/
 bin/asterisk-googletts
 app.log.*
 .htpasswd
+*.bak

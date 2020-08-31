@@ -79,7 +79,7 @@ def index():
         return {'status': 'CALL_QUEUED'}
 
     core.initiate_call(phone, token, call_id, flow, external_id)
-    core.client.add_event_listener(event_listener)
+    core.ami_client().add_event_listener(event_listener)
     return {'status': 'CALL_INITIATED'}
 
 
@@ -103,7 +103,7 @@ def process_queue():
             call_data['flow'],
             call_data['external_id']
         )
-        core.client.add_event_listener(queue_event_listener)
+        core.ami_client().add_event_listener(queue_event_listener)
         return {'status': 'CALL_INITIATED', 'data': call_data}
 
     return {'has_free_channels': has_free_channels, 'empty_queue': empty_queue}
