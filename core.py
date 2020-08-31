@@ -40,6 +40,12 @@ client.login(username=ami_user, secret=ami_pass)
 adapter = AMIClientAdapter(client)
 
 
+def ami_client():
+    ami = AMIClient(address=ami_host, port=ami_port)
+    ami.login(username=ami_user, secret=ami_pass)
+    return ami
+
+
 def initialize_log():
     logger.set_app()
     logger.set_token()
