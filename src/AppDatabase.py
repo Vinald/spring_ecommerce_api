@@ -46,7 +46,10 @@ class AppDatabase:
         self.conn.commit()
 
     def reconnect(self):
-        self.conn.ping(reconnect=True)
+        try:
+            self.conn.ping(reconnect=True)
+        except Exception as e:
+            print("Database reconnect error: {}".format(str(e)))
 
     def get_cursor(self):
         self.reconnect()
@@ -58,13 +61,18 @@ class AppDatabase:
 
     def __initialize(self):
         self.config.set_section('database')
-        self.conn = pymysql.connect(
-            db=self.config.get('database'),
-            host=self.config.get('hostname'),
-            user=self.config.get('username'),
-            charset='utf8mb4',
-            password=self.config.get('password'),
-            port=self.config.get_int('port'),
-            cursorclass=pymysql.cursors.DictCursor
-        )
-        self.cursor = self.conn.cursor()
+        try:
+            self.conn = pymysql.connect(
+                db=self.config.get('database'),
+                host=self.config.get('hostname'),
+                user=self.config.get('username'),
+                charset='utf8mb4',
+                password=self.config.get('password'),
+                port=self.config.get_int('port'),
+                cursorclass=pymysql.cursors.DictCursor
+            )
+            self.cursor = self.conn.cursor()
+        except Exception as e:
+            print("Database error: {}".format(str(e)))
+            self.conn = None
+            self.cursor = None
