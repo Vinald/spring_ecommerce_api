@@ -23,6 +23,7 @@ ami_pass = config.get_ami_pass()
 ami_port = config.get_ami_port()
 ami_sip_trunk_number = config.get("sip_trunk_number")
 trunk_list = config.get_sip_trunk_list()
+routed_numbers = config.get('routed_numbers')
 
 database = AppDatabase(config)
 app_manager = AppManager(database, logger)
@@ -57,9 +58,13 @@ def initiate_call(phone, token, call_id, flow, external_id, status_link):
     channel = 'SIP/' + phone
 
     if trunk_list is not None and len(trunk_list) > 0:
-        trunk_manager = TrunkManager(trunk_list)
-        available_peer = trunk_manager.get_available_peer()
-        channel = 'SIP/+{}@{}'.format(phone, available_peer)
+        trunk_manager = TrunkManager(trunk_list, routed_numbers)
+        route_peer = trunk_manager.routed_number(phone)
+        if route_peer:
+            channel = 'SIP/+{}@{}'.format(phone, route_peer)
+        else:
+            available_peer = trunk_manager.get_available_peer()
+            channel = 'SIP/+{}@{}'.format(phone, available_peer)
 
     date_today = date.today().strftime("%b-%d-%Y")
     sip_trunk_number = ami_sip_trunk_number
