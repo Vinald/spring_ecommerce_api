@@ -39,7 +39,7 @@ deploy-staging:
   script:
     - sudo chown -R gitlab-runner /root
     - cd /root/ivr
-    - sudo /bin/bash install.sh
+    - sudo /usr/bin/python3 install.py
     - sudo /usr/bin/python3 bin/deploy-web-app.py
     - sudo chown -R asterisk:asterisk /root
   tags:
@@ -52,7 +52,7 @@ deploy-production:
   script:
     - sudo chown -R gitlab-runner /root
     - cd /root/ivr
-    - sudo /bin/bash install.sh
+    - sudo /usr/bin/python3 install.py
     - sudo /usr/bin/python3 bin/deploy-web-app.py
     - sudo chown -R asterisk:asterisk /root
   tags:
