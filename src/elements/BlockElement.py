@@ -36,5 +36,5 @@ class BlockElement:
         interpret = str(say_as['interpret-as'])
         if interpret == 'vxml:date':
             date = say_as.get_text()
-            timestamp = datetime.strptime(date, '%Y%m%d').strftime('%A %d %B %Y')
-            self.__agi.appexec('AGI', "googletts.agi,'{}',en,,0.8".format(timestamp))
+            timestamp = datetime.strptime(date, '%Y%m%d').timestamp()
+            self.__agi.say_date(timestamp)
