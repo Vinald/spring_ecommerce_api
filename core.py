@@ -54,7 +54,15 @@ def initialize_log():
     logger.set_external_id()
 
 
-def initiate_call(phone, token, call_id, flow, external_id, status_link):
+def initiate_call(call_data):
+    flow = call_data['flow']
+    phone = call_data['phone']
+    token = call_data['token']
+    call_id = call_data['call_id']
+    app_data = call_data['app-data']
+    external_id = call_data['external_id']
+    status_link = app_data['status_link']
+
     channel = 'SIP/' + phone
 
     if trunk_list is not None and len(trunk_list) > 0:
@@ -113,5 +121,11 @@ def initiate_call(phone, token, call_id, flow, external_id, status_link):
         Async=True
     )
 
-    data = json.dumps({'phone': phone, 'initiated': 'no', 'external_id': external_id, 'status_link': status_link})
-    cache.set(call_id, data, 3600)
+    cache_data = json.dumps({
+        'phone': phone,
+        'initiated': 'no',
+        'external_id': external_id,
+        'status_link': status_link,
+        'app-data': app_data
+    })
+    cache.set(call_id, cache_data, 3600)
