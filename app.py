@@ -28,11 +28,7 @@ app_web_listener = core.app_web_listener
 def is_valid_token(token: str):
     try:
         results = app_manager.get_data(token)
-        if not results:
-            return False
-        app_web_listener.set_app(results['name'])
-        app_web_listener.set_token(results['token'])
-        return True
+        return False if not results else True
     except Exception as e:
         logger.log_info("Database error: {}".format(str(e)))
         return False
@@ -67,18 +63,22 @@ def index():
         logger.log_info("Failed to route call: Reason: Invalid token")
         return {'status': 'FAILED TO ROUTE CALL'}
 
-    # Set external ID only when a valid token is supplied
-    external_id = Hash.hash(str(datetime.now().timestamp()))
-    app_web_listener.set_external_id(external_id)
+    app_data = app_manager.get_data(token)
 
-    status_link = app_manager.get_status_url(token)
+    data = {
+        'phone': phone,
+        'token': token,
+        'call_id': call_id,
+        'flow': flow,
+        'external_id': Hash.hash(str(datetime.now().timestamp())),
+        'app-data': app_data
+    }
 
     if not asterisk_ari.has_free_channels():
-        data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow, 'external_id': external_id}
         queue.queue_call(data)
         return {'status': 'CALL_QUEUED'}
 
-    core.initiate_call(phone, token, call_id, flow, external_id, status_link)
+    core.initiate_call(data)
     core.ami_client().add_event_listener(event_listener)
     return {'status': 'INITIATED'}
 
@@ -95,16 +95,8 @@ def process_queue():
 
     if has_free_channels and not empty_queue:
         call_data = queue.get_next_call_in_queue()
-        status_link = app_manager.get_status_url(call_data['token'])
         logger.log_info('Initiating queued call: {}'.format(str(call_data)))
-        core.initiate_call(
-            call_data['phone'],
-            call_data['token'],
-            call_data['call_id'],
-            call_data['flow'],
-            call_data['external_id'],
-            status_link
-        )
+        core.initiate_call(call_data)
         core.ami_client().add_event_listener(queue_event_listener)
         return {'status': 'INITIATED', 'data': call_data}
 
