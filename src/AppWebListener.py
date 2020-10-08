@@ -18,9 +18,6 @@ class AppWebListener:
         self.logger = logger
         self.status_base_link = None
 
-    def set_status_link(self, link: str):
-        self.status_base_link = link
-
     @staticmethod
     def get_channel_status(status: str):
         codes = {
@@ -87,15 +84,17 @@ class AppWebListener:
         call_details = self.cache.get(call_id)
 
         if call_details is not None:
-            data = json.loads(call_details)
-            phone = data['phone']
-            external_id = data['external_id']
-            initiated = True if data['initiated'] == 'yes' else False
+            call_data = json.loads(call_details)
+            phone = call_data['phone']
+            external_id = call_data['external_id']
+            initiated = True if call_data['initiated'] == 'yes' else False
 
             self.logger.set_phone(phone)
+            self.status_base_link = call_data['status_link']
 
             if not initiated:
-                data = json.dumps({'phone': phone, 'initiated': 'yes'})
+                call_data['initiated'] = 'yes'
+                data = json.dumps(call_data)
                 self.cache.set(call_id, data, 1800)
                 self.__process_call(state, call_id, unique_id, phone, external_id)
 
@@ -119,7 +118,7 @@ class AppWebListener:
                 externalID=str(external_id),
                 externalType=self.call_link_uganda
             )
-            data = '{"link": "%s", "phone": "%s"}' % (hangup_link, phone)
+            data = json.dumps({'link': hangup_link, 'phone': phone})
             self.cache.set(key, data, 1800)
             self.in_progress(call_id)
         else:
