@@ -30,8 +30,6 @@ def is_valid_token(token: str):
         results = app_manager.get_data(token)
         if not results:
             return False
-        link = app_manager.get_status_url(token)
-        app_web_listener.set_status_link(link)
         app_web_listener.set_app(results['name'])
         app_web_listener.set_token(results['token'])
         return True
@@ -73,14 +71,16 @@ def index():
     external_id = Hash.hash(str(datetime.now().timestamp()))
     app_web_listener.set_external_id(external_id)
 
+    status_link = app_manager.get_status_url(token)
+
     if not asterisk_ari.has_free_channels():
         data = {'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow, 'external_id': external_id}
         queue.queue_call(data)
         return {'status': 'CALL_QUEUED'}
 
-    core.initiate_call(phone, token, call_id, flow, external_id)
+    core.initiate_call(phone, token, call_id, flow, external_id, status_link)
     core.ami_client().add_event_listener(event_listener)
-    return {'status': 'CALL_INITIATED'}
+    return {'status': 'INITIATED'}
 
 
 @app.route('/queue', methods=['GET'])
@@ -95,16 +95,18 @@ def process_queue():
 
     if has_free_channels and not empty_queue:
         call_data = queue.get_next_call_in_queue()
+        status_link = app_manager.get_status_url(call_data['token'])
         logger.log_info('Initiating queued call: {}'.format(str(call_data)))
         core.initiate_call(
             call_data['phone'],
             call_data['token'],
             call_data['call_id'],
             call_data['flow'],
-            call_data['external_id']
+            call_data['external_id'],
+            status_link
         )
         core.ami_client().add_event_listener(queue_event_listener)
-        return {'status': 'CALL_INITIATED', 'data': call_data}
+        return {'status': 'INITIATED', 'data': call_data}
 
     return {'has_free_channels': has_free_channels, 'empty_queue': empty_queue}
 

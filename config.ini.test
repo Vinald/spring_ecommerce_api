@@ -36,6 +36,7 @@ host = 127.0.0.1
 port = 5038
 ; Use this format: peer1:host1,peer2:host2 if you want to call outside. Leave it empty if your doing local sip calls
 trunk_list =
+routed_numbers = 25679:airtel
 
 ; This is the name of the Machine this IVR Repo is running on e.g. "Staging_MKC"
 [host_machine]
