@@ -1,5 +1,6 @@
 {
   "core": {
+    "log-level": "debug",
     "audio-path": "",
     "max-channels": "25",
     "routed-numbers": [
