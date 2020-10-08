@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import core
@@ -32,16 +33,6 @@ def is_valid_token(token: str):
     except Exception as e:
         logger.log_info("Database error: {}".format(str(e)))
         return False
-
-
-def event_listener(event, **kwargs):
-    if str(event.name) == 'OriginateResponse':
-        app_web_listener.process_originate_event(event)
-
-
-def queue_event_listener(event, **kwargs):
-    if str(event.name) == 'OriginateResponse':
-        app_web_listener.process_originate_event(event)
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -79,11 +70,10 @@ def index():
         return {'status': 'CALL_QUEUED'}
 
     core.initiate_call(data)
-    core.ami_client().add_event_listener(event_listener)
     return {'status': 'INITIATED'}
 
 
-@app.route('/queue', methods=['GET'])
+@app.route('/ivr/queue', methods=['GET'])
 def process_queue():
     if request.remote_addr != '127.0.0.1':
         return {'status': 'error', 'message': 'Unauthorized Access'}
@@ -97,10 +87,38 @@ def process_queue():
         call_data = queue.get_next_call_in_queue()
         logger.log_info('Initiating queued call: {}'.format(str(call_data)))
         core.initiate_call(call_data)
-        core.ami_client().add_event_listener(queue_event_listener)
         return {'status': 'INITIATED', 'data': call_data}
 
     return {'has_free_channels': has_free_channels, 'empty_queue': empty_queue}
+
+
+@app.route('/ivr/events', methods=['GET'])
+def asterisk_events_handler():
+    if request.remote_addr != '127.0.0.1':
+        return {'status': 'error', 'message': 'Unauthorized Access'}
+
+    name = request.args.get('name')
+    status = request.args.get('status')
+    call_id = request.args.get('call-id')
+    channel = request.args.get('channel')
+    unique_id = request.args.get('unique-id')
+
+    if name == 'OriginateResponse':
+        originate_thread = threading.Thread(
+            target=app_web_listener.process_originate_event,
+            args=(status, call_id, unique_id)
+        )
+        originate_thread.start()
+        # originate_thread.name()
+        return '', 204
+    if name == 'Hangup':
+        hangup_thread = threading.Thread(
+            target=app_web_listener.handle_hangup_event,
+            args=(unique_id, channel)
+        )
+        hangup_thread.start()
+        return '', 204
+    return {'status': 'error', 'message': 'Unknown event'}
 
 
 @app.route('/api/dashboard-stats', methods=['GET'])

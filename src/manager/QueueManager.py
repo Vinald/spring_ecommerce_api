@@ -1,5 +1,6 @@
 import json
 from redis import Redis
+from src.utils import date_object_converter
 
 
 class QueueManager:
@@ -11,7 +12,7 @@ class QueueManager:
 
     def queue_call(self, call_details: dict):
         self.redis.expire(self.QUEUE_NAME, 3600)
-        self.redis.rpush(self.QUEUE_NAME, json.dumps(call_details))
+        self.redis.rpush(self.QUEUE_NAME, json.dumps(call_details, default=date_object_converter))
 
     def get_number_of_queued_calls(self):
         return int(self.redis.llen(self.QUEUE_NAME))
