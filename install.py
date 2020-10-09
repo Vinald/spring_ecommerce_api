@@ -26,6 +26,9 @@ LOG_DIR = os.path.join(project_dir, "logs")
 OLD_IVR_SERVICE = os.path.join(SYSTEM_D_DIR, "ivr-api.service")
 NEW_IVR_SERVICE = os.path.join(project_dir, 'bin', "ivr-api.service")
 
+OLD_LISTENER_SERVICE = os.path.join(SYSTEM_D_DIR, "asterisk-events-listener.service")
+NEW_LISTENER_SERVICE = os.path.join(project_dir, 'bin', "asterisk-events-listener.service")
+
 os.system("clear")
 
 if os.geteuid() != 0:
@@ -95,7 +98,7 @@ print("\nRestarting asterisk\n")
 os.system("asterisk -rx 'core restart now'")
 
 
-print("\nReloading IVR Service\n")
+print("\nUpdating IVR Service\n")
 
 if os.path.exists(OLD_IVR_SERVICE):
 	os.system("systemctl stop ivr-api.service")
@@ -105,6 +108,17 @@ os.system("cp {} {}".format(NEW_IVR_SERVICE, OLD_IVR_SERVICE))
 os.system("systemctl daemon-reload")
 os.system("systemctl enable ivr-api.service")
 os.system("systemctl start ivr-api.service")
+
+
+print("\nUpdating IVR Listener Service\n")
+if os.path.exists(OLD_LISTENER_SERVICE):
+	os.system("systemctl stop asterisk-events-listener.service")
+
+os.system("cp {} {}".format(NEW_LISTENER_SERVICE, OLD_LISTENER_SERVICE))
+
+os.system("systemctl daemon-reload")
+os.system("systemctl enable asterisk-events-listener.service")
+os.system("systemctl start asterisk-events-listener.service")
 
 print("\nInstallation done in: {} seconds\n".format((time.time() - start_time)))
 

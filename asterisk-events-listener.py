@@ -1,3 +1,4 @@
+import time
 import requests
 import core
 
@@ -22,3 +23,4 @@ core.client.add_event_listener(event_listener)
 
 while True:
     core.client.send(b'')
+    time.sleep(1)
