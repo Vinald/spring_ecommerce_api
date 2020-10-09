@@ -7,18 +7,13 @@ from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
 from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
-from src.Logger import Logger
-from src.Config import Config
+from app.core import config, logger
 
-# Log in ivr/ and not src/
-working_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-logger = Logger(working_dir)
 
-config = Config(working_dir, logger)
-config.set_section('email')
+config.set_section('email-server')
 
-username = config.get('username')
-password = config.get('password')
+username = config.get('user')
+password = config.get('pass')
 mail_port = config.get('port')
 mail_host = config.get('host')
 email_from = username

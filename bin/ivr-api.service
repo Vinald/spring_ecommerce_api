@@ -5,7 +5,7 @@ After=network.target
 [Service]
 WorkingDirectory=/root/ivr
 Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
-ExecStart=/usr/local/bin/gunicorn --bind 0.0.0.0:5000 wsgi:app
+ExecStart=/usr/local/bin/gunicorn --bind 0.0.0.0:5000 run:app
 Restart=on-failure
 
 [Install]

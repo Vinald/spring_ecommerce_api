@@ -1,8 +1,8 @@
 from datetime import datetime
 from asterisk.agi import AGI
 from bs4 import Tag
-from src.Audio import Audio
-from src.Logger import Logger
+from app.ivr.Audio import Audio
+from app.utilities.Logger import Logger
 
 
 class BlockElement:

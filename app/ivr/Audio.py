@@ -1,23 +1,16 @@
 import os
 from asterisk.agi import AGI
-from src.Logger import Logger
+from app.utilities.Logger import Logger
 
 
 class Audio:
     def __init__(self, path):
-        self.path = path
-
-    def get_audio_path(self):
-        if not os.path.exists(self.path):
-            return None
-        if self.path[-1] == '/':
-            return self.path.strip()[:-1]
-        return self.path
+        self.__path = path
 
     def gen_audio_file(self, link):
-        if self.get_audio_path() is None:
+        if self.__get_audio_path() is None:
             return link
-        path = self.get_audio_path() + link
+        path = self.__get_audio_path() + link
         if not os.path.exists(path):
             return link
         return os.path.splitext(path)[0]
@@ -30,3 +23,10 @@ class Audio:
         except Exception as e:
             msg = 'Failed to stream audio file -> {}: {}'
             logger.log_warning(msg.format(audio_file, str(e)))
+
+    def __get_audio_path(self):
+        if not os.path.exists(self.__path):
+            return None
+        if self.__path[-1] == '/':
+            return self.__path.strip()[:-1]
+        return self.__path
