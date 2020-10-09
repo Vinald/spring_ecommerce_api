@@ -1,6 +1,6 @@
 import time
 import requests
-import core
+from app.core import client
 
 events_link = "http://127.0.0.1:5000/ivr/events"
 
@@ -19,8 +19,8 @@ def event_listener(event, **kwargs):
         requests.get(link.format(events_link, event.name, unique_id, channel))
 
 
-core.client.add_event_listener(event_listener)
+client.add_event_listener(event_listener)
 
 while True:
-    core.client.send(b'')
+    client.send(b'')
     time.sleep(1)

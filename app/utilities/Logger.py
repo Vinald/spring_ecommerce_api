@@ -3,19 +3,23 @@ import os
 
 
 class Logger:
-    def __init__(self, project_dir):
+    def __init__(self, project_dir, log_level='DEBUG'):
         self.__app = None
         self.__phone = None
-        self.__log_file = os.path.join(project_dir, 'app.log')
+        self.__log_file = os.path.join(project_dir, 'logs', 'app.log')
         self.__check_if_log_file_is_writable()
         logging.basicConfig(
-            level=logging.INFO,
+            level=log_level.upper(),
             format='[%(asctime)s] %(levelname)s: %(message)s',
             datefmt='%m/%d/%Y %H:%M:%S',
             filename=self.__log_file,
             filemode='a',
         )
-        self.logger = logging.getLogger()
+        self.__logger = logging.getLogger()
+
+    def initialize(self):
+        self.set_app()
+        self.set_phone()
 
     def log_info(self, message: str):
         self.__custom_logger(logging.INFO, message)
@@ -30,13 +34,16 @@ class Logger:
         self.__custom_logger(logging.CRITICAL, message)
 
     def get_logger(self):
-        return self.logger
+        return self.__logger
 
     def set_phone(self, phone=None):
         self.__phone = phone
 
     def set_app(self, app=None):
         self.__app = app
+
+    def set_level(self, level: str):
+        self.__logger.setLevel(level.upper())
 
     def __custom_logger(self, level: int, message: str):
         try:
@@ -45,7 +52,7 @@ class Logger:
                 self.__phone,
                 message
             )
-            self.logger.log(level, msg)
+            self.__logger.log(level, msg)
         except Exception as e:
             print('Failed to start the logger: {}'.format(str(e)))
             exit(1)
@@ -54,7 +61,6 @@ class Logger:
         try:
             with open(self.__log_file, 'a+') as f:
                 f.close()
-                pass
         except Exception as e:
             print('Log file not writable or does not exist: {}'.format(str(e)))
             exit(1)

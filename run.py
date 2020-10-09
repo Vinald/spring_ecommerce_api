@@ -3,27 +3,26 @@
 import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import core
-from src.AsteriskARI import AsteriskARI
-from src.Dashboard import Dashboard
-from src.manager.QueueManager import QueueManager
 from datetime import datetime
-from src.Hash import Hash
+from app import core
+from app.api.Dashboard import Dashboard
+from app.asterisk.AsteriskARI import AsteriskARI
+from app.core import max_channels, asterisk_ari_config
+from app.manager.QueueManager import QueueManager
+from app.utilities.Hash import Hash
 
 app = Flask(__name__)
 
 CORS(app, resources={r'/*': {'origins': '*'}})
 
 logger = core.logger
-config = core.config
-
 database = core.database
 app_manager = core.app_manager
 
 queue = QueueManager(core.cache)
-asterisk_ari = AsteriskARI(config, logger)
+asterisk_ari = AsteriskARI(asterisk_ari_config, logger, max_channels)
 
-app_web_listener = core.app_web_listener
+app_web_listener = core.asterisk_events_handler
 
 
 def is_valid_token(token: str):
@@ -105,7 +104,7 @@ def asterisk_events_handler():
 
     if name == 'OriginateResponse':
         originate_thread = threading.Thread(
-            target=app_web_listener.process_originate_event,
+            target=app_web_listener.handle_originate_event,
             args=(status, call_id, unique_id)
         )
         originate_thread.start()

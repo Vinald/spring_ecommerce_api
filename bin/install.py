@@ -1,11 +1,12 @@
 import os
+import pathlib
 import sys
 import time
 
 start_time = time.time()
 
 # Main directory vars
-project_dir = os.path.dirname(os.path.realpath(__file__))
+project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 bin_dir = os.path.join(project_dir, "bin")
 
 # Cron vars

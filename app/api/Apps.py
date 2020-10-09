@@ -1,25 +1,25 @@
 import datetime
 import uuid
-from src.AppDatabase import AppDatabase
-from src.Hash import Hash
-from src.Logger import Logger
+from app.utilities.Database import Database
+from app.utilities.Hash import Hash
+from app.utilities.Logger import Logger
 
 
-class AppManager:
-    def __init__(self, database: AppDatabase, logger: Logger):
-        self.logger = logger
-        self.database = database
-        self.database.reconnect()
+class Apps:
+    def __init__(self, database: Database, logger: Logger):
+        self.__logger = logger
+        self.__database = database
+        self.__database.reconnect()
 
     def get_token_by_dialed_number(self, dialed_num: str):
         try:
-            self.database.reconnect()
+            self.__database.reconnect()
             sql = 'SELECT token FROM apps WHERE phone = "{}"'.format(dialed_num)
-            self.database.cursor.execute(sql)
-            data = self.database.cursor.fetchone()
+            self.__database.cursor.execute(sql)
+            data = self.__database.cursor.fetchone()
             return data['token']
         except Exception as e:
-            self.logger.log_info("Database fetch error: {}".format(str(e)))
+            self.__logger.log_info("Database fetch error: {}".format(str(e)))
             return None
 
     def get_voice_url(self, token):
@@ -35,26 +35,26 @@ class AppManager:
 
     def get_data(self, token):
         try:
-            self.database.reconnect()
+            self.__database.reconnect()
             sql = 'SELECT * FROM apps WHERE token = "{}"'.format(token)
-            self.database.cursor.execute(sql)
-            return self.database.cursor.fetchone()
+            self.__database.cursor.execute(sql)
+            return self.__database.cursor.fetchone()
         except Exception as e:
-            self.logger.log_info("Database fetch error: {}".format(str(e)))
+            self.__logger.log_info("Database fetch error: {}".format(str(e)))
             return {}
 
     def get_all_apps(self):
         try:
-            self.database.reconnect()
+            self.__database.reconnect()
             sql = 'SELECT * FROM apps'
-            self.database.cursor.execute(sql)
-            return self.database.cursor.fetchall()
+            self.__database.cursor.execute(sql)
+            return self.__database.cursor.fetchall()
         except Exception as e:
-            self.logger.log_info("Database fetch error: {}".format(str(e)))
+            self.__logger.log_info("Database fetch error: {}".format(str(e)))
             return []
 
     def create_app(self, app_name, app_voice_url, app_status_url, phone):
-        token = self.token_generator()
+        token = self.__token_generator()
 
         data = {
             'name': app_name,
@@ -66,12 +66,12 @@ class AppManager:
         }
 
         try:
-            self.database.reconnect()
-            cursor = self.database.get_cursor()
+            self.__database.reconnect()
+            cursor = self.__database.get_cursor()
             cursor.execute('SELECT name FROM apps WHERE name="{}"'.format(app_name))
             if int(cursor.rowcount) > 0:
                 return {'status': 'error', 'message': 'Application already exists'}
-            self.database.insert(data, AppDatabase.APPS_TABLE)
+            self.__database.insert(data, Database.APPS_TABLE)
             return {'status': 'success', 'message': 'Application added successfully'}
         except Exception as e:
             message = "An error occurred while adding application: {}".format(str(e))
@@ -88,7 +88,7 @@ class AppManager:
 
         try:
 
-            self.database.update(app_id, data, 'apps')
+            self.__database.update(app_id, data, 'apps')
             return {'status': 'success', 'message': 'Application updated successfully'}
         except Exception as e:
             message = "An error occurred while updating application: {}".format(str(e))
@@ -96,8 +96,8 @@ class AppManager:
 
     def delete_app(self, app_id: int):
         try:
-            conn = self.database.get_conn()
-            cursor = self.database.get_cursor()
+            conn = self.__database.get_conn()
+            cursor = self.__database.get_cursor()
             cursor.execute('DELETE FROM apps WHERE id={} LIMIT 1'.format(app_id))
             conn.commit()
             return {'status': 'success', 'message': 'Application deleted successfully'}
@@ -106,6 +106,6 @@ class AppManager:
             return {'status': 'error', 'message': message}
 
     @staticmethod
-    def token_generator():
+    def __token_generator():
         unique_id = str(uuid.uuid1())
         return Hash.hash(unique_id)

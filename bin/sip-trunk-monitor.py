@@ -8,8 +8,8 @@ import subprocess
 import sys
 
 sys.path.append('..')
-from core import config, logger, database
-from src.Email import Email
+from app.core import database, logger, config
+from app.utilities.Email import Email
 
 base_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 logs_dir = os.path.join(base_dir, 'logs')

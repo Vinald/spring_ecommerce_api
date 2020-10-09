@@ -1,40 +1,52 @@
+import datetime
 import json
 import os
+import pathlib
 from datetime import date
 from asterisk.ami import AMIClientAdapter, AMIClient
 from redis import Redis
-from src.AppDatabase import AppDatabase
-from src.AppManager import AppManager
-from src.AppWebListener import AppWebListener
-from src.Config import Config
-from src.Logger import Logger
-from src.manager.TrunkManager import TrunkManager
-from src.utils import date_object_converter
+from app.api.Apps import Apps
+from app.asterisk.AsteriskEventsHandler import AsteriskEventsHandler
+from app.manager.TrunkManager import TrunkManager
+from app.utilities.Config import Config
+from app.utilities.Database import Database
+from app.utilities.Logger import Logger
 
-project_dir = os.path.dirname(os.path.realpath(__file__))
+project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 
-# Initiate Logger
-logger = Logger(os.path.join(project_dir, 'logs'))
+logger = Logger(project_dir)
 config = Config(project_dir, logger)
 
-config.set_section('ami')
-ami_host = config.get_ami_host()
-ami_user = config.get_ami_user()
-ami_pass = config.get_ami_pass()
-ami_port = config.get_ami_port()
-ami_sip_trunk_number = config.get("sip_trunk_number")
-trunk_list = config.get_sip_trunk_list()
-routed_numbers = config.get('routed_numbers')
+config.set_section('asterisk-ami')
+ami_host = config.get('host')
+ami_user = config.get('user')
+ami_pass = config.get('pass')
+ami_port = config.get_int('port')
 
-database = AppDatabase(config)
-app_manager = AppManager(database, logger)
+asterisk_ari_config = config.get_section_content('asterisk-ari')
 
-config.set_section('app')
-redis_host = str(config.get('redis_host'))
-redis_port = config.get_int('redis_port')
+trunk_list = config.get_section_content('sip-trunks')
+
+config.set_section('core')
+log_level = config.get('log-level')
+audio_path = config.get('audio-path')
+max_channels = config.get_int('max-channels')
+max_call_time = config.get_int('max-call-time-in-seconds')
+routed_numbers = config.get('routed-numbers')
+use_sip_trunks = config.get_bool('use-sip-trunks')
+
+# Set log level
+logger.set_level(log_level)
+
+database = Database(config)
+app_manager = Apps(database, logger)
+
+config.set_section('redis')
+redis_host = config.get('host')
+redis_port = config.get_int('port')
 
 cache = Redis(host=redis_host, port=redis_port)
-app_web_listener = AppWebListener(logger, cache)
+asterisk_events_handler = AsteriskEventsHandler(logger, cache)
 
 client = AMIClient(address=ami_host, port=ami_port)
 client.login(username=ami_user, secret=ami_pass)
@@ -42,15 +54,14 @@ client.login(username=ami_user, secret=ami_pass)
 adapter = AMIClientAdapter(client)
 
 
-def ami_client():
-    ami = AMIClient(address=ami_host, port=ami_port)
-    ami.login(username=ami_user, secret=ami_pass)
-    return ami
-
-
 def initialize_log():
     logger.set_app()
     logger.set_phone()
+
+
+def date_object_converter(o):
+    if isinstance(o, datetime.datetime):
+        return o.__str__()
 
 
 def initiate_call(call_data):
@@ -64,7 +75,7 @@ def initiate_call(call_data):
 
     channel = 'SIP/{}'.format(phone)
 
-    if trunk_list is not None and len(trunk_list) > 0:
+    if use_sip_trunks and len(trunk_list) > 0:
         trunk_manager = TrunkManager(trunk_list, routed_numbers)
         route_peer = trunk_manager.routed_number(phone)
         if route_peer:
@@ -74,8 +85,6 @@ def initiate_call(call_data):
             channel = 'SIP/+{}@{}'.format(phone, available_peer)
 
     date_today = date.today().strftime("%b-%d-%Y")
-    sip_trunk_number = ami_sip_trunk_number
-
     application_name = app_manager.get_data(token)['name']
 
     logger.set_app(app_manager)
@@ -85,7 +94,6 @@ def initiate_call(call_data):
            'CDR(dialed_number)={},' \
            'CDR(date)={},' \
            'CDR(call_id)={},' \
-           'CDR(sip_trunk_number)={},' \
            'CDR(sip_channel)={},' \
            'CDR(call_direction)=OUTGOING,' \
            'CDR(token)={},' \
@@ -107,7 +115,6 @@ def initiate_call(call_data):
             phone,
             date_today,
             call_id,
-            sip_trunk_number,
             channel,
             token,
             application_name,
@@ -125,4 +132,5 @@ def initiate_call(call_data):
         'status_link': status_link,
         'app-data': app_data
     }, default=date_object_converter)
+
     cache.set(call_id, cache_data, 3600)
