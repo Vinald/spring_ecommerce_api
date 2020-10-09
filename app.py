@@ -109,7 +109,6 @@ def asterisk_events_handler():
             args=(status, call_id, unique_id)
         )
         originate_thread.start()
-        # originate_thread.name()
         return '', 204
     if name == 'Hangup':
         hangup_thread = threading.Thread(
