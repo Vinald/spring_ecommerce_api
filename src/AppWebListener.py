@@ -1,7 +1,6 @@
 import json
 import requests
 import datetime
-from asterisk.ami import Event
 from redis import Redis
 from src.Hash import Hash
 from src.Logger import Logger
@@ -16,7 +15,6 @@ class AppWebListener:
     def __init__(self, logger: Logger, cache: Redis):
         self.cache = cache
         self.logger = logger
-        self.status_base_link = None
 
     @staticmethod
     def get_channel_status(status: str):
@@ -39,8 +37,23 @@ class AppWebListener:
         }
         return reasons[status] if status in reasons.keys() else 'unknown'
 
-    def gen_status_link(self, call_id, status, reason, **optional_params):
+    def handle_hangup_event(self, unique_id, channel):
+        key = Hash.hash(unique_id)
+        cache_result = self.cache.get(key)
+
+        if cache_result is not None:
+            self.cache.delete(key)
+            data = json.loads(cache_result)
+            phone = data['phone']
+            results = str(requests.get(data['link']).content)
+            log_msg = "Call hangup detected for channel: {} results: {}"
+            self.logger.set_app(data['app'])
+            self.logger.set_phone(phone)
+            self.logger.log_info(log_msg.format(channel, results))
+
+    def gen_status_link(self, call_id, status, reason, status_url, **optional_params):
         """
+        :param status_url:
         :param call_id:
         :param status: NO_ANSWER,COMPLETED,FAILED,BUSY
         :param reason: timeout,application,unreachable,busy
@@ -52,7 +65,7 @@ class AppWebListener:
         status = "status={}".format(status)
         reason = "reason={}".format(reason)
 
-        link = self.status_base_link + call_id
+        link = "{}/{}".format(status_url, call_id)
         status_link = "{}.vxml?{}&{}&{}".format(link, stamp, status, reason)
 
         if 'externalID' and 'externalType' in optional_params:
@@ -64,50 +77,47 @@ class AppWebListener:
 
         return status_link
 
-    def in_progress(self, call_id):
-        status = 'IN_PROGRESS'
+    def in_progress(self, call_id, status_url, phone, app_name):
         reason = self.channel_reason(self.COMPLETED)
-        self.update_call_status(call_id, status, reason)
+        self.update_call_status(call_id, 'IN_PROGRESS', reason, status_url, phone, app_name)
 
-    def update_call_status(self, call_id: str, status: str, reason: str):
-        link = self.gen_status_link(call_id, status, reason)
+    def update_call_status(self, call_id, status, reason, status_url, phone, app_name):
+        link = self.gen_status_link(call_id, status, reason, status_url)
         results = str(requests.get(link).content)
         log_msg = "Call status: {}, call_id: {}, external_app_results: {}"
+        self.logger.set_app(app_name)
+        self.logger.set_phone(phone)
         self.logger.log_info(log_msg.format(status, call_id, results))
 
-    def process_originate_event(self, event: Event):
-        status = str(event.keys.get('Reason'))
-        call_id = str(event.keys.get('ActionID'))
-        unique_id = str(event.keys.get('Uniqueid'))
+    def process_originate_event(self, status, call_id, unique_id):
         state = self.get_channel_status(status)
-
         call_details = self.cache.get(call_id)
 
         if call_details is not None:
             call_data = json.loads(call_details)
             phone = call_data['phone']
+            app_data = call_data['app-data']
             external_id = call_data['external_id']
             initiated = True if call_data['initiated'] == 'yes' else False
 
-            self.logger.set_phone(phone)
-            self.status_base_link = call_data['status_link']
+            app_name = app_data['name']
+            status_url = app_data['status_url']
 
             if not initiated:
                 call_data['initiated'] = 'yes'
                 data = json.dumps(call_data)
                 self.cache.set(call_id, data, 1800)
-                self.__process_call(state, call_id, unique_id, phone, external_id)
+                self.__process_call(
+                    state,
+                    call_id,
+                    unique_id,
+                    phone,
+                    external_id,
+                    status_url,
+                    app_name
+                )
 
-    def set_token(self, token):
-        self.logger.set_token(token)
-
-    def set_app(self, app):
-        self.logger.set_app(app)
-
-    def set_external_id(self, external_id):
-        self.logger.set_external_id(external_id)
-
-    def __process_call(self, state, call_id, asterisk_unique_id, phone, external_id):
+    def __process_call(self, state, call_id, asterisk_unique_id, phone, external_id, status_url, app_name):
         if state == self.COMPLETED and asterisk_unique_id != '<unknown>':
             key = Hash.hash(asterisk_unique_id)
             reason = self.channel_reason(self.COMPLETED)
@@ -115,15 +125,16 @@ class AppWebListener:
                 call_id,
                 self.COMPLETED,
                 reason,
+                status_url,
                 externalID=str(external_id),
                 externalType=self.call_link_uganda
             )
-            data = json.dumps({'link': hangup_link, 'phone': phone})
+            data = json.dumps({'link': hangup_link, 'phone': phone, 'app': app_name})
             self.cache.set(key, data, 1800)
-            self.in_progress(call_id)
+            self.in_progress(call_id, status_url, phone, app_name)
         else:
             reason = self.channel_reason(state)
-            self.update_call_status(call_id, state, reason)
+            self.update_call_status(call_id, state, reason, status_url, phone, app_name)
 
     @staticmethod
     def __current_timestamp():

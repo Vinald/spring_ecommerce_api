@@ -11,7 +11,7 @@ asterisk_ari = AsteriskARI(core.config, core.logger)
 
 while True:
     if asterisk_ari.has_free_channels() and not queue.is_empty():
-        data = requests.get('http://127.0.0.1:5000/queue').json()
+        data = requests.get('http://127.0.0.1:5000/ivr/queue').json()
         core.logger.log_info('Queued call response: {}'.format(str(data)))
         time.sleep(5)
     else:
