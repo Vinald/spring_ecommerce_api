@@ -6,10 +6,11 @@ import os
 from textwrap import dedent
 from dateutil.parser import parse
 import sys
+
 sys.path.append('../')
-from src.Email import Email
-from src.Config import Config
-from src.Logger import Logger
+from app.utilities.Config import Config
+from app.utilities.Email import Email
+from app.utilities.Logger import Logger
 
 
 reports_path = "/root/ivr/reports/CDRs/"

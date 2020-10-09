@@ -1,12 +1,14 @@
 import pymysql
-from src.Config import Config
+from app.utilities.Config import Config
 
 
-class AppDatabase:
+class Database:
     APPS_TABLE = 'apps'
 
     def __init__(self, config: Config):
-        self.config = config
+        self.conn = None
+        self.cursor = None
+        self.__config = config
         self.__initialize()
 
     def insert(self, data: dict, table_name: str):
@@ -60,19 +62,17 @@ class AppDatabase:
         return self.conn
 
     def __initialize(self):
-        self.config.set_section('database')
+        self.__config.set_section('database')
         try:
             self.conn = pymysql.connect(
-                db=self.config.get('database'),
-                host=self.config.get('hostname'),
-                user=self.config.get('username'),
+                db=self.__config.get('database'),
+                host=self.__config.get('host'),
+                user=self.__config.get('user'),
                 charset='utf8mb4',
-                password=self.config.get('password'),
-                port=self.config.get_int('port'),
+                password=self.__config.get('pass'),
+                port=self.__config.get_int('port'),
                 cursorclass=pymysql.cursors.DictCursor
             )
             self.cursor = self.conn.cursor()
         except Exception as e:
             print("Database error: {}".format(str(e)))
-            self.conn = None
-            self.cursor = None

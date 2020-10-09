@@ -1,24 +1,24 @@
 import subprocess
 import psutil
-from src.AsteriskARI import AsteriskARI
-from src.Logger import Logger
-from src.manager.QueueManager import QueueManager
+from app.asterisk.AsteriskARI import AsteriskARI
+from app.manager.QueueManager import QueueManager
+from app.utilities.Logger import Logger
 
 
 class Dashboard:
     def __init__(self, ari: AsteriskARI, queue: QueueManager, logger: Logger):
-        self.ari = ari
-        self.queue = queue
-        self.logger = logger
+        self.__ari = ari
+        self.__queue = queue
+        self.__logger = logger
 
     def get_stats(self):
         return {
             'cpu': psutil.cpu_percent(),
             'disk': psutil.disk_usage('/').percent,
             'memory': psutil.virtual_memory().percent,
-            'channels': self.ari.number_of_active_channels(),
-            'queued_calls': self.queue.get_number_of_queued_calls(),
-            'max_sip_channels': self.ari.max_channels,
+            'channels': self.__ari.number_of_active_channels(),
+            'queued_calls': self.__queue.get_number_of_queued_calls(),
+            'max_sip_channels': self.__ari.get_max_channels(),
             'processed_calls': self.__get_processed_calls(),
             'asterisk_up_time': self.__get_service_up_time('asterisk'),
             'ivr_api_up_time': self.__get_service_up_time('ivr-api'),
@@ -39,7 +39,7 @@ class Dashboard:
                     return up_time
             return 'n/a'
         except Exception as e:
-            self.logger.log_error("Dashboard: {}".format(str(e)))
+            self.__logger.log_error("Dashboard: {}".format(str(e)))
             return 'n/a'
 
     def __get_service_up_time(self, service):
@@ -53,7 +53,7 @@ class Dashboard:
                     return raw_up_time.split('ago')[0].strip()
             return 'n/a'
         except Exception as e:
-            self.logger.log_error("Dashboard: {}".format(str(e)))
+            self.__logger.log_error("Dashboard: {}".format(str(e)))
             return 'n/a'
 
     def __get_processed_calls(self):
@@ -66,5 +66,5 @@ class Dashboard:
                     return int(string.split(" ")[0])
             return 0
         except Exception as e:
-            self.logger.log_error("Dashboard: {}".format(str(e)))
+            self.__logger.log_error("Dashboard: {}".format(str(e)))
             return 0

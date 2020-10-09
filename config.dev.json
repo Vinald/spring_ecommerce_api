@@ -3,9 +3,11 @@
     "log-level": "debug",
     "audio-path": "",
     "max-channels": "25",
+    "use-sip-trunks": "true",
     "routed-numbers": [
       {"format": "25679X", "peer": "airtel"}
-    ]
+    ],
+    "max-call-time-in-seconds": "300"
   },
   "redis": {
     "port": "6379",
@@ -20,7 +22,9 @@
   },
   "asterisk-ami": {
     "user": "ivr",
-    "pass": "1234"
+    "pass": "1234",
+    "host": "127.0.0.1",
+    "port": "5038"
   },
   "asterisk-ari": {
     "port": "8088",
