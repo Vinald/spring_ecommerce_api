@@ -3,11 +3,9 @@ import os
 
 
 class Logger:
-    def __init__(self, project_dir, phone=None):
+    def __init__(self, project_dir):
         self.__app = None
-        self.__token = None
-        self.__external_id = None
-        self.__phone = phone
+        self.__phone = None
         self.__log_file = os.path.join(project_dir, 'app.log')
         self.__check_if_log_file_is_writable()
         logging.basicConfig(
@@ -40,19 +38,11 @@ class Logger:
     def set_app(self, app=None):
         self.__app = app
 
-    def set_token(self, token=None):
-        self.__token = token
-
-    def set_external_id(self, external_id=None):
-        self.__external_id = external_id
-
     def __custom_logger(self, level: int, message: str):
         try:
-            msg = "[Application: {}, Token: {}, Number: {}, External ID: {}] {}".format(
+            msg = "[App: {}, Phone: {}] {}".format(
                 self.__app,
-                self.__token,
                 self.__phone,
-                self.__external_id,
                 message
             )
             self.logger.log(level, msg)

@@ -9,6 +9,7 @@ from src.AppWebListener import AppWebListener
 from src.Config import Config
 from src.Logger import Logger
 from src.manager.TrunkManager import TrunkManager
+from src.utils import date_object_converter
 
 project_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -49,9 +50,7 @@ def ami_client():
 
 def initialize_log():
     logger.set_app()
-    logger.set_token()
     logger.set_phone()
-    logger.set_external_id()
 
 
 def initiate_call(call_data):
@@ -61,9 +60,9 @@ def initiate_call(call_data):
     call_id = call_data['call_id']
     app_data = call_data['app-data']
     external_id = call_data['external_id']
-    status_link = app_data['status_link']
+    status_link = app_data['status_url']
 
-    channel = 'SIP/' + phone
+    channel = 'SIP/{}'.format(phone)
 
     if trunk_list is not None and len(trunk_list) > 0:
         trunk_manager = TrunkManager(trunk_list, routed_numbers)
@@ -80,9 +79,7 @@ def initiate_call(call_data):
     application_name = app_manager.get_data(token)['name']
 
     logger.set_app(app_manager)
-    logger.set_token(token)
     logger.set_phone(phone)
-    logger.set_external_id(external_id)
 
     data = 'data={}&{}&{}&{}&{},' \
            'CDR(dialed_number)={},' \
@@ -127,5 +124,5 @@ def initiate_call(call_data):
         'external_id': external_id,
         'status_link': status_link,
         'app-data': app_data
-    })
+    }, default=date_object_converter)
     cache.set(call_id, cache_data, 3600)
