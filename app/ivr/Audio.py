@@ -4,8 +4,9 @@ from app.utilities.Logger import Logger
 
 
 class Audio:
-    def __init__(self, path):
+    def __init__(self, path, dates_audio_path):
         self.__path = path
+        self.__dates_audio_path = dates_audio_path
 
     def gen_audio_file(self, link):
         if self.__get_audio_path() is None:
@@ -23,6 +24,11 @@ class Audio:
         except Exception as e:
             msg = 'Failed to stream audio file -> {}: {}'
             logger.log_warning(msg.format(audio_file, str(e)))
+
+    def get_dates_audio_path(self):
+        if self.__dates_audio_path[-1] == '/':
+            return self.__dates_audio_path.strip()[:-1]
+        return self.__dates_audio_path
 
     def __get_audio_path(self):
         if not os.path.exists(self.__path):
