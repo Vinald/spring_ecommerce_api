@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 from asterisk.agi import AGI
 from bs4 import Tag
@@ -16,6 +17,7 @@ class BlockElement:
             self.__parse_block(block)
         except Exception as e:
             self.__logger.log_warning("VXML parse error: {}".format(str(e)))
+            self.__logger.log_warning("VXML: {}".format(str(block)))
 
     def __parse_block(self, block: Tag):
         prompts = block.find_all('prompt', recursive=False)
@@ -36,5 +38,14 @@ class BlockElement:
         interpret = str(say_as['interpret-as'])
         if interpret == 'vxml:date':
             date = say_as.get_text()
-            timestamp = datetime.strptime(date, '%Y%m%d').timestamp()
-            self.__agi.say_date(timestamp)
+            date_obj = datetime.strptime(date, '%Y%m%d')
+            files = [date_obj.strftime("%A"), date_obj.day, date_obj.strftime("%b").lower()]
+            dates_audio_path = self.__audio.get_dates_audio_path()
+            try:
+                for file in files:
+                    self.__agi.stream_file("{}/{}".format(dates_audio_path, file))
+            except Exception as e:
+                time.sleep(2)
+                self.__logger.log_warning("Dates stream error: {}.".format(str(e)))
+                self.__logger.log_warning("Defaulting to asterisk TTS for dates")
+                self.__agi.say_date(date_obj.timestamp())
