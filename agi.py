@@ -2,7 +2,7 @@
 
 from asterisk.agi import AGI
 from app.api.Apps import Apps
-from app.core import logger, config, audio_path, max_call_time
+from app.core import logger, config, audio_path, max_call_time, dates_audio_path
 from app.ivr.Audio import Audio
 from app.ivr.IVR import IVR
 from app.utilities.Database import Database
@@ -14,7 +14,7 @@ agi = AGI()
 agi.set_autohangup(max_call_time)
 
 # Initialize the audio files parser
-audio = Audio(audio_path)
+audio = Audio(audio_path, dates_audio_path)
 
 # Initialize database
 database = Database(config)
