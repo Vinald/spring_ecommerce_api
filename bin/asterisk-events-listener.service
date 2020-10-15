@@ -3,7 +3,7 @@ Description=IVR Asterisk Events Listener Service
 After=network.target
 
 [Service]
-WorkingDirectory=/root/ivr
+WorkingDirectory=/root/ivr/bin
 ExecStart=/usr/bin/python3 asterisk-events-listener.py
 Restart=on-failure
 

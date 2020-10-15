@@ -121,7 +121,7 @@ def generate_csv_for_particular_day(file: str, report_date: str, header_names: l
 
 
 date_now = datetime.now().strftime('%b-%d-%Y %X')
-update_cron_log = "echo {}: daily-reports.py has ran successfully >> /root/ivr/logs/cron_jobs.log".format(date_now)
+update_cron_log = "echo {}: daily-reports.py has ran successfully >> /root/ivr/logs/cron-jobs.log".format(date_now)
 
 if len(sys.argv) - 1 == 1:
     arg1 = sys.argv[1]

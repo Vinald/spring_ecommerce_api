@@ -33,6 +33,9 @@ class CacheManager:
             msg = "Redis -> failed to delete data: {}".format(str(e))
             self.__logger.log_critical(msg)
 
+    def cache_exists(self, key):
+        return True if self.get(key) is not None else False
+
     def __initialize(self):
         try:
             self.__config.set_section('redis')

@@ -2,6 +2,7 @@ import json
 import requests
 import datetime
 from redis import Redis
+from app.manager.CDRManager import CDRManager
 from app.utilities.Hash import Hash
 from app.utilities.Logger import Logger
 
@@ -25,7 +26,8 @@ class AsteriskEventsHandler:
         'NO_ANSWER': 'timeout'
     }
 
-    def __init__(self, logger: Logger, cache: Redis):
+    def __init__(self, logger: Logger, cache: Redis, cdr: CDRManager):
+        self.__cdr = cdr
         self.__cache = cache
         self.__logger = logger
 
@@ -65,6 +67,8 @@ class AsteriskEventsHandler:
             self.__cache.delete(key)
             data = json.loads(cache_result)
             phone = data['phone']
+            call_id = data['call_id']
+            self.__cdr.end_call_and_flush_cdr_to_db(call_id)
             results = str(requests.get(data['link']).content)
             log_msg = "Call hangup detected for channel: {} results: {}"
             self.__logger.set_app(data['app'])
@@ -117,6 +121,7 @@ class AsteriskEventsHandler:
 
     def __process_call(self, state, call_id, asterisk_unique_id, phone, external_id, status_url, app_name):
         if state == self.__COMPLETED and asterisk_unique_id != '<unknown>':
+            self.__cdr.update_call_start_time(call_id)
             key = Hash.hash(asterisk_unique_id)
             reason = self.__channel_reason(self.__COMPLETED)
             hangup_link = self.__gen_status_link(
@@ -127,10 +132,11 @@ class AsteriskEventsHandler:
                 externalID=str(external_id),
                 externalType=self.__CALL_LINK
             )
-            data = json.dumps({'link': hangup_link, 'phone': phone, 'app': app_name})
+            data = json.dumps({'link': hangup_link, 'phone': phone, 'app': app_name, 'call_id': call_id})
             self.__cache.set(key, data, 1800)
             self.__in_progress(call_id, status_url, phone, app_name)
         else:
+            self.__cdr.flush_cdr_to_db(call_id, state)
             reason = self.__channel_reason(state)
             self.__update_call_status(call_id, state, reason, status_url, phone, app_name)
 

@@ -53,9 +53,19 @@ os.system("cp {}/ari.conf {}/http.conf {}/logger.conf {}/cdr_custom.conf {}".for
 call_request_queue_file = os.path.join(project_dir, "call-request-queue.py")
 call_request_queue_cron_file = os.path.join(CRON_DIR, "call-request-queue")
 os.system("chmod +x {}".format(call_request_queue_file))
-os.system('echo "*/3 * * * * root {}" > {}'.format(call_request_queue_file, call_request_queue_cron_file))
+os.system('echo "*/3 * * * * root cd {} && python3 call-request-queue.py" > {}'.format(
+	bin_dir,
+	call_request_queue_cron_file
+))
 os.system("chown root:root {}".format(call_request_queue_cron_file))
 os.system("chmod 600 {}".format(call_request_queue_cron_file))
+
+
+# Set up log sip peer monitoring cron-tab to run every 30 minutes
+sip_monitor_cron_file = os.path.join(CRON_DIR, "sip-peer-monitor")
+os.system('echo "*/30 * * * * root cd {} && python3 sip-peer-monitor.py" > {}'.format(bin_dir, sip_monitor_cron_file))
+os.system("chown root:root {}".format(sip_monitor_cron_file))
+os.system("chmod 600 {}".format(sip_monitor_cron_file))
 
 
 # Set up log rotation cron-tab to run every night at 23:59

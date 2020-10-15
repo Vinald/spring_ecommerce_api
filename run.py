@@ -6,8 +6,7 @@ from flask_cors import CORS
 from datetime import datetime
 from app import core
 from app.api.Dashboard import Dashboard
-from app.asterisk.AsteriskARI import AsteriskARI
-from app.core import max_channels, asterisk_ari_config
+from app.core import asterisk_ari
 from app.manager.QueueManager import QueueManager
 from app.utilities.Hash import Hash
 
@@ -20,7 +19,6 @@ database = core.database
 app_manager = core.app_manager
 
 queue = QueueManager(core.cache)
-asterisk_ari = AsteriskARI(asterisk_ari_config, logger, max_channels)
 
 app_web_listener = core.asterisk_events_handler
 
