@@ -1,5 +1,8 @@
+import sys
 import time
 import requests
+
+sys.path.append('..')
 from app.asterisk.AsteriskARI import AsteriskARI
 from app.core import max_channels, asterisk_ari_config, logger, cache
 from app.manager.QueueManager import QueueManager

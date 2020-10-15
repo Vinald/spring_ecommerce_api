@@ -14,47 +14,51 @@ config.set_section('email-server')
 
 username = config.get('user')
 password = config.get('pass')
-mail_port = config.get('port')
+mail_port = config.get_int('port')
 mail_host = config.get('host')
 email_from = username
 
 
 class Email:
-    def __init__(self, to_recipients: list, subject: str, body_message: str, cc_recipients: list = None,
-                 attachment_paths: list = None):
-        self.to_recipients = to_recipients
-        self.cc_recipients = cc_recipients
-        self.subject = subject
-        self.body_message = body_message
-        self.attachment_paths = attachment_paths
-        if self.to_recipients is not None and not isinstance(self.to_recipients, list):
+    def __init__(
+        self,
+        to_recipients: list,
+        subject: str,
+        body_message: str,
+        cc_recipients: list = None,
+        attachment_paths: list = None
+    ):
+        self.__to = to_recipients
+        self.__cc = cc_recipients
+        self.__subject = subject
+        self.__message_body = body_message
+        self.__attachment_paths = attachment_paths
+
+        if self.__to is not None and not isinstance(self.__to, list):
             logger.log_info("[EMAIL]: 'To' Recipients not provided in list format")
-            exit(1)
-        if self.cc_recipients is not None and not isinstance(self.cc_recipients, list):
+        if self.__cc is not None and not isinstance(self.__cc, list):
             logger.log_info("[EMAIL]: 'Cc' Recipients not provided in list format")
-            exit(1)
-        if self.attachment_paths is not None and not isinstance(self.attachment_paths, list):
+        if self.__attachment_paths is not None and not isinstance(self.__attachment_paths, list):
             logger.log_info("[EMAIL]: Attached file paths not provided in list format")
-            exit(1)
 
     def send_email(self):
-        if self.cc_recipients is not None:
-            recipients = self.to_recipients + self.cc_recipients
+        if self.__cc is not None:
+            recipients = self.__to + self.__cc
         else:
-            recipients = self.to_recipients
+            recipients = self.__to
 
         msg = MIMEMultipart()
         msg["From"] = email_from
-        msg["To"] = ','.join(self.to_recipients)
-        if self.cc_recipients is not None:
-            msg["Cc"] = ','.join(self.cc_recipients)
-        msg["Subject"] = self.subject
-        msg.preamble = self.body_message
+        msg["To"] = ','.join(self.__to)
+        if self.__cc is not None:
+            msg["Cc"] = ','.join(self.__cc)
+        msg["Subject"] = self.__subject
+        msg.preamble = self.__message_body
         body = MIMEText(msg.preamble, "plain")
         msg.attach(body)
 
-        if self.attachment_paths is not None:
-            for each_path in self.attachment_paths:
+        if self.__attachment_paths is not None:
+            for each_path in self.__attachment_paths:
                 file_name = os.path.basename(each_path)
                 ctype, encoding = mimetypes.guess_type(each_path)
                 if ctype is None or encoding is not None:
@@ -88,10 +92,8 @@ class Email:
             server.starttls()
             server.login(username, password)
             server.sendmail(email_from, recipients, msg.as_string())
-            logger.log_info('[EMAIL]: Email to {}, Subject: {} sent successfully'.format(recipients, self.subject))
-            print('Email Sent Successfully...')
+            logger.log_info('[EMAIL]: Email to {}, Subject: {} sent successfully'.format(recipients, self.__subject))
         except Exception as e:
-            print('Email Send Failed...')
             logger.log_info("[EMAIL]: Failed to send email with error: {}".format(e))
         finally:
             server.quit()

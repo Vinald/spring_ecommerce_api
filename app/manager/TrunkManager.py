@@ -1,16 +1,27 @@
-import subprocess
+from app.asterisk.AsteriskARI import AsteriskARI
+from app.manager.CacheManager import CacheManager
 
 
 class TrunkManager:
-    def __init__(self, trunks: list = None, routed_numbers: list = None):
+    __FAIL_TRUNK_CACHE = 'failing-trunk'
+
+    def __init__(
+        self,
+        ari: AsteriskARI,
+        cache: CacheManager,
+        trunks: list = None,
+        routed_numbers: list = None
+    ):
+        self.__ari = ari
+        self.__cache = cache
         self.__trunks = trunks
         self.__routed_numbers = routed_numbers
 
     def get_available_peer(self):
+        failing_peer = self.__cache.get(self.__FAIL_TRUNK_CACHE)
         for trunk in self.__trunks:
             peer = trunk['peer']
-            host = trunk['host']
-            if self.__sip_trunk_is_online(host):
+            if failing_peer != peer and self.__ari.peer_is_online(peer):
                 return peer
 
     def routed_number(self, phone: str):
@@ -21,15 +32,4 @@ class TrunkManager:
             number_format = route['format']
             if phone.startswith(number_format):
                 return peer
-        return False
-
-    @staticmethod
-    def __sip_trunk_is_online(trunk: str):
-        cmd = "sudo asterisk -rx 'sip show registry'"
-        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        output = process.stdout
-        for line in output:
-            string = line.decode('utf8')
-            if trunk in string and "Registered" in string:
-                return True
         return False

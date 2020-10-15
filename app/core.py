@@ -6,7 +6,10 @@ from datetime import date
 from asterisk.ami import AMIClientAdapter, AMIClient
 from redis import Redis
 from app.api.Apps import Apps
+from app.asterisk.AsteriskARI import AsteriskARI
 from app.asterisk.AsteriskEventsHandler import AsteriskEventsHandler
+from app.manager.CDRManager import CDRManager
+from app.manager.CacheManager import CacheManager
 from app.manager.TrunkManager import TrunkManager
 from app.utilities.Config import Config
 from app.utilities.Database import Database
@@ -47,7 +50,13 @@ redis_host = config.get('host')
 redis_port = config.get_int('port')
 
 cache = Redis(host=redis_host, port=redis_port)
-asterisk_events_handler = AsteriskEventsHandler(logger, cache)
+
+cache_manager = CacheManager(config, logger)
+cdr_manager = CDRManager(cache_manager, database, logger)
+
+asterisk_events_handler = AsteriskEventsHandler(logger, cache, cdr_manager)
+
+asterisk_ari = AsteriskARI(asterisk_ari_config, logger, max_channels)
 
 client = AMIClient(address=ami_host, port=ami_port)
 client.login(username=ami_user, secret=ami_pass)
@@ -77,7 +86,7 @@ def initiate_call(call_data):
     channel = 'SIP/{}'.format(phone)
 
     if use_sip_trunks and len(trunk_list) > 0:
-        trunk_manager = TrunkManager(trunk_list, routed_numbers)
+        trunk_manager = TrunkManager(asterisk_ari, cache_manager, trunk_list, routed_numbers)
         route_peer = trunk_manager.routed_number(phone)
         if route_peer:
             channel = 'SIP/+{}@{}'.format(phone, route_peer)
@@ -125,6 +134,21 @@ def initiate_call(call_data):
         Timeout=45000,
         Async=True
     )
+
+    cdr_data = {
+        "app_name": app_data["name"],
+        "creation_date": datetime.datetime.now(),
+        "token": app_data['token'],
+        "peer": channel,
+        "caller_id": channel,
+        "call_id": call_id,
+        "dialed_number": phone,
+        "external_id": external_id,
+        "call_direction": "OUTGOING"
+    }
+
+    cdr_cache_id = 'cdr-{}'.format(call_id)
+    cache.set(cdr_cache_id, json.dumps(cdr_data, default=date_object_converter), 3600)
 
     cache_data = json.dumps({
         'phone': phone,
