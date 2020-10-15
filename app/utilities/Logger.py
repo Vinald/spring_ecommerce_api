@@ -6,7 +6,8 @@ class Logger:
     def __init__(self, project_dir, log_level='DEBUG'):
         self.__app = None
         self.__phone = None
-        self.__log_file = os.path.join(project_dir, 'logs', 'app.log')
+        self.__log_dir = os.path.join(project_dir, 'logs')
+        self.__log_file = os.path.join(self.__log_dir, 'app.log')
         self.__check_if_log_file_is_writable()
         logging.basicConfig(
             level=log_level.upper(),
@@ -20,6 +21,9 @@ class Logger:
     def initialize(self):
         self.set_app()
         self.set_phone()
+
+    def get_log_dir(self):
+        return self.__log_dir
 
     def log_info(self, message: str):
         self.__custom_logger(logging.INFO, message)

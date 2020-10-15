@@ -42,5 +42,9 @@
     "pass": "",
     "port": "587",
     "host": "smtp.office365.com"
+  },
+  "email-recipients": {
+    "to": [],
+    "cc": []
   }
 }

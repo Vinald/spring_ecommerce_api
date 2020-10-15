@@ -19,6 +19,22 @@ class AsteriskARI:
     def number_of_active_channels(self):
         return len(self.__get_channels())
 
+    def peer_is_online(self, peer_name):
+        for peer in self.__get_peers():
+            if peer_name == peer['resource'] and peer['state'] == 'online':
+                return True
+        return False
+
+    def all_peers_are_offline(self):
+        states = []
+        for peer in self.__get_peers():
+            states.append(peer['state'])
+        return "online" not in states
+
+    def __get_peers(self):
+        response = self.__send_request('/endpoints/SIP')
+        return [] if response is None else list(response.json())
+
     def __get_channels(self):
         response = self.__send_request('/channels')
         return {} if response is None else list(response.json())

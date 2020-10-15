@@ -22,7 +22,7 @@ if os.path.exists(log_file):
 
     # Update cron log file that the job ran
     update_cron_log = "echo {}: log-rotation.py has ran successfully >> {}"
-    os.system(update_cron_log.format(current_date.strftime('%b-%d-%Y %X'), os.path.join(logs_dir, 'cron_jobs.log')))
+    os.system(update_cron_log.format(current_date.strftime('%b-%d-%Y %X'), os.path.join(logs_dir, 'cron-jobs.log')))
 
     # Fixing permissions
     os.system("chown -R asterisk {}".format(logs_dir))

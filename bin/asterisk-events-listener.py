@@ -1,5 +1,8 @@
+import sys
 import time
 import requests
+
+sys.path.append('..')
 from app.core import client
 
 events_link = "http://127.0.0.1:5000/ivr/events"
