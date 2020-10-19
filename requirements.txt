@@ -9,6 +9,8 @@ flake8==3.8.1
 autopep8==1.5.2
 redis==3.5.2
 pandas
+SQLAlchemy
+alembic
 PyMySQL==0.9.3
 prettytable==0.7.2
 Flask-Cors==3.0.8

@@ -5,6 +5,8 @@ import pathlib
 from datetime import date
 from asterisk.ami import AMIClientAdapter, AMIClient
 from redis import Redis
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from app.api.Apps import Apps
 from app.asterisk.AsteriskARI import AsteriskARI
 from app.asterisk.AsteriskEventsHandler import AsteriskEventsHandler
@@ -25,6 +27,17 @@ ami_host = config.get('host')
 ami_user = config.get('user')
 ami_pass = config.get('pass')
 ami_port = config.get_int('port')
+
+config.set_section('database')
+db_user = config.get('user')
+db_pass = config.get('pass')
+db_host = config.get('host')
+db_port = config.get_int('port')
+db_name = config.get('database')
+
+db_link = 'mysql+pymysql://{}:{}@{}:{}/{}?charset=utf8mb4'
+engine = create_engine(db_link.format(db_user, db_pass, db_host, db_port, db_name))
+Session = sessionmaker(bind=engine)
 
 asterisk_ari_config = config.get_section_content('asterisk-ari')
 
