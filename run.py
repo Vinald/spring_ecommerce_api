@@ -7,10 +7,14 @@ from datetime import datetime
 from app import core
 from app.api.Dashboard import Dashboard
 from app.core import asterisk_ari
+from app.core import engine
 from app.manager.QueueManager import QueueManager
+from app.models.models import Base
 from app.utilities.Hash import Hash
 
 app = Flask(__name__)
+
+Base.metadata.create_all(bind=engine)
 
 CORS(app, resources={r'/*': {'origins': '*'}})
 
