@@ -2,7 +2,6 @@ import datetime
 import json
 import os
 import pathlib
-from datetime import date
 from asterisk.ami import AMIClientAdapter, AMIClient
 from redis import Redis
 from sqlalchemy import create_engine
@@ -97,56 +96,36 @@ def initiate_call(call_data):
     status_link = app_data['status_url']
 
     channel = 'SIP/{}'.format(phone)
+    caller_id = app_data['phone']
 
     if use_sip_trunks and len(trunk_list) > 0:
         trunk_manager = TrunkManager(asterisk_ari, cache_manager, trunk_list, routed_numbers)
-        route_peer = trunk_manager.routed_number(phone)
-        if route_peer:
-            channel = 'SIP/+{}@{}'.format(phone, route_peer)
-        else:
-            available_peer = trunk_manager.get_available_peer()
-            channel = 'SIP/+{}@{}'.format(phone, available_peer)
-
-    date_today = date.today().strftime("%b-%d-%Y")
-    application_name = app_manager.get_data(token)['name']
+        outbound_call_details = trunk_manager.construct_channel_and_caller_id(phone, caller_id)
+        channel = outbound_call_details['channel']
+        caller_id = outbound_call_details['caller-id']
 
     logger.set_app(app_manager)
     logger.set_phone(phone)
 
-    data = 'data={}&{}&{}&{}&{},' \
-           'CDR(dialed_number)={},' \
-           'CDR(date)={},' \
-           'CDR(call_id)={},' \
-           'CDR(sip_channel)={},' \
-           'CDR(call_direction)=OUTGOING,' \
-           'CDR(token)={},' \
-           'CDR(application_name)={},' \
-           'CDR(external_id)={}'
-
-    adapter.Originate(
+    future = adapter.Originate(
         Channel=channel,
         Exten='100',
         Priority=1,
         Context='ivr',
-        CallerID='Call For Life Uganda',
-        Variable=data.format(
+        CallerID=caller_id,
+        Variable='data={}&{}&{}&{}&{}'.format(
             call_id,
             phone,
             flow,
             token,
             external_id,
-            phone,
-            date_today,
-            call_id,
-            channel,
-            token,
-            application_name,
-            external_id,
         ),
         ActionID=call_id,
-        Timeout=45000,
+        Timeout=40000,
         Async=True
     )
+
+    logger.log_info("Originate response: {}".format(future.response))
 
     cdr_data = {
         "app_name": app_data["name"],
