@@ -30,6 +30,8 @@ NEW_IVR_SERVICE = os.path.join(project_dir, 'bin', "ivr-api.service")
 OLD_LISTENER_SERVICE = os.path.join(SYSTEM_D_DIR, "asterisk-events-listener.service")
 NEW_LISTENER_SERVICE = os.path.join(project_dir, 'bin', "asterisk-events-listener.service")
 
+ALEMBIC_DIR = os.path.join(project_dir, 'alembic')
+
 os.system("clear")
 
 if os.geteuid() != 0:
@@ -101,6 +103,7 @@ os.system("apt-get install python3-dev python3-pip -y > /dev/null")
 print("\nInstalling python requirements in file: {}\n".format(REQUIREMENTS_FILE))
 os.system("pip3 install -r {}".format(REQUIREMENTS_FILE))
 
+os.system("cd {} && /usr/local/bin/alembic upgrade head".format(ALEMBIC_DIR))
 
 os.system("mkdir -p {}".format(LOG_DIR))
 

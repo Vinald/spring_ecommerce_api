@@ -34,8 +34,8 @@
     "pass": "1234"
   },
   "sip-trunks": [
-    {"peer": "simbanet", "host": "127.0.0.1", "max-channels": "25"},
-    {"peer": "airtel", "host": "127.0.0.1", "max-channels": "25"}
+    {"peer": "simbanet", "host": "127.0.0.1", "max-channels": "25", "fixed-caller-id":  "false", "caller-id":  ""},
+    {"peer": "airtel", "host": "127.0.0.1", "max-channels": "25", "fixed-caller-id": "true", "caller-id": ""}
   ],
   "email-server": {
     "user": "academysupport@idi.co.ug",
