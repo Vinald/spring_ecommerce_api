@@ -67,13 +67,19 @@ class AsteriskEventsHandler:
             self.__cache.delete(key)
             data = json.loads(cache_result)
             phone = data['phone']
-            call_id = data['call_id']
-            self.__cdr.end_call_and_flush_cdr_to_db(call_id)
-            results = str(requests.get(data['link']).content)
-            log_msg = "Call hangup detected for channel: {} results: {}"
-            self.__logger.set_app(data['app'])
-            self.__logger.set_phone(phone)
-            self.__logger.log_info(log_msg.format(channel, results))
+            if 'is_incoming' not in data.keys():
+                call_id = data['call_id']
+                self.__cdr.end_call_and_flush_cdr_to_db(call_id)
+                results = str(requests.get(data['link']).content)
+                log_msg = "Call hangup detected for channel: {} results: {}"
+                self.__logger.set_app(data['app'])
+                self.__logger.set_phone(phone)
+                self.__logger.log_info(log_msg.format(channel, results))
+            else:
+                self.__cdr.end_call_and_flush_cdr_to_db(key)
+                self.__logger.set_app()
+                self.__logger.set_phone(phone)
+                self.__logger.log_info("Incoming call hangup detected: {}".format(phone))
 
     def __get_channel_status(self, status: str):
         return self.__STATUS_CODES[status] if status in self.__STATUS_CODES.keys() else 'UNKNOWN'

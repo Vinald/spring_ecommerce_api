@@ -95,31 +95,30 @@ def initiate_call(call_data):
     external_id = call_data['external_id']
     status_link = app_data['status_url']
 
+    peer = ""
     channel = 'SIP/{}'.format(phone)
     caller_id = app_data['phone']
 
     if use_sip_trunks and len(trunk_list) > 0:
         trunk_manager = TrunkManager(asterisk_ari, cache_manager, trunk_list, routed_numbers)
         outbound_call_details = trunk_manager.construct_channel_and_caller_id(phone, caller_id)
+        peer = outbound_call_details['peer']
         channel = outbound_call_details['channel']
         caller_id = outbound_call_details['caller-id']
 
     logger.set_app(app_manager)
     logger.set_phone(phone)
 
+    if "+" not in caller_id:
+        caller_id = "+{}".format(caller_id)
+
     future = adapter.Originate(
         Channel=channel,
         Exten='100',
         Priority=1,
         Context='ivr',
-        CallerID=caller_id,
-        Variable='data={}&{}&{}&{}&{}'.format(
-            call_id,
-            phone,
-            flow,
-            token,
-            external_id,
-        ),
+        CallerID="{} <{}>".format(caller_id, caller_id),
+        Variable='data={}&{}&{}&{}'.format(phone, token, call_id, flow),
         ActionID=call_id,
         Timeout=40000,
         Async=True
@@ -131,8 +130,8 @@ def initiate_call(call_data):
         "app_name": app_data["name"],
         "creation_date": datetime.datetime.now(),
         "token": app_data['token'],
-        "peer": channel,
-        "caller_id": channel,
+        "peer": peer,
+        "caller_id": caller_id,
         "call_id": call_id,
         "dialed_number": phone,
         "external_id": external_id,

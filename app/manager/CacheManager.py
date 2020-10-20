@@ -40,7 +40,7 @@ class CacheManager:
         try:
             self.__config.set_section('redis')
             host = self.__config.get('host')
-            port = self.__config.get('port')
+            port = self.__config.get_int('port')
             self.__cache = Redis(host=host, port=port, socket_connect_timeout=2)
             self.__cache.ping()
         except Exception as e:
