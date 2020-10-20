@@ -13,8 +13,8 @@ from app.utilities.Logger import Logger
 class IVR:
     def __init__(self, agi: AGI, logger: Logger, app_manager: Apps, audio: Audio):
         self.__agi = agi
-        data = self.__agi.get_variable('data')
-        self.__data = {} if data == '' else json.loads(data)
+        data = str(self.__agi.get_variable('data'))
+        self.__data = [] if data == '' else data.split('&')
         self.__audio = audio
         self.__logger = logger
         self.__app_manager = app_manager
@@ -32,11 +32,11 @@ class IVR:
 
         if self.__data:
             # Outgoing details set up
-            token = self.__data['token']
-            call_id = self.__data['call-id']
-            jump_to = self.__data['flow']
+            token = self.__data[1]
+            call_id = self.__data[2]
+            jump_to = self.__data[3]
             voice_url = self.__app_manager.get_voice_url(token)
-            self.phone = self.__data['phone']
+            self.phone = self.__data[0]
             call_direction = 'OUTGOING'
             outgoing_link = "{}?phone={}&callId={}&jumpTo={}"
             self.link = outgoing_link.format(voice_url, self.phone, call_id, jump_to)

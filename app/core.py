@@ -109,14 +109,6 @@ def initiate_call(call_data):
     logger.set_app(app_manager)
     logger.set_phone(phone)
 
-    dial_plan_vars = {
-        'flow': flow,
-        'phone': phone,
-        'token': token,
-        'call-id': caller_id,
-        'external-id': external_id
-    }
-
     if "+" not in caller_id:
         caller_id = "+{}".format(caller_id)
 
@@ -126,7 +118,7 @@ def initiate_call(call_data):
         Priority=1,
         Context='ivr',
         CallerID="{} <{}>".format(caller_id, caller_id),
-        Variable='data={}'.format(json.dumps(dial_plan_vars)),
+        Variable='data={}&{}&{}&{}'.format(phone, token, call_id, flow),
         ActionID=call_id,
         Timeout=40000,
         Async=True
