@@ -26,8 +26,8 @@ class TrunkManager:
         channel = 'SIP/+{}@{}'.format(phone, peer)
 
         if self.__has_fixed_caller_id(peer) or len(caller_id) == 0:
-            return {"channel": channel, "caller-id": peer['caller-id']}
-        return {"channel": channel, "caller-id": caller_id}
+            return {"channel": channel, "caller-id": peer['caller-id'], "peer": peer}
+        return {"channel": channel, "caller-id": caller_id, "peer": peer}
 
     def get_available_peer(self):
         failing_peer = self.__cache.get(self.__FAIL_TRUNK_CACHE)

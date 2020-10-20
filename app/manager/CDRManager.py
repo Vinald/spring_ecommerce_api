@@ -15,9 +15,9 @@ class CDRManager:
         self.__logger = logger
         self.__database = database
 
-    def update_call_start_time(self, call_id):
+    def update_call_start_time(self, unique_id):
         try:
-            key = 'cdr-{}'.format(call_id)
+            key = 'cdr-{}'.format(unique_id)
             cdr_data = self.__cache.get(key)
             if cdr_data is not None:
                 data = json.loads(cdr_data)
@@ -27,9 +27,9 @@ class CDRManager:
         except Exception as e:
             self.__logger.log_critical("CDR update failure: {}".format(str(e)))
 
-    def flush_cdr_to_db(self, call_id, call_state):
+    def flush_cdr_to_db(self, unique_id, call_state):
         try:
-            key = 'cdr-{}'.format(call_id)
+            key = 'cdr-{}'.format(unique_id)
             cdr_data = self.__cache.get(key)
             if cdr_data is not None:
                 self.__cache.delete(key)
@@ -39,9 +39,9 @@ class CDRManager:
         except Exception as e:
             self.__logger.log_critical("CDR flush failure: {}".format(str(e)))
 
-    def end_call_and_flush_cdr_to_db(self, call_id):
+    def end_call_and_flush_cdr_to_db(self, unique_id):
         try:
-            key = 'cdr-{}'.format(call_id)
+            key = 'cdr-{}'.format(unique_id)
             cdr_data = self.__cache.get(key)
             if cdr_data is not None:
                 self.__cache.delete(key)

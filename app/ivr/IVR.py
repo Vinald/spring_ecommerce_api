@@ -1,14 +1,20 @@
+import datetime
+import json
+import time
 from asterisk.agi import AGI
 from app.api.Apps import Apps
+from app.core import cache, date_object_converter
 from app.ivr.Audio import Audio
 from app.ivr.VXMLParser import VXMLParser
+from app.utilities.Hash import Hash
 from app.utilities.Logger import Logger
 
 
 class IVR:
     def __init__(self, agi: AGI, logger: Logger, app_manager: Apps, audio: Audio):
         self.__agi = agi
-        self.__data = str(self.__agi.get_variable('data'))
+        data = self.__agi.get_variable('data')
+        self.__data = {} if data == '' else json.loads(data)
         self.__audio = audio
         self.__logger = logger
         self.__app_manager = app_manager
@@ -24,24 +30,44 @@ class IVR:
         call_id = ''
         call_direction = 'INCOMING'
 
-        if self.__data is not None and len(self.__data) > 0:
+        if self.__data:
             # Outgoing details set up
-            data = self.__data.split('&')
-            token = data[3]
-            call_id = data[0]
-            jump_to = data[2]
+            token = self.__data['token']
+            call_id = self.__data['call-id']
+            jump_to = self.__data['flow']
             voice_url = self.__app_manager.get_voice_url(token)
-            self.phone = data[1]
+            self.phone = self.__data['phone']
             call_direction = 'OUTGOING'
             outgoing_link = "{}?phone={}&callId={}&jumpTo={}"
             self.link = outgoing_link.format(voice_url, self.phone, call_id, jump_to)
         else:
             # Incoming details set up
             extension = str(self.__agi.env['agi_dnid'])
+            self.phone = str(self.__agi.env['agi_callerid'])
+            external_id = Hash.hash(self.__agi.env['agi_uniqueid'])
+            channel = str(self.__agi.env['agi_channel'])
+            peer = str(channel.split('-')[0]).split('/')[1]
+
+            cdr_data = {
+                "app_name": "App (INCOMING UNKNOWN)",
+                "creation_date": datetime.datetime.now(),
+                "peer": peer,
+                "caller_id": self.phone,
+                "call_id": call_id,
+                "dialed_number": extension,
+                "external_id": external_id,
+                "call_start_time": time.strftime('%H:%M:%S'),
+                "call_direction": "INCOMING",
+                "call_state": "ANSWERED",
+            }
+
+            cache.set(external_id, json.dumps({'phone': self.phone, 'is_incoming': 'true'}))
+            cdr_cache_id = 'cdr-{}'.format(external_id)
+            cache.set(cdr_cache_id, json.dumps(cdr_data, default=date_object_converter), 3600)
+
             token = self.__app_manager.get_token_by_dialed_number(extension)
             if token:
                 voice_url = self.__app_manager.get_voice_url(token)
-                self.phone = str(self.__agi.env['agi_callerid'])
                 self.link = "{}?phone={}".format(voice_url, self.phone)
             else:
                 exit_msg = "Extension does not exist: {}".format(extension)
@@ -51,7 +77,6 @@ class IVR:
 
         results = self.__app_manager.get_data(token)
         self.__logger.set_app(results['name'])
-        self.__agi.set_variable("CDR(call_direction)", call_direction)
         self.__logger.set_phone(self.phone)
         self.__logger.log_info('Starting call')
         self.__logger.log_info('Call ID: {}'.format(call_id))
