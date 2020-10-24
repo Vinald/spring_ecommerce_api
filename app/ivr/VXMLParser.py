@@ -2,6 +2,7 @@ import time
 import requests
 from asterisk.agi import AGI
 from bs4 import BeautifulSoup
+from app.core import log_vxml
 from app.elements.BlockElement import BlockElement
 from app.ivr.Audio import Audio
 from app.utilities.Logger import Logger
@@ -15,6 +16,8 @@ class VXMLParser:
 
     def process_xml(self, next_link: str):
         doc = BeautifulSoup(requests.get(next_link).content, "xml")
+        if log_vxml:
+            self.__logger.log_info("VXML: {}".format(doc))
         form = doc.find('form')
         field = doc.find('field')
         filled = doc.find('filled')

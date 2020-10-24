@@ -1,6 +1,7 @@
 {
   "core": {
     "log-level": "debug",
+    "log-vxml": "false",
     "audio-path": "",
     "dates-audio-path": "https://idi-audio.s3-us-west-2.amazonaws.com/academy-ivr/dates",
     "max-channels": "25",
