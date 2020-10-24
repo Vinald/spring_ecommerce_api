@@ -1,3 +1,4 @@
+from datetime import datetime
 import requests
 from requests.auth import HTTPBasicAuth
 from app.utilities.Logger import Logger
@@ -25,11 +26,22 @@ class AsteriskARI:
                 return True
         return False
 
+    def get_up_time(self):
+        info = self.__get_asterisk_info()
+        if not info:
+            return 'n/a'
+        start_date = datetime.strptime(info['status']['startup_time'], '%Y-%m-%dT%H:%M:%S.%f%z')
+        return "{} day(s)".format((datetime.now(start_date.tzinfo) - start_date).days)
+
     def all_peers_are_offline(self):
         states = []
         for peer in self.__get_peers():
             states.append(peer['state'])
         return "online" not in states
+
+    def __get_asterisk_info(self):
+        response = self.__send_request('/asterisk/info')
+        return {} if response is None else dict(response.json())
 
     def __get_peers(self):
         response = self.__send_request('/endpoints/SIP')

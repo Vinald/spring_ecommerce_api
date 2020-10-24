@@ -14,8 +14,19 @@ class TrunkManager:
     ):
         self.__ari = ari
         self.__cache = cache
-        self.__trunks = trunks
+        self.__peers = trunks
         self.__routed_numbers = routed_numbers
+
+    def get_all_peers(self):
+        peers = []
+        for peer in self.__peers:
+            peer_name = peer['peer']
+            if self.__ari.peer_is_online(peer_name):
+                peer['status'] = 'online'
+            else:
+                peer['status'] = 'offline'
+            peers.append(peer)
+        return peers
 
     def construct_channel_and_caller_id(self, phone, caller_id):
         peer = self.get_available_peer()
@@ -31,10 +42,10 @@ class TrunkManager:
 
     def get_available_peer(self):
         failing_peer = self.__cache.get(self.__FAIL_TRUNK_CACHE)
-        for trunk in self.__trunks:
-            peer = trunk['peer']
-            if failing_peer != peer and self.__ari.peer_is_online(peer):
-                return trunk
+        for peer in self.__peers:
+            peer_name = peer['peer']
+            if failing_peer != peer_name and self.__ari.peer_is_online(peer_name):
+                return peer
         return {}
 
     def routed_number_peer(self, phone: str):
@@ -51,8 +62,8 @@ class TrunkManager:
     def __has_fixed_caller_id(peer):
         return peer["fixed-caller-id"] == 'true'
 
-    def __get_peer_details(self, peer):
-        for trunk in self.__trunks:
-            if peer == trunk['peer']:
-                return trunk
+    def __get_peer_details(self, peer_name):
+        for peer in self.__peers:
+            if peer_name == peer['peer']:
+                return peer
         return {}

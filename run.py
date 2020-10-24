@@ -5,8 +5,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
 from app import core
+from app.api.Charts import Charts
 from app.api.Dashboard import Dashboard
-from app.core import asterisk_ari
+from app.core import asterisk_ari, cdr_manager, peer_manager
 from app.core import engine
 from app.manager.QueueManager import QueueManager
 from app.models.models import Base
@@ -123,8 +124,14 @@ def asterisk_events_handler():
 
 @app.route('/api/dashboard-stats', methods=['GET'])
 def dashboard_stats():
-    dashboard = Dashboard(asterisk_ari, queue, logger)
+    dashboard = Dashboard(asterisk_ari, queue, logger, cdr_manager, peer_manager)
     return jsonify(dashboard.get_stats())
+
+
+@app.route('/api/charts')
+def charts():
+    chart = Charts(database)
+    return jsonify(chart.get_cdr_data())
 
 
 @app.route('/api/apps', methods=['GET', 'POST', 'PUT', 'DELETE'])
@@ -136,7 +143,9 @@ def ivr_apps():
         app_phone = request.form['phone']
         voice_url = request.form['voice_url']
         status_url = request.form['status_url']
-        response = app_manager.create_app(app_name, voice_url, status_url, app_phone)
+        caller_id = request.form['caller_id']
+        toll_free = request.form['toll_free']
+        response = app_manager.create_app(app_name, voice_url, status_url, app_phone, toll_free, caller_id)
         return jsonify(response)
     if request.method == 'DELETE':
         app_id = int(request.args.get('id'))
@@ -147,7 +156,9 @@ def ivr_apps():
         app_phone = request.form['phone']
         voice_url = request.form['voice_url']
         status_url = request.form['status_url']
-        response = app_manager.update_app(app_id, app_name, voice_url, status_url, app_phone)
+        caller_id = request.form['caller_id']
+        toll_free = request.form['toll_free']
+        response = app_manager.update_app(app_id, app_name, voice_url, status_url, app_phone, toll_free, caller_id)
         return jsonify(response)
 
 
