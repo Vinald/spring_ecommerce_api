@@ -53,7 +53,7 @@ class Apps:
             self.__logger.log_info("Database fetch error: {}".format(str(e)))
             return []
 
-    def create_app(self, app_name, app_voice_url, app_status_url, phone):
+    def create_app(self, app_name, app_voice_url, app_status_url, phone, toll_free, caller_id):
         token = self.__token_generator()
 
         data = {
@@ -62,7 +62,9 @@ class Apps:
             'token': token,
             'voice_url': app_voice_url,
             'status_url': app_status_url,
-            'date_created': datetime.datetime.now()
+            'date_created': datetime.datetime.now(),
+            'toll_free': toll_free,
+            'caller_id': caller_id
         }
 
         try:
@@ -77,13 +79,15 @@ class Apps:
             message = "An error occurred while adding application: {}".format(str(e))
             return {'status': 'error', 'message': message}
 
-    def update_app(self, app_id: int, app_name, app_voice_url, app_status_url, phone):
+    def update_app(self, app_id: int, app_name, app_voice_url, app_status_url, phone, toll_free, caller_id):
         data = {
             'name': app_name,
             'phone': phone,
             'voice_url': app_voice_url,
             'status_url': app_status_url,
-            'date_modified': datetime.datetime.now()
+            'date_modified': datetime.datetime.now(),
+            'toll_free': toll_free,
+            'caller_id': caller_id,
         }
 
         try:

@@ -58,3 +58,10 @@ class CDRManager:
                 self.__database.insert(data, self.__CDR_TABLE)
         except Exception as e:
             self.__logger.log_critical("CDR flush failure: {}".format(str(e)))
+
+    def get_number_of_processed_calls(self):
+        sql = "SELECT count(id) count FROM cdr WHERE call_state = 'ANSWERED'"
+        self.__database.reconnect()
+        self.__database.cursor.execute(sql)
+        db_data = self.__database.cursor.fetchone()
+        return int(db_data['count'])
