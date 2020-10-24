@@ -70,6 +70,8 @@ asterisk_events_handler = AsteriskEventsHandler(logger, cache, cdr_manager)
 
 asterisk_ari = AsteriskARI(asterisk_ari_config, logger, max_channels)
 
+peer_manager = TrunkManager(asterisk_ari, cache_manager, trunk_list, routed_numbers)
+
 client = AMIClient(address=ami_host, port=ami_port)
 client.login(username=ami_user, secret=ami_pass)
 
@@ -100,8 +102,7 @@ def initiate_call(call_data):
     caller_id = app_data['phone']
 
     if use_sip_trunks and len(trunk_list) > 0:
-        trunk_manager = TrunkManager(asterisk_ari, cache_manager, trunk_list, routed_numbers)
-        outbound_call_details = trunk_manager.construct_channel_and_caller_id(phone, caller_id)
+        outbound_call_details = peer_manager.construct_channel_and_caller_id(phone, caller_id)
         peer = outbound_call_details['peer']
         channel = outbound_call_details['channel']
         caller_id = outbound_call_details['caller-id']

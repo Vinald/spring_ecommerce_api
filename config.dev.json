@@ -6,7 +6,7 @@
     "max-channels": "25",
     "use-sip-trunks": "true",
     "routed-numbers": [
-      {"format": "25679X", "peer": "airtel"}
+      {"format": "25679", "peer": "airtel"}
     ],
     "max-call-time-in-seconds": "300"
   },
