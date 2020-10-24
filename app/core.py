@@ -43,6 +43,7 @@ asterisk_ari_config = config.get_section_content('asterisk-ari')
 trunk_list = config.get_section_content('sip-trunks')
 
 config.set_section('core')
+log_vxml = config.get_bool('log-vxml')
 log_level = config.get('log-level')
 audio_path = config.get('audio-path')
 max_channels = config.get_int('max-channels')
