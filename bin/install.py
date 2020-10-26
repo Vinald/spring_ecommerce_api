@@ -1,9 +1,57 @@
+import argparse
 import os
 import pathlib
 import sys
 import time
 
 start_time = time.time()
+
+parser = argparse.ArgumentParser()
+
+# Optional arguments
+env_help = "Environment of deployment prod or dev. Default is dev"
+quiet_help = "Set to true (--quiet true) if want to see script output. default is true"
+deploy_help = "Set to true (--deploy true) if its the first time to deploy the application. default is false"
+parser.add_argument("-e", "--env", help=env_help, type=str, default='dev')
+parser.add_argument("-q", "--quiet", help=quiet_help, type=str, default='true')
+parser.add_argument("-d", "--deploy", help=deploy_help, type=str, default='false')
+
+# Parse arguments
+args = parser.parse_args()
+
+is_quiet = True if args.quiet == 'true' else False
+is_dev_env = args.env == 'dev'
+is_first_deployment = True if args.deploy == 'true' else False
+
+
+def run_command(command, description):
+	print("\n{}\n".format(description))
+	if is_quiet:
+		os.system("{} > /dev/null".format(command))
+	else:
+		os.system("{}".format(command))
+
+
+if is_first_deployment:
+	os.system('clear')
+	# Install updates
+	run_command('apt-get update', 'Installing updates')
+	# Install dependencies
+	run_command(
+		'apt-get install asterisk asterisk-mp3 nginx apache2-utils curl docker.io python3-dev python3-pip -y',
+		'Installing asterisk, asterisk-mp3, nginx, apache2-utils, curl, docker.io, python3-dev, python3-pip'
+	)
+	# Install docker services
+	run_command('systemctl enable docker', 'Enabling docker services')
+	run_command(
+		'docker run -d --name redis --restart always -p 6379:6379 redis:alpine',
+		'Setting up redis caching services via docker services'
+	)
+	run_command(
+		"docker run -d --name ivr-db --restart always -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -d mysql:5.7.30",
+		"Setting up MySQL services via docker"
+	)
+
 
 # Main directory vars
 project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
@@ -41,14 +89,17 @@ if os.geteuid() != 0:
 # Set timezone
 os.system("timedatectl set-timezone Africa/Kampala")
 
-# Install vital asterisk config files.
-os.system("cp {}/ari.conf {}/http.conf {}/logger.conf {}/cdr_custom.conf {}".format(
-	ASTERISK_PROJECT_DIR,
-	ASTERISK_PROJECT_DIR,
-	ASTERISK_PROJECT_DIR,
-	ASTERISK_PROJECT_DIR,
-	ASTERISK_DIR
-))
+# Install asterisk config files.
+if is_dev_env:
+	os.system("cp {}/* {}".format(ASTERISK_PROJECT_DIR, ASTERISK_DIR))
+else:
+	os.system("cp {}/ari.conf {}/http.conf {}/cdr.conf {}/manager.conf {}".format(
+		ASTERISK_PROJECT_DIR,
+		ASTERISK_PROJECT_DIR,
+		ASTERISK_PROJECT_DIR,
+		ASTERISK_PROJECT_DIR,
+		ASTERISK_DIR
+	))
 
 
 # Set up call queuing cron to run every after 3 minutes
@@ -84,33 +135,28 @@ os.system("chown root:root {}".format(daily_reports_cron_file))
 os.system("chmod 600 {}".format(daily_reports_cron_file))
 
 
-# Setup asterisk logging
-os.system('asterisk -rx "core set verbose 3"')
-os.system('asterisk -rx "logger reload"')
-
-
 # Install any updates available in ubuntu repositories
-print("\nInstalling updates\n")
-os.system("apt-get update > /dev/null")
-
+run_command('apt-get update', 'Installing updates')
 
 # Install python3-dev, pip 3
-print("\nInstalling python3-dev, python3-pip\n")
-os.system("apt-get install python3-dev python3-pip -y > /dev/null")
-
+run_command('apt-get install python3-dev python3-pip', 'Installing python3-dev, python3-pip')
 
 # Install all dependencies listed in the requirements file
-print("\nInstalling python requirements in file: {}\n".format(REQUIREMENTS_FILE))
-os.system("pip3 install -r {}".format(REQUIREMENTS_FILE))
+run_command(
+	"pip3 install -r {}".format(REQUIREMENTS_FILE),
+	"Installing python requirements in file: {}".format(REQUIREMENTS_FILE)
+)
 
-os.system("cd {} && /usr/local/bin/alembic upgrade head".format(ALEMBIC_DIR))
+# Run database operations like upgrading database etc
+run_command(
+	"cd {} && /usr/local/bin/alembic upgrade head".format(ALEMBIC_DIR),
+	"Doing database operations"
+)
 
 os.system("mkdir -p {}".format(LOG_DIR))
 
 # Restart asterisk
-print("\nRestarting asterisk\n")
-os.system("asterisk -rx 'core restart now'")
-
+run_command("asterisk -rx 'core restart now'", 'Restarting asterisk')
 
 print("\nUpdating IVR Service\n")
 

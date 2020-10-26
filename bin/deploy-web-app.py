@@ -48,13 +48,13 @@ config = """server {{
 
     auth_basic "Administrator's Area";
     auth_basic_user_file {};
-    
+
     location / {{
         # First attempt to serve request as file, then
         # as directory, then fall back to displaying a 404.
         try_files $uri $uri/ /index.html;
     }}
-    
+
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {{
         root /usr/share/nginx/html;
