@@ -103,7 +103,7 @@ else:
 
 
 # Set up call queuing cron to run every after 3 minutes
-call_request_queue_file = os.path.join(project_dir, "call-request-queue.py")
+call_request_queue_file = os.path.join(bin_dir, "call-request-queue.py")
 call_request_queue_cron_file = os.path.join(CRON_DIR, "call-request-queue")
 os.system("chmod +x {}".format(call_request_queue_file))
 os.system('echo "*/3 * * * * root cd {} && python3 call-request-queue.py" > {}'.format(
