@@ -36,7 +36,7 @@ class TrunkManager:
 
         channel = 'SIP/+{}@{}'.format(phone, peer['peer'])
 
-        if self.__has_fixed_caller_id(peer) or len(caller_id) == 0:
+        if self.__has_fixed_caller_id(peer) or caller_id is None or len(caller_id) == 0:
             return {"channel": channel, "caller-id": peer['caller-id'], "peer": peer['peer']}
         return {"channel": channel, "caller-id": caller_id, "peer": peer['peer']}
 
