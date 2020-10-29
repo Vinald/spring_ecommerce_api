@@ -64,16 +64,24 @@ class Database:
     def __initialize(self):
         self.__config.set_section('database')
         try:
+            db = self.__config.get('database')
+            conn = pymysql.connect(
+                host=self.__config.get('host'),
+                user=self.__config.get('user'),
+                password=self.__config.get('pass'),
+                port=self.__config.get_int('port')
+            )
+            conn.cursor().execute("CREATE DATABASE IF NOT EXISTS %s;" % db)
+            conn.close()
             self.conn = pymysql.connect(
                 host=self.__config.get('host'),
                 user=self.__config.get('user'),
                 charset='utf8mb4',
+                db=db,
                 password=self.__config.get('pass'),
                 port=self.__config.get_int('port'),
                 cursorclass=pymysql.cursors.DictCursor
             )
             self.cursor = self.conn.cursor()
-            self.cursor.execute("CREATE DATABASE IF NOT EXISTS %s;" % self.__config.get('database'))
-            self.conn.select_db(self.__config.get('database'))
         except Exception as e:
             print("Database error: {}".format(str(e)))

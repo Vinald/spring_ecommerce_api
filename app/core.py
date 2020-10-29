@@ -48,7 +48,7 @@ log_level = config.get('log-level')
 audio_path = config.get('audio-path')
 max_channels = config.get_int('max-channels')
 max_call_time = config.get_int('max-call-time-in-seconds')
-routed_numbers = config.get('routed-numbers')
+routed_numbers = list(config.get('routed-numbers'))
 use_sip_trunks = config.get_bool('use-sip-trunks')
 dates_audio_path = config.get('dates-audio-path')
 
