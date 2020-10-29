@@ -41,6 +41,7 @@ Session = sessionmaker(bind=engine)
 asterisk_ari_config = config.get_section_content('asterisk-ari')
 
 trunk_list = config.get_section_content('sip-trunks')
+routed_numbers = config.get_section_content('routed-numbers')
 
 config.set_section('core')
 log_vxml = config.get_bool('log-vxml')
@@ -48,7 +49,6 @@ log_level = config.get('log-level')
 audio_path = config.get('audio-path')
 max_channels = config.get_int('max-channels')
 max_call_time = config.get_int('max-call-time-in-seconds')
-routed_numbers = list(config.get('routed-numbers'))
 use_sip_trunks = config.get_bool('use-sip-trunks')
 dates_audio_path = config.get('dates-audio-path')
 
