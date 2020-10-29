@@ -100,7 +100,7 @@ def initiate_call(call_data):
 
     peer = ""
     channel = 'SIP/{}'.format(phone)
-    caller_id = app_data['phone']
+    caller_id = app_data['caller_id']
 
     if use_sip_trunks and len(trunk_list) > 0:
         outbound_call_details = peer_manager.construct_channel_and_caller_id(phone, caller_id)
