@@ -15,12 +15,14 @@ from app.utilities.Hash import Hash
 
 app = Flask(__name__)
 
+database = core.database
+database.create_database()
+
 Base.metadata.create_all(bind=engine)
 
 CORS(app, resources={r'/*': {'origins': '*'}})
 
 logger = core.logger
-database = core.database
 app_manager = core.app_manager
 
 queue = QueueManager(core.cache)

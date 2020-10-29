@@ -61,6 +61,14 @@ class Database:
         self.reconnect()
         return self.conn
 
+    def create_database(self):
+        try:
+            self.reconnect()
+            self.cursor.execute("CREATE DATABASE IF NOT EXISTS %s;" % 'ivr')
+            self.conn.commit()
+        except Exception as e:
+            print("Failed to create database: {}".format(str(e)))
+
     def __initialize(self):
         self.__config.set_section('database')
         try:
