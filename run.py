@@ -16,7 +16,7 @@ from app.utilities.Hash import Hash
 app = Flask(__name__)
 
 database = core.database
-database.create_database()
+database.reconnect()
 
 Base.metadata.create_all(bind=engine)
 

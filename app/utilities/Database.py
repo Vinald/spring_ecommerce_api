@@ -61,19 +61,10 @@ class Database:
         self.reconnect()
         return self.conn
 
-    def create_database(self):
-        try:
-            self.reconnect()
-            self.cursor.execute("CREATE DATABASE IF NOT EXISTS %s;" % 'ivr')
-            self.conn.commit()
-        except Exception as e:
-            print("Failed to create database: {}".format(str(e)))
-
     def __initialize(self):
         self.__config.set_section('database')
         try:
             self.conn = pymysql.connect(
-                db=self.__config.get('database'),
                 host=self.__config.get('host'),
                 user=self.__config.get('user'),
                 charset='utf8mb4',
@@ -82,5 +73,7 @@ class Database:
                 cursorclass=pymysql.cursors.DictCursor
             )
             self.cursor = self.conn.cursor()
+            self.cursor.execute("CREATE DATABASE IF NOT EXISTS %s;" % self.__config.get('database'))
+            self.conn.select_db(self.__config.get('database'))
         except Exception as e:
             print("Database error: {}".format(str(e)))
