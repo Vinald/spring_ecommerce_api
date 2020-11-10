@@ -13,6 +13,7 @@ Table of Contents
    * [Prerequisites](#prerequisites)
    * [Installation](#installation)
    * [Development](#development)
+   * [Docker Setup](#docker-setup)
    * [Useful Scripts](#useful-scripts)
    * [References](#references)
 
@@ -244,7 +245,7 @@ Before pushing code to the repository, please check for any coding style errors 
 $ flake8 --max-line-length=120 --statistics ./app.py ./agi.py ./src
 ```
 
-The output of this command with show you filenames with errors or nothing if there ain't any.
+The output of this command with show you file names with errors or nothing if there ain't any.
 
 
 To fix your coding style errors to match the coding style (PEP8) automatically, run the following command.
@@ -253,6 +254,37 @@ $ autopep8 --in-place --aggressive --aggressive <filename_with_errors or a direc
 ```
 Note. This tool may not fix some styling errors therefore there might be need for manual fixing.
 
+Docker Setup
+==================
+**First step**  
+On a fresh installed (physical machine or vm) with `ubuntu 18.04` or higher,  
+Clone the IVR repository with the following command. Make sure you have `git` installed. By default, `ubuntu 18.04` or higher come with `git` already installed.  
+```bash
+$ git clone git@gitlab.theacademy.co.ug:theacademy/ivr.git && cd ivr
+```
+
+**Second step**  
+Install both docker and docker-compose
+```bash
+$ sudo apt update && sudo apt install docker.io docker-compose -y
+```
+
+**Last step**  
+Build and start the containers the first time.  
+```bash
+$ docker-compose up -d --build
+```
+
+**Daily commands**  
+To stop the containers when your done with development, run the following command.  
+```bash
+$ docker-compose stop
+```
+
+To resume your development, run the following command.  
+```bash
+$ docker-compose start
+```
 
 References
 ==========

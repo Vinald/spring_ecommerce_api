@@ -1,0 +1,11 @@
+[Unit]
+Description=IVR API Service
+After=network.target
+
+[Service]
+WorkingDirectory=/root/ivr
+ExecStart=/usr/local/bin/gunicorn --bind 0.0.0.0:5000 run:app
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

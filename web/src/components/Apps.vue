@@ -48,6 +48,14 @@
                         <th scope="row">Status URL</th>
                         <td><code>{{ data.item.status_url }}</code></td>
                       </tr>
+                      <tr>
+                        <th scope="row">Toll-free</th>
+                        <td><code>{{ data.item.toll_free }}</code></td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Caller ID</th>
+                        <td><code>{{ data.item.caller_id }}</code></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -77,6 +85,14 @@
                     <label for="app-edit-telephone">Application Telephone</label>
                     <input type="text" class="form-control" id="app-edit-telephone" v-model="editForm.phone">
                   </div>
+                  <div class="form-group">
+                    <label for="app-edit-toll-free">Application Toll-free</label>
+                    <input type="text" class="form-control" id="app-edit-toll-free" v-model="editForm.toll_free">
+                  </div>
+                  <div class="form-group">
+                    <label for="app-edit-caller-id">Application Caller ID</label>
+                    <input type="text" class="form-control" id="app-edit-caller-id" v-model="editForm.caller_id">
+                  </div>
                   <button type="submit" class="btn btn-primary float-right">Save</button>
                 </form>
               </b-modal>
@@ -100,6 +116,26 @@
               <div class="form-group">
                 <label for="app-status-url">Application Status URL</label>
                 <input type="text" class="form-control" id="app-status-url" v-model="createAppForm.status_url">
+              </div>
+              <div class="form-group">
+                <label for="app-caller-id">Application Caller ID</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="app-caller-id"
+                  v-model="createAppForm.caller_id"
+                  placeholder="e.g +25632XX"
+                >
+              </div>
+              <div class="form-group">
+                <label for="app-toll-free">Application Toll-free</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="app-toll-free"
+                  v-model="createAppForm.toll_free"
+                  placeholder="e.g 0800XXX"
+                >
               </div>
               <div class="form-group">
                 <label for="app-phone">Application Telephone</label>
@@ -138,6 +174,8 @@ export default {
         phone: '',
         voice_url: '',
         status_url: '',
+        caller_id: '',
+        toll_free: '',
       },
       editForm: {
         id: '',
@@ -145,13 +183,22 @@ export default {
         phone: '',
         voice_url: '',
         status_url: '',
+        caller_id: '',
+        toll_free: '',
       },
       label: null,
       message: null,
       appName: null,
       creatingApp: false,
       appsLoading: false,
-      fields: ['id', 'name', 'date_created', 'phone', 'action'],
+      fields: [
+        { key: 'id', label: 'ID', sortable: true },
+        'name',
+        { key: 'caller_id', label: 'Caller ID' },
+        'toll_free',
+        'phone',
+        'action',
+      ],
     };
   },
   mounted() {

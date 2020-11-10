@@ -1,0 +1,51 @@
+{
+  "core": {
+    "log-level": "debug",
+    "log-vxml": "false",
+    "audio-path": "",
+    "dates-audio-path": "https://idi-audio.s3-us-west-2.amazonaws.com/academy-ivr/dates",
+    "max-channels": "25",
+    "use-sip-trunks": "true",
+    "max-call-time-in-seconds": "300"
+  },
+  "routed-numbers": [
+    {"format": "25679", "peer": "airtel"}
+  ],
+  "redis": {
+    "port": "6379",
+    "host": "172.18.0.1"
+  },
+  "database": {
+    "port": "3306",
+    "host": "172.18.0.1",
+    "user": "root",
+    "pass": "root",
+    "database": "ivr"
+  },
+  "asterisk-ami": {
+    "user": "ivr",
+    "pass": "1234",
+    "host": "127.0.0.1",
+    "port": "5038"
+  },
+  "asterisk-ari": {
+    "port": "8088",
+    "host": "127.0.0.1",
+    "user": "ivr",
+    "pass": "1234"
+  },
+  "sip-trunks": [
+    {"peer": "simbanet", "host": "127.0.0.1", "max-channels": "25", "fixed-caller-id":  "false", "caller-id":  ""},
+    {"peer": "airtel", "host": "127.0.0.1", "max-channels": "25", "fixed-caller-id": "true", "caller-id": ""}
+  ],
+  "email-server": {
+    "user": "academysupport@idi.co.ug",
+    "pass": "",
+    "port": "587",
+    "host": "smtp.office365.com"
+  },
+  "email-recipients": {
+    "to": [],
+    "cc": []
+  }
+}

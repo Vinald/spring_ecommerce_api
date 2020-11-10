@@ -29,7 +29,7 @@ os.system("curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - && su
 os.chdir(web_dir)
 print("Current working dir: {}".format(os.getcwd()))
 
-old_api_route = 'http://127.0.0.1:5000/api'
+old_api_route = 'http://172.18.0.1:5000/api'
 new_api_route = 'http://$(curl http://icanhazip.com):5000/api'
 
 cmd = 'sed -i "s+VUE_APP_ROOT_API={}+VUE_APP_ROOT_API={}+g" .env'
@@ -48,13 +48,13 @@ config = """server {{
 
     auth_basic "Administrator's Area";
     auth_basic_user_file {};
-    
+
     location / {{
         # First attempt to serve request as file, then
         # as directory, then fall back to displaying a 404.
         try_files $uri $uri/ /index.html;
     }}
-    
+
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {{
         root /usr/share/nginx/html;

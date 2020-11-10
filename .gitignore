@@ -15,3 +15,4 @@ bin/asterisk-googletts
 app.log.*
 .htpasswd
 *.bak
+config.json
