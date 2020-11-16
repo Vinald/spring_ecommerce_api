@@ -71,7 +71,9 @@ class Database:
                 password=self.__config.get('pass'),
                 port=self.__config.get_int('port')
             )
-            conn.cursor().execute("CREATE DATABASE IF NOT EXISTS %s;" % db)
+            cursor = conn.cursor()
+            cursor._defer_warnings = True
+            cursor.execute("CREATE DATABASE IF NOT EXISTS %s;" % db)
             conn.close()
             self.conn = pymysql.connect(
                 host=self.__config.get('host'),
