@@ -7,7 +7,7 @@ from datetime import datetime
 from app import core
 from app.api.Charts import Charts
 from app.api.Dashboard import Dashboard
-from app.core import asterisk_ari, cdr_manager, peer_manager
+from app.core import asterisk_ari, cdr_manager, peer_manager, report_types_api, reports_api, Session
 from app.core import engine
 from app.manager.QueueManager import QueueManager
 from app.models.models import Base
@@ -162,6 +162,18 @@ def ivr_apps():
         toll_free = request.form['toll_free']
         response = app_manager.update_app(app_id, app_name, voice_url, status_url, app_phone, toll_free, caller_id)
         return jsonify(response)
+
+
+@app.route('/api/reports', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def report():
+    session = Session()
+    return reports_api.process(request, session)
+
+
+@app.route('/api/report-types', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def report_types():
+    session = Session()
+    return report_types_api.process(request, session)
 
 
 if __name__ == '__main__':

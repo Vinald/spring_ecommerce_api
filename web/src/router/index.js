@@ -2,6 +2,7 @@ import Vue from 'vue';
 import VueRouter from 'vue-router';
 import Home from '../components/Home.vue';
 import Apps from '../components/Apps.vue';
+import Reports from '../components/Reports.vue';
 
 Vue.use(VueRouter);
 
@@ -15,6 +16,11 @@ const routes = [
     path: '/apps',
     name: 'Apps',
     component: Apps,
+  },
+  {
+    path: '/reports',
+    name: 'Reports',
+    component: Reports,
   },
   // {
   //   path: '/about',

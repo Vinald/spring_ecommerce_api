@@ -7,6 +7,8 @@ from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.api.Apps import Apps
+from app.api.ReportTypes import ReportTypes
+from app.api.Reports import Reports
 from app.asterisk.AsteriskARI import AsteriskARI
 from app.asterisk.AsteriskEventsHandler import AsteriskEventsHandler
 from app.manager.CDRManager import CDRManager
@@ -35,7 +37,11 @@ db_port = config.get_int('port')
 db_name = config.get('database')
 
 db_link = 'mysql+pymysql://{}:{}@{}:{}/{}?charset=utf8mb4'
-engine = create_engine(db_link.format(db_user, db_pass, db_host, db_port, db_name))
+engine = create_engine(
+    db_link.format(db_user, db_pass, db_host, db_port, db_name),
+    pool_timeout=20,
+    pool_recycle=120
+)
 Session = sessionmaker(bind=engine)
 
 asterisk_ari_config = config.get_section_content('asterisk-ari')
@@ -77,6 +83,12 @@ client = AMIClient(address=ami_host, port=ami_port)
 client.login(username=ami_user, secret=ami_pass)
 
 adapter = AMIClientAdapter(client)
+
+cron_dir = '/etc/cron.d'
+bin_dir = os.path.join(project_dir, 'bin')
+
+reports_api = Reports(bin_dir, cron_dir, database.get_conn())
+report_types_api = ReportTypes()
 
 
 def initialize_log():
