@@ -128,13 +128,6 @@ os.system("chown root:root {}".format(log_rotation_cron_file))
 os.system("chmod 600 {}".format(log_rotation_cron_file))
 
 
-# Install cron-tab for daily_reports to run every day at mid-night (00:00) hrs
-daily_reports_cron_file = os.path.join(CRON_DIR, "ivr-daily-reports")
-os.system('echo "0 0 * * * root cd {} && python3 daily-reports.py" > {}'.format(bin_dir, daily_reports_cron_file))
-os.system("chown root:root {}".format(daily_reports_cron_file))
-os.system("chmod 600 {}".format(daily_reports_cron_file))
-
-
 # Install any updates available in ubuntu repositories
 run_command('apt-get update', 'Installing updates')
 
