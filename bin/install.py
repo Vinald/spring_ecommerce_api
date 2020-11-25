@@ -10,6 +10,35 @@ if os.geteuid() != 0:
 
 start_time = time.time()
 
+os.system("clear")
+
+# Main directory vars
+project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
+bin_dir = os.path.join(project_dir, "bin")
+
+# Cron vars
+CRON_DIR = "/etc/cron.d"
+
+# Asterisk vars
+ASTERISK_DIR = "/etc/asterisk"
+SYSTEM_D_DIR = "/etc/systemd/system"
+ASTERISK_PROJECT_DIR = os.path.join(project_dir, 'asterisk')
+
+# Requirements vars
+REQUIREMENTS_FILE = os.path.join(project_dir, "requirements.txt")
+
+# Logs vars
+LOG_DIR = os.path.join(project_dir, "logs")
+
+# IVR service vars
+OLD_IVR_SERVICE = os.path.join(SYSTEM_D_DIR, "ivr-api.service")
+NEW_IVR_SERVICE = os.path.join(project_dir, 'bin', "ivr-api.service")
+
+OLD_LISTENER_SERVICE = os.path.join(SYSTEM_D_DIR, "asterisk-events-listener.service")
+NEW_LISTENER_SERVICE = os.path.join(project_dir, 'bin', "asterisk-events-listener.service")
+
+ALEMBIC_DIR = os.path.join(project_dir, 'alembic')
+
 parser = argparse.ArgumentParser()
 
 # Optional arguments
@@ -133,35 +162,6 @@ if is_first_deployment and is_dev_env:
 if is_first_deployment and not is_dev_env:
 	deploy_on_production()
 
-
-# Main directory vars
-project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
-bin_dir = os.path.join(project_dir, "bin")
-
-# Cron vars
-CRON_DIR = "/etc/cron.d"
-
-# Asterisk vars
-ASTERISK_DIR = "/etc/asterisk"
-SYSTEM_D_DIR = "/etc/systemd/system"
-ASTERISK_PROJECT_DIR = os.path.join(project_dir, 'asterisk')
-
-# Requirements vars
-REQUIREMENTS_FILE = os.path.join(project_dir, "requirements.txt")
-
-# Logs vars
-LOG_DIR = os.path.join(project_dir, "logs")
-
-# IVR service vars
-OLD_IVR_SERVICE = os.path.join(SYSTEM_D_DIR, "ivr-api.service")
-NEW_IVR_SERVICE = os.path.join(project_dir, 'bin', "ivr-api.service")
-
-OLD_LISTENER_SERVICE = os.path.join(SYSTEM_D_DIR, "asterisk-events-listener.service")
-NEW_LISTENER_SERVICE = os.path.join(project_dir, 'bin', "asterisk-events-listener.service")
-
-ALEMBIC_DIR = os.path.join(project_dir, 'alembic')
-
-os.system("clear")
 
 # Set timezone
 os.system("timedatectl set-timezone Africa/Kampala")
