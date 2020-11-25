@@ -26,13 +26,13 @@ table_name = 'cdr'
 def send_mail(msg_body, subject):
     config.set_section('email-recipients')
     try:
-        mail_send_to = list(config.get('to'))
+        mail_send_to = list(config.get('to').split(','))
     except Exception as e:
         mail_send_to = None
         logger.log_error("SIP Trunk monitor email TO: {}".format(str(e)))
 
     try:
-        mail_send_cc = list(config.get('cc'))
+        mail_send_cc = list(config.get('cc').split(','))
     except Exception as e:
         mail_send_cc = None
         logger.log_error("SIP Trunk monitor email CC: {}".format(str(e)))
