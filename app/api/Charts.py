@@ -1,8 +1,9 @@
 import datetime
+from app.utilities.Database import Database
 
 
 class Charts:
-    def __init__(self, database):
+    def __init__(self, database: Database):
         self.__database = database
 
     @staticmethod
@@ -14,10 +15,10 @@ class Charts:
         start_date = datetime.date.today() - datetime.timedelta(7)
         end_date = datetime.date.today()
         x = {}
+        cursor = self.__database.get_cursor()
         for dt in self.__date_range(start_date, end_date):
-            self.__database.reconnect()
-            self.__database.cursor.execute(sql.format(state, dt))
-            db_data = self.__database.cursor.fetchone()
+            cursor.execute(sql.format(state, dt))
+            db_data = cursor.fetchone()
             x[dt.__str__()] = db_data['count']
         return x
 
