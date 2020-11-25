@@ -134,6 +134,9 @@ def setup_cron_tabs():
 
 
 def update_and_restart_services():
+	# Restart asterisk
+	run_command("asterisk -rx 'core restart now'", 'Restarting asterisk')
+
 	print("\nUpdating IVR API Service\n")
 
 	if os.path.exists(OLD_IVR_SERVICE):
@@ -192,9 +195,6 @@ run_command(
 )
 
 os.system("mkdir -p {}".format(LOG_DIR))
-
-# Restart asterisk
-run_command("asterisk -rx 'core restart now'", 'Restarting asterisk')
 
 if not is_dev_env:
 	setup_cron_tabs()
