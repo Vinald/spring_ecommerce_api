@@ -24,7 +24,7 @@ parser.add_argument("-d", "--deploy", help=deploy_help, type=str, default='false
 args = parser.parse_args()
 
 is_quiet = True if args.quiet == 'true' else False
-is_dev_env = args.env == 'dev'
+is_dev_env = True if args.env == 'dev' else False
 is_first_deployment = True if args.deploy == 'true' else False
 
 
