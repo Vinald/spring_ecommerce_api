@@ -45,12 +45,12 @@ def deploy_on_production():
 		'apt-get install asterisk asterisk-mp3 nginx apache2-utils curl python3-dev python3-pip redis-server -y',
 		'Installing asterisk, asterisk-mp3, redis, nginx, apache2-utils, curl, python3-dev, python3-pip'
 	)
-	config = """server {{
+	config = """server {
 	listen 80;
 
 	server_name _;
 
-	location / {{
+	location / {
 			proxy_set_header Host $host;
 			proxy_set_header X-Real-IP $remote_addr;
 			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -59,8 +59,8 @@ def deploy_on_production():
 			proxy_read_timeout 90;
 			proxy_http_version 1.1;
 			proxy_request_buffering off;
-	}}
-}}
+	}
+}
 """
 	file = open('/etc/nginx/sites-available/default', 'w')
 	file.write(config)
