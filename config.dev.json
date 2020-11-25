@@ -45,7 +45,7 @@
     "host": "smtp.office365.com"
   },
   "email-recipients": {
-    "to": [],
-    "cc": []
+    "to": "user1@example.com,user2@example.com",
+    "cc": "user1@example.com,user2@example.com"
   }
 }

@@ -1,5 +1,6 @@
 import os
 import pathlib
+import subprocess
 import sys
 
 working_dir = os.path.dirname(os.path.realpath(__file__))
@@ -24,7 +25,12 @@ if not os.path.exists(env_file):
     os.system("cp {} {}".format(env_local_file, env_file))
 
 os.system("apt-get update && apt install nginx apache2-utils curl -y")
-os.system("curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - && sudo apt-get install -y nodejs")
+
+# Check if npm exists on system
+output = subprocess.getoutput('which npm')
+
+if len(output) <= 0:
+    os.system("curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - && sudo apt-get install -y nodejs")
 
 os.chdir(web_dir)
 print("Current working dir: {}".format(os.getcwd()))

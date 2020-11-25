@@ -2,10 +2,9 @@ import argparse
 import os
 import sys
 import pandas as pd
-from app.models.models import Report
-from app.utilities.Hash import Hash
 
 sys.path.append('..')
+from app.utilities.Hash import Hash
 from app.core import database
 from app.utilities.Email import Email
 
@@ -32,19 +31,19 @@ def report_data():
 
 
 def report_type_data(data):
-    sql = "SELECT sql FROM `{}` WHERE `id` = {}".format('report_types', data.type_id)
+    sql = "SELECT `sql` FROM `{}` WHERE `id` = {}".format('report_types', data['type_id'])
     cursor.execute(sql)
     results = cursor.fetchone()
     return results['sql']
 
 
-report: Report = report_data()
+report = report_data()
 report_sql = report_type_data(report)
 
 sql_query = pd.read_sql_query(report_sql, connection)
 df = pd.DataFrame(sql_query)
 
-data_file = "/tmp/{}.csv".format(Hash.hash(report.name))
+data_file = "/tmp/{}.csv".format(Hash.hash(report['name']))
 df.to_csv(data_file, index=False)
 
 message = """
@@ -57,10 +56,10 @@ Academy IS Team.
 """
 
 email = Email(
-    subject="Academy IVR: {}".format(report.name),
-    body_message=message.format(report.recurrence, report.name),
-    to_recipients=str(report.recipients_to).split(','),
-    cc_recipients=str(report.recipients_cc).split(','),
+    subject="Academy IVR: {}".format(report['name']),
+    body_message=message.format(report['recurrence'], report['name']),
+    to_recipients=str(report['recipients_to']).split(','),
+    cc_recipients=str(report['recipients_cc']).split(','),
     attachment_paths=[data_file]
 )
 
