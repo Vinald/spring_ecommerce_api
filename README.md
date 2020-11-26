@@ -58,6 +58,12 @@ $ sudo chown -R $USER:asterisk $(pwd) # Fix permissions before you start the app
 $ python3 run.py
 ``` 
 
+Edit the `.env.development` file under the `web` directory and replcace `172.18.0.1` with your actual IP address.
+You can use the linux `nano` editor to do that if you know how to use it with the command below.  
+```bash
+$ nano ./web/.env.development
+```  
+
 Finally, start the `IVR Web Application` on port `8080` with the following commands. In your browser, use `http://your-ip:8080`
 ```bash
 $ npm --prefix ./web run serve
@@ -102,9 +108,6 @@ Below are the default details to be used while configuring the phone
 | username, auth name, etc | `200` |
 | password | `1234` |
 | host / IP Address | This should be IP of the machine running the application.<br>It will vary on different machines and networks.<br>Run `ifconfig` or `ip a` in the ubuntu terminal to get the correct IP address.<br>For example it could be like `192.168.8.50`. |
-
-
-After a successful configuration, make a call to `100` from your SIP or Soft phone, you should be able to connect to the IVR.
 
 
 
