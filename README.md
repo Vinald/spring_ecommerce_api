@@ -47,7 +47,7 @@ $ cd ivr
 
 Run this command only on the first install of the IVR.  
 ```bash
-$ sudo bin/install.py --env dev --deploy true --quiet false
+$ sudo python3 bin/install.py --env dev --deploy true --quiet false
 ```  
 
 Please refer to `config.json` for the project configurations like `database credentials`, `asterisk logins` etc before you start the application.    
