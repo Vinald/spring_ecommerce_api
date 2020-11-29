@@ -252,7 +252,7 @@ to initialize and upgrade your database before you start the application
 """
     alembic_path = subprocess.getoutput('which alembic')
     alembic_cmd = "cd {} && {} upgrade head && cd {}".format(ALEMBIC_DIR, alembic_path, project_dir),
-    print(dev_details.format(config_file))
+    print(dev_details.format(config_file, alembic_cmd))
 
 print("\nInstallation done in: {} seconds\n".format((time.time() - start_time)))
 
