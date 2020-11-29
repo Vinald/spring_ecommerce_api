@@ -1,6 +1,7 @@
 import datetime
-from sqlalchemy import Column, String, Integer, DateTime
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -37,3 +38,31 @@ class CDR(Base):
     token = Column(String(255), nullable=True)
     call_id = Column(String(255), nullable=True)
     external_id = Column(String(255), nullable=True)
+
+
+class ReportType(Base):
+    __tablename__ = 'report_types'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False, unique=True)
+    sql = Column(Text(), nullable=False)
+    creation_date = Column(DateTime, default=datetime.datetime.now, nullable=False)
+    modification_date = Column(DateTime, nullable=True)
+
+
+class Report(Base):
+    __tablename__ = 'reports'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False, unique=True)
+    type_id = Column(Integer, ForeignKey('report_types.id'), nullable=False)
+    report_type = relationship("ReportType")
+    scheduled = Column(Integer, nullable=False)
+    cron_expression = Column(String(100), nullable=True)
+    recipients_to = Column(Text, nullable=True)
+    recipients_cc = Column(Text, nullable=True)
+    creation_date = Column(DateTime, default=datetime.datetime.now, nullable=False)
+    modification_date = Column(DateTime, nullable=True)
+    time = Column(String(8), nullable=True)
+    day = Column(String(2), nullable=True)
+    recurrence = Column(String(20), nullable=True)
