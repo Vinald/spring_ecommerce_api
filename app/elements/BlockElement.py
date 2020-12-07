@@ -43,7 +43,7 @@ class BlockElement:
             dates_audio_path = self.__audio.get_dates_audio_path()
             try:
                 for file in files:
-                    self.__agi.stream_file("{}/{}".format(dates_audio_path, file))
+                    self.__agi.stream_file("{}/{}.mp3".format(dates_audio_path, file))
             except Exception as e:
                 time.sleep(2)
                 self.__logger.log_warning("Dates stream error: {}.".format(str(e)))
