@@ -15,18 +15,18 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav mr-auto">
-          <li class="nav-item active">
+          <li class="nav-item">
             <router-link to="/" class="nav-link">Home</router-link>
           </li>
           <li class="nav-item">
             <router-link to="/apps" class="nav-link">Apps</router-link>
           </li>
           <li class="nav-item">
-            <router-link to="/logs" class="nav-link">Logs</router-link>
+            <router-link to="/reports" class="nav-link">Reports</router-link>
           </li>
-          <li class="nav-item">
-            <router-link to="/configuration" class="nav-link">Configuration</router-link>
-          </li>
+<!--          <li class="nav-item">-->
+<!--            <router-link to="/configuration" class="nav-link">Configuration</router-link>-->
+<!--          </li>-->
         </ul>
         <ul class="navbar-nav">
           <li class="nav-item">

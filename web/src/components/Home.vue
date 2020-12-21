@@ -5,6 +5,20 @@
       dashboard are refreshed every after 2 seconds
     </div>
     <hr />
+    <div class="row mt-4 mb-4">
+      <div class="col-12">
+        <div class="responsive">
+          <div class="call-stats text-center">Call stats for the last seven days refreshed every 2 minutes</div>
+          <hr>
+          <column-chart
+            :refresh="120"
+            :download="{background: '#fff'}"
+            :data="statsURL + '/charts'"
+          >
+          </column-chart>
+        </div>
+      </div>
+    </div>
     <div class="row mt-4">
       <div class="col-md-3">
         <div class="usage-monitor mb-3">
@@ -37,7 +51,7 @@
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card">
+        <div class="card mb-4">
           <div class="card-body text-center">
             <i class="text-success fas fa-phone-volume fa-4x"></i>
             <h3 class="card-title mt-4">Active Calls</h3>
@@ -46,7 +60,7 @@
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card">
+        <div class="card mb-4">
           <div class="card-body text-center">
             <i class="text-info fas fa-phone-alt fa-4x"></i>
             <h3 class="card-title mt-4">Queued Calls</h3>
@@ -54,7 +68,7 @@
           </div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3 mb-4">
         <div class="card">
           <div class="card-body text-center">
             <i class="text-secondary fas fa-phone-slash fa-4x"></i>
@@ -65,7 +79,7 @@
       </div>
     </div>
     <div class="row mt-4">
-      <div class="col-md-3">
+      <div class="col-md-3 mb-4">
         <div class="custom-card">
           <h5 class="text-center">Asterisk</h5>
           <hr />
@@ -73,18 +87,22 @@
             <span v-if="asteriskUpTime !== 'n/a'" class="text-success float-right">Active (Online)</span>
             <span v-else class="text-danger float-right">Offline</span>
           </div>
-          <div>Up time: <span class="float-right">{{ asteriskUpTime }}</span></div>
+          <div>Up time: <span class="text-primary float-right">{{ asteriskUpTime }}</span></div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="custom-card">
-          <h5 class="text-center">IVR API</h5>
+      <div class="col-md-9 mb-4">
+          <h5 class="text-center">Asterisk Peers (SIP Trunks)</h5>
           <hr />
-          <div>Status:
-            <span v-if="ivrApiUpTime !== 'n/a'" class="text-success float-right">Active (Online)</span>
-            <span v-else class="text-danger float-right">Offline</span>
-          </div>
-          <div>Up time: <span class="float-right">{{ ivrApiUpTime }}</span></div>
+        <div class="table-responsive">
+          <b-table outlined hover :items="peers" :fields="peerFields">
+            <template v-slot:cell(host)="data">
+              <div class="text-primary">{{ data.item.host }}</div>
+            </template>
+            <template v-slot:cell(status)="data">
+              <div v-if="data.item.status === 'online'" class="text-success">Online</div>
+              <div v-else class="text-danger">Offline</div>
+            </template>
+          </b-table>
         </div>
       </div>
     </div>
@@ -108,6 +126,14 @@ export default {
       serverUpTime: 'n/a',
       asteriskUpTime: 'n/a',
       ivrApiUpTime: 'n/a',
+      peers: [],
+      peerFields: [
+        { key: 'peer', label: 'Peer name' },
+        'host',
+        { key: 'max-channels', label: 'Max Channels' },
+        { key: 'caller-id', label: 'Caller ID' },
+        'status',
+      ],
       statsURL: process.env.VUE_APP_ROOT_API,
     };
   },
@@ -129,6 +155,7 @@ export default {
         this.serverUpTime = response.data.server_up_time;
         this.asteriskUpTime = response.data.asterisk_up_time;
         this.ivrApiUpTime = response.data.ivr_api_up_time;
+        this.peers = response.data.peers;
       });
     },
     variant(value) {

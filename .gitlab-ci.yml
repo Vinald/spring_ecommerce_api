@@ -39,7 +39,7 @@ deploy-staging:
   script:
     - sudo chown -R gitlab-runner /root
     - cd /root/ivr
-    - sudo /bin/bash install.sh
+    - sudo /usr/bin/python3 bin/install.py --env prod
     - sudo /usr/bin/python3 bin/deploy-web-app.py
     - sudo chown -R asterisk:asterisk /root
   tags:
@@ -52,7 +52,7 @@ deploy-production:
   script:
     - sudo chown -R gitlab-runner /root
     - cd /root/ivr
-    - sudo /bin/bash install.sh
+    - sudo /usr/bin/python3 bin/install.py --env prod
     - sudo /usr/bin/python3 bin/deploy-web-app.py
     - sudo chown -R asterisk:asterisk /root
   tags:
@@ -66,7 +66,7 @@ code-quality-staging:
     - sudo chown -R gitlab-runner /root
     - cd /root/ivr
     - sudo pip3 install -r requirements.txt
-    - sudo flake8 --max-line-length=120 --statistics ./app.py ./agi.py ./src
+    - sudo flake8 --max-line-length=120 --statistics ./run.py ./agi.py ./app
   tags:
     - ivr-staging
   only:
@@ -78,7 +78,7 @@ code-quality-production:
     - sudo chown -R gitlab-runner /root
     - cd /root/ivr
     - sudo pip3 install -r requirements.txt
-    - sudo flake8 --max-line-length=120 --statistics ./app.py ./agi.py ./src
+    - sudo flake8 --max-line-length=120 --statistics ./run.py ./agi.py ./app
   tags:
     - ivr-production
   only:
