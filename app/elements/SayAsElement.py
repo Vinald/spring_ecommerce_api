@@ -12,6 +12,7 @@ class SayAsElement:
         self.__logger = logger
 
     def parse(self, say_as):
+        locale = self.__get_locale(say_as)
         interpret = str(say_as['interpret-as'])
         if interpret == 'vxml:date':
             date = say_as.get_text()
@@ -20,12 +21,20 @@ class SayAsElement:
             dates_audio_path = self.__audio.get_dates_audio_path()
             try:
                 for file in files:
-                    self.__agi.stream_file("{}/{}.mp3".format(dates_audio_path, file))
+                    self.__agi.stream_file("{}/{}/{}.mp3".format(dates_audio_path, locale, file))
             except Exception as e:
                 time.sleep(2)
                 self.__logger.log_warning("Dates stream error: {}.".format(str(e)))
                 self.__logger.log_warning("Defaulting to asterisk TTS for dates")
                 self.__agi.say_date(date_obj.timestamp())
+
+    def __get_locale(self, say_as):
+        try:
+            locale = say_as['locale']
+            return str(locale)
+        except Exception as e:
+            self.__logger.log_warning("Using default locale [en]: {}".format(str(e)))
+            return 'en'
 
     # Todo. Parse more types initially done by Conrad Ekisa
     # def parse(self, say_as):
