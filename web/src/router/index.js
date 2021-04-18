@@ -1,41 +1,49 @@
 import Vue from 'vue';
 import VueRouter from 'vue-router';
-import Home from '../components/Home.vue';
-import Apps from '../components/Apps.vue';
-import Reports from '../components/Reports.vue';
+import store from '../store';
 
 Vue.use(VueRouter);
 
 const routes = [
   {
     path: '/',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+  },
+  {
+    path: '/home',
     name: 'Home',
-    component: Home,
+    component: () => import('../views/Home.vue'),
   },
   {
     path: '/apps',
     name: 'Apps',
-    component: Apps,
+    component: () => import('../views/Apps.vue'),
   },
   {
     path: '/reports',
     name: 'Reports',
-    component: Reports,
+    component: () => import('../views/Reports.vue'),
   },
-  // {
-  //   path: '/about',
-  //   name: 'About',
-  //   // route level code-splitting
-  //   // this generates a separate chunk (about.[hash].js) for this route
-  //   // which is lazy-loaded when the route is visited.
-  //   component: () => import(/* webpackChunkName: "about" */ '../views/About.vue'),
-  // },
+  {
+    path: '/manage-users',
+    name: 'Users',
+    component: () => import('../views/Users.vue'),
+  },
 ];
 
 const router = new VueRouter({
   mode: 'history',
   base: process.env.BASE_URL,
   routes,
+});
+
+router.beforeEach((to, from, next) => {
+  // redirect to login page if not logged in and trying to access a restricted page
+  const publicPages = ['/'];
+  const authRequired = !publicPages.includes(to.path);
+  const loggedIn = store.state.token;
+  return authRequired && !loggedIn ? next('/') : next();
 });
 
 export default router;
