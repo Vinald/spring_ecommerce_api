@@ -63,7 +63,7 @@ export default {
         user = response.data.user;
         token = response.data.token;
         this.$store.dispatch('login', { token, user });
-        this.$router.push('/apps');
+        this.$router.push('/home');
       } catch (e) {
         this.isLoading = false;
         this.loginDetails.email = '';

@@ -1,13 +1,15 @@
 import logging
 import os
 
+from app.models.models import User
+
 
 class Logger:
-    def __init__(self, project_dir, log_level='DEBUG'):
+    def __init__(self, project_dir, log_file='app.log', log_level='DEBUG'):
         self.__app = None
         self.__phone = None
         self.__log_dir = os.path.join(project_dir, 'logs')
-        self.__log_file = os.path.join(self.__log_dir, 'app.log')
+        self.__log_file = os.path.join(self.__log_dir, log_file)
         self.__check_if_log_file_is_writable()
         logging.basicConfig(
             level=log_level.upper(),
@@ -48,6 +50,12 @@ class Logger:
 
     def set_level(self, level: str):
         self.__logger.setLevel(level.upper())
+
+    def log_user_action(self, user: User, action, component: dict):
+        try:
+            self.__logger.log(logging.INFO, f'ACTION: {action}, OPERATOR: {user.email}, COMPONENT: {component}')
+        except Exception as e:
+            print('Failed to start the logger: {}'.format(str(e)))
 
     def __custom_logger(self, level: int, message: str):
         try:

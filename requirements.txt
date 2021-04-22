@@ -15,6 +15,8 @@ PyMySQL==0.9.3
 prettytable==0.7.2
 Flask-Cors==3.0.8
 requests
+flask-jwt-extended
+bcrypt
 
 # Install the correct python dev for psutil to work i.e if your using python3.7, use apt install python3.7-dev
 # then after run pip to install the requirements

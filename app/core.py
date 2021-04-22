@@ -6,9 +6,12 @@ from asterisk.ami import AMIClientAdapter, AMIClient
 from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from app.api.Applications import Applications
 from app.api.Apps import Apps
+from app.api.Login import Login
 from app.api.ReportTypes import ReportTypes
 from app.api.Reports import Reports
+from app.api.Users import Users
 from app.asterisk.AsteriskARI import AsteriskARI
 from app.asterisk.AsteriskEventsHandler import AsteriskEventsHandler
 from app.manager.CDRManager import CDRManager
@@ -21,6 +24,8 @@ from app.utilities.Logger import Logger
 project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 
 logger = Logger(project_dir)
+action_logger = Logger(project_dir, 'actions.log')
+
 config = Config(project_dir, logger)
 
 config.set_section('asterisk-ami')
@@ -57,6 +62,7 @@ max_channels = config.get_int('max-channels')
 max_call_time = config.get_int('max-call-time-in-seconds')
 use_sip_trunks = config.get_bool('use-sip-trunks')
 dates_audio_path = config.get('dates-audio-path')
+secret_key = config.get('secret-key')
 
 # Set log level
 logger.set_level(log_level)
@@ -87,8 +93,11 @@ adapter = AMIClientAdapter(client)
 cron_dir = '/etc/cron.d'
 bin_dir = os.path.join(project_dir, 'bin')
 
-reports_api = Reports(bin_dir, cron_dir, database.get_conn())
-report_types_api = ReportTypes()
+apps_api = Applications(action_logger)
+users_api = Users(action_logger)
+login_api = Login(action_logger)
+reports_api = Reports(bin_dir, cron_dir, database.get_conn(), action_logger)
+report_types_api = ReportTypes(action_logger)
 
 
 def initialize_log():

@@ -4,9 +4,11 @@
     <div class="container">
       <div class="row mt-4 mb-4">
         <div class="col-12">
-          <div class="responsive">
-            <hr>
-            <line-chart :download="{background: '#fff'}" :data="chartData"></line-chart>
+          <div class="responsive shadow">
+            <div v-if="isChartLoading" class="text-center">
+              <b-spinner class="align-middle"></b-spinner> <strong>Loading...</strong>
+            </div>
+            <line-chart v-else :download="{background: '#fff'}" :data="chartData"></line-chart>
           </div>
         </div>
       </div>
@@ -25,6 +27,7 @@ export default {
   data() {
     return {
       chartData: [],
+      isChartLoading: false,
     };
   },
   created() {
@@ -32,9 +35,12 @@ export default {
   },
   methods: {
     fetchChartData() {
+      this.isChartLoading = true;
       axios.get('charts').then((response) => {
+        this.isChartLoading = false;
         this.chartData = response.data;
       }).catch((error) => {
+        this.isChartLoading = false;
         // eslint-disable-next-line no-console
         console.log(error);
       });
