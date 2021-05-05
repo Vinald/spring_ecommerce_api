@@ -25,7 +25,7 @@
             <router-link to="/reports" class="nav-link" active-class="active">Reports</router-link>
           </li>
           <li class="nav-item" v-if="isLoggedIn">
-            <router-link to="/logs" class="nav-link" active-class="active">Files & Logs</router-link>
+            <router-link to="/files-and-logs" class="nav-link" active-class="active">Files & Logs</router-link>
           </li>
           <li class="nav-item" v-if="isAdmin">
             <router-link to="/manage-users" class="nav-link" active-class="active">Manage users</router-link>

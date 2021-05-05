@@ -30,6 +30,11 @@ const routes = [
     name: 'Users',
     component: () => import('../views/Users.vue'),
   },
+  {
+    path: '/files-and-logs',
+    name: 'Logs',
+    component: () => import('../views/Logs.vue'),
+  },
 ];
 
 const router = new VueRouter({

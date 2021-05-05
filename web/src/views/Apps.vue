@@ -10,6 +10,7 @@
           <h5 class="text-center mb-4" style="font-size: x-large;">Apps</h5>
           <div class="table-responsive shadow">
             <b-table
+              id="apps-table"
               outlined
               head-variant="dark"
               striped
@@ -18,6 +19,8 @@
               :items="apps"
               :fields="fields"
               :busy="appsLoading"
+              :per-page="perPage"
+              :current-page="currentPage"
             >
               <template v-slot:table-busy>
                 <div class="text-center text-danger my-2">
@@ -110,6 +113,15 @@
               </template>
             </b-table>
           </div>
+          <div class="text-center">
+            <b-pagination
+              v-model="currentPage"
+              :total-rows="rows"
+              :per-page="perPage"
+              aria-controls="apps-table"
+            >
+            </b-pagination>
+          </div>
         </div>
         <div class="col-md-4">
           <div class="card shadow">
@@ -185,6 +197,8 @@ export default {
   },
   data() {
     return {
+      perPage: 5,
+      currentPage: 1,
       url: process.env.VUE_APP_ROOT_API,
       apps: [],
       createAppForm: {
@@ -226,6 +240,11 @@ export default {
     this.role = this.$store.getters.getUser.role;
     this.isAdmin = this.role === 'admin';
     this.getApps();
+  },
+  computed: {
+    rows() {
+      return this.apps.length;
+    },
   },
   methods: {
     createNewApp() {

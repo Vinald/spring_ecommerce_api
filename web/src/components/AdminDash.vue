@@ -9,10 +9,11 @@
       <div class="row mt-4 mb-4">
         <div class="col-12">
           <div class="responsive shadow">
-            <div v-if="isChartLoading" class="text-center">
-              <b-spinner class="align-middle"></b-spinner> <strong>Loading...</strong>
-            </div>
-            <line-chart v-else :download="{background: '#fff'}" :data="chartData"></line-chart>
+            <b-button-group>
+              <b-button v-on:click="chartType = 'column'">Column</b-button>
+              <b-button v-on:click="chartType = 'line'">Line</b-button>
+            </b-button-group>
+            <chart :chart-type="chartType" :is-chart-loading="isChartLoading" :chart-data="chartData"></chart>
           </div>
         </div>
       </div>
@@ -110,14 +111,17 @@
 <script>
 import axios from 'axios';
 import NavBar from './NavBar.vue';
+import Chart from './Chart.vue';
 
 export default {
   name: 'Home',
   components: {
+    Chart,
     NavBar,
   },
   data() {
     return {
+      chartType: 'column',
       cpuUsage: 0,
       diskUsage: 0,
       memoryUsage: 0,

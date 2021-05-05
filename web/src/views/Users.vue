@@ -32,14 +32,8 @@
                 <b-modal :id="data.item.id + 'users-edit-modal'" :title="'Update user: ' + data.item.email" hide-footer>
                   <form @submit.prevent="updateUser()">
                     <div class="form-group">
-                      <label for="user-edit-role">Role</label>
-                      <input
-                        type="text"
-                        class="form-control"
-                        id="user-edit-role"
-                        v-model="editForm.role"
-                        placeholder="Use either admin or user"
-                      >
+                      <label>Role</label>
+                      <b-form-select v-model="editForm.role" :options="roles"></b-form-select>
                     </div>
                     <div class="form-group">
                       <label for="user-edit-email">Email</label>
@@ -64,14 +58,8 @@
             <div class="card-body">
               <form @submit.prevent="createNewUser">
                 <div class="form-group">
-                  <label for="app-name">Role</label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="app-name"
-                    v-model="createUserForm.role"
-                    placeholder="Use either admin or user"
-                  >
+                  <label>Role</label>
+                  <b-form-select v-model="createUserForm.role" :options="roles"></b-form-select>
                 </div>
                 <div class="form-group">
                   <label for="user-email">Email</label>
@@ -108,6 +96,7 @@ export default {
     return {
       url: process.env.VUE_APP_ROOT_API,
       users: [],
+      roles: [],
       createUserForm: {
         role: '',
         email: '',
@@ -134,6 +123,7 @@ export default {
     };
   },
   created() {
+    this.getRoles();
     this.getUsers();
   },
   methods: {
@@ -198,6 +188,14 @@ export default {
       this.createUserForm.role = '';
       this.createUserForm.email = '';
       this.createUserForm.password = '';
+    },
+    getRoles() {
+      axios.get('roles').then((response) => {
+        this.roles = response.data;
+      }).catch((error) => {
+        // eslint-disable-next-line no-console
+        console.log(error);
+      });
     },
   },
 };
