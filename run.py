@@ -205,5 +205,17 @@ def register_user():
     return core.users_api.handle_request(request, Session(), current_user)
 
 
+@app.route('/api/roles', methods=['GET'])
+@jwt_required()
+def roles():
+    return jsonify(core.roles)
+
+
+@app.route('/api/logs', methods=['GET'])
+@jwt_required()
+def logs():
+    return core.logs_api.process(request, current_user)
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

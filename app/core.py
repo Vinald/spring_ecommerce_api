@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from app.api.Applications import Applications
 from app.api.Apps import Apps
 from app.api.Login import Login
+from app.api.Logs import Logs
 from app.api.ReportTypes import ReportTypes
 from app.api.Reports import Reports
 from app.api.Users import Users
@@ -24,7 +25,6 @@ from app.utilities.Logger import Logger
 project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 
 logger = Logger(project_dir)
-action_logger = Logger(project_dir, 'actions.log')
 
 config = Config(project_dir, logger)
 
@@ -53,6 +53,8 @@ asterisk_ari_config = config.get_section_content('asterisk-ari')
 
 trunk_list = config.get_section_content('sip-trunks')
 routed_numbers = config.get_section_content('routed-numbers')
+
+roles = config.get_section_content('roles')
 
 config.set_section('core')
 log_vxml = config.get_bool('log-vxml')
@@ -93,11 +95,12 @@ adapter = AMIClientAdapter(client)
 cron_dir = '/etc/cron.d'
 bin_dir = os.path.join(project_dir, 'bin')
 
-apps_api = Applications(action_logger)
-users_api = Users(action_logger)
-login_api = Login(action_logger)
-reports_api = Reports(bin_dir, cron_dir, database.get_conn(), action_logger)
-report_types_api = ReportTypes(action_logger)
+apps_api = Applications(logger)
+users_api = Users(logger)
+login_api = Login(logger)
+reports_api = Reports(bin_dir, cron_dir, database.get_conn(), logger)
+report_types_api = ReportTypes(logger)
+logs_api = Logs(os.path.join(project_dir, 'logs'))
 
 
 def initialize_log():
