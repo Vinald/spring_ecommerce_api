@@ -6,7 +6,8 @@
     "dates-audio-path": "https://idi-audio.s3-us-west-2.amazonaws.com/academy-ivr/dates",
     "max-channels": "25",
     "use-sip-trunks": "true",
-    "max-call-time-in-seconds": "300"
+    "max-call-time-in-seconds": "300",
+    "secret-key": ""
   },
   "routed-numbers": [
     {"format": "25679", "peer": "airtel"}
@@ -47,5 +48,6 @@
   "email-recipients": {
     "to": "user1@example.com,user2@example.com",
     "cc": "user1@example.com,user2@example.com"
-  }
+  },
+  "roles": ["admin", "user"]
 }

@@ -4,7 +4,9 @@ from app.asterisk.AsteriskARI import AsteriskARI
 from app.manager.CDRManager import CDRManager
 from app.manager.QueueManager import QueueManager
 from app.manager.TrunkManager import TrunkManager
+from app.models.models import User
 from app.utilities.Logger import Logger
+from app.utilities.utils import un_auth
 
 
 class Dashboard:
@@ -22,7 +24,9 @@ class Dashboard:
         self.__cdr_manager = cdr_manager
         self.__peer_manager = peer_manager
 
-    def get_stats(self):
+    def get_stats(self, user: User):
+        if not user.is_admin():
+            return un_auth()
         return {
             'cpu': psutil.cpu_percent(),
             'disk': psutil.disk_usage('/').percent,
