@@ -76,8 +76,17 @@ class IVR:
                 self.__agi.hangup()
 
         results = self.__app_manager.get_data(token)
-        self.__logger.set_app(results['name'])
+        app_name = results['name']
+
+        try:
+            user_id = int(results['user_id'])
+        except Exception as e:
+            user_id = 0
+            self.__logger.log_info(f"App[{app_name}] has no attached user: {str(e)}")
+
+        self.__logger.set_app(app_name)
         self.__logger.set_phone(self.phone)
+        self.__logger.set_user_id(user_id)
         self.__logger.log_info('Starting call')
         self.__logger.log_info('Call ID: {}'.format(call_id))
         self.__logger.log_info('Call Direction: {}'.format(call_direction))

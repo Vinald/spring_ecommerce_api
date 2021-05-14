@@ -1,26 +1,31 @@
+import datetime
 import os
 from flask import jsonify, make_response
-from app.models.models import ReportType, Report
+from app.models.models import ReportType, Report, User
 import pandas as pd
+
+from app.utilities.Logger import Logger
+from app.utilities.utils import un_auth, error_message
 
 
 class Reports:
-    def __init__(self, bin_dir, cron_dir, raw_db_connection):
+    def __init__(self, bin_dir, cron_dir, raw_db_connection, logger: Logger):
+        self.__logger = logger
         self.__bin_dir = bin_dir
         self.__cron_dir = cron_dir
         self.__raw_db_connection = raw_db_connection
 
-    def process(self, request, session):
+    def process(self, request, session, user: User):
         if request.method == 'GET':
-            return self.__get(request, session)
+            return self.__get(request, session, user)
         if request.method == 'POST':
-            return self.__post(request, session)
+            return self.__post(request, session, user)
         if request.method == 'DELETE':
-            return self.__delete(request, session)
+            return self.__delete(request, session, user)
         if request.method == 'PUT':
-            return self.__put(request, session)
+            return self.__put(request, session, user)
 
-    def __post(self, request, session):
+    def __post(self, request, session, user):
         try:
             time = request.form['time']
             recurrence = request.form['recurrence']
@@ -31,6 +36,9 @@ class Reports:
             recipients_to = str(request.form['to'])
             recipients_cc = str(request.form['cc'])
             day_of_week = request.form['day']
+
+            if session.query(Report).filter_by(name=report_name).first():
+                return error_message('Name already taken')
 
             if scheduled == 1:
                 if recurrence == 'monthly':
@@ -54,23 +62,27 @@ class Reports:
                 recipients_cc=recipients_cc,
                 time=time,
                 day=day_of_week,
-                recurrence=recurrence
+                recurrence=recurrence,
+                user_id=user.id
             )
 
             session.add(report)
             session.commit()
             self.__reload_reports_cron_tab(session)
+            self.__logger.log_user_action(user, 'CREATE REPORT', report.to_dict())
             return jsonify({'status': 'success', 'message': 'Report created successfully'})
         except Exception as e:
             return jsonify({'status': 'error', 'message': 'Error creating report: {}'.format(str(e))})
 
-    def __get(self, request, session):
+    def __get(self, request, session, user: User):
         action = request.args.get('action')
         report_id = request.args.get('report-id')
 
         if action == 'download':
             try:
                 download_report: Report = session.query(Report).get(int(report_id))
+                if user.role != 'admin' and download_report.user_id != user.id:
+                    return un_auth()
                 sql_query = pd.read_sql_query(download_report.report_type.sql, self.__raw_db_connection)
                 df = pd.DataFrame(sql_query)
                 resp = make_response(df.to_csv(index=False))
@@ -82,10 +94,17 @@ class Reports:
                 return jsonify({'status': 'error', 'message': message})
 
         reports = []
-        reports_from_db = session.query(Report).all()
+
+        if user.role == 'admin':
+            reports_from_db = session.query(Report).all()
+        else:
+            reports_from_db = user.reports
 
         if reports_from_db:
             for report in reports_from_db:
+                owner = 'admin'
+                if report.user is not None:
+                    owner = report.user.email
                 reports.append({
                     'id': report.id,
                     'name': report.name,
@@ -97,12 +116,17 @@ class Reports:
                     'cc': report.recipients_cc,
                     'scheduled': True if report.scheduled == 1 else False,
                     'date_created': report.creation_date,
+                    'owner': owner,
                 })
         return jsonify(reports)
 
-    def __put(self, request, session):
+    def __put(self, request, session, user: User):
         try:
             report = session.query(Report).get(int(request.form['id']))
+
+            if user.role != 'admin' and report.user_id != user.id:
+                return un_auth()
+
             time = request.form['time']
             recurrence = request.form['recurrence']
             scheduled = 1 if request.form['scheduled'] == 'true' else 0
@@ -112,6 +136,9 @@ class Reports:
             recipients_to = str(request.form['to'])
             recipients_cc = str(request.form['cc'])
             day_of_week = request.form['day']
+
+            if session.query(Report).filter_by(name=report_name).first():
+                return error_message('Name already taken')
 
             if scheduled == 1:
                 if recurrence == 'monthly':
@@ -135,20 +162,24 @@ class Reports:
             report.time = time
             report.day = day_of_week
             report.recurrence = recurrence
+            report.modification_date = datetime.datetime.now()
 
             session.add(report)
             session.commit()
             self.__reload_reports_cron_tab(session)
+            self.__logger.log_user_action(user, 'UPDATE REPORT', report.to_dict())
             return jsonify({'status': 'success', 'message': 'Report updated successfully'})
         except Exception as e:
             return jsonify({'status': 'error', 'message': 'Error updating report: {}'.format(str(e))})
 
-    def __delete(self, request, session):
+    def __delete(self, request, session, user):
         try:
             report_ids = str(request.args.get('reports')).split(',')
             for report_id in report_ids:
                 report = session.query(Report).get(int(report_id))
-                session.delete(report)
+                if user.role == 'admin' or report.user_id == user.id:
+                    session.delete(report)
+                    self.__logger.log_user_action(user, 'DELETE REPORT', report.to_dict())
             session.commit()
             self.__reload_reports_cron_tab(session)
             return jsonify({'status': 'success', 'message': 'Report(s) deleted successfully'})

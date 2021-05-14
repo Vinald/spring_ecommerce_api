@@ -9,7 +9,7 @@ from app.utilities.Logger import Logger
 
 class AsteriskEventsHandler:
     __COMPLETED = 'COMPLETED'
-    __CALL_LINK = "Call Link Uganda"
+    __CALL_LINK = "Academy IVR"
 
     __STATUS_CODES = {
         '0': 'FAILED',
@@ -30,6 +30,7 @@ class AsteriskEventsHandler:
         self.__cdr = cdr
         self.__cache = cache
         self.__logger = logger
+        self.__session = None
 
     def handle_originate_event(self, status, call_id, unique_id):
         state = self.__get_channel_status(status)
@@ -70,7 +71,7 @@ class AsteriskEventsHandler:
             if 'is_incoming' not in data.keys():
                 call_id = data['call_id']
                 self.__cdr.end_call_and_flush_cdr_to_db(call_id)
-                results = str(requests.get(data['link']).content)
+                results = self.__get_content(data['link'])
                 log_msg = "Call hangup detected for channel: {} results: {}"
                 self.__logger.set_app(data['app'])
                 self.__logger.set_phone(phone)
@@ -119,7 +120,7 @@ class AsteriskEventsHandler:
 
     def __update_call_status(self, call_id, status, reason, status_url, phone, app_name):
         link = self.__gen_status_link(call_id, status, reason, status_url)
-        results = str(requests.get(link).content)
+        results = self.__get_content(link)
         log_msg = "Call status: {}, call_id: {}, external_app_results: {}"
         self.__logger.set_app(app_name)
         self.__logger.set_phone(phone)
@@ -153,3 +154,8 @@ class AsteriskEventsHandler:
         timestamp = round(timestamp, 3)
         timestamp = str(timestamp).replace('.', '')
         return timestamp
+
+    def __get_content(self, link):
+        if not self.__session:
+            self.__session = requests.Session()
+        return self.__session.get(link).text

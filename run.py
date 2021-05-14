@@ -3,31 +3,64 @@
 import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from datetime import datetime
+from datetime import datetime, timedelta
+
+from flask_jwt_extended import JWTManager
+from flask_jwt_extended import jwt_required
+from flask_jwt_extended import create_access_token
+from flask_jwt_extended import current_user
+
 from app import core
 from app.api.Charts import Charts
 from app.api.Dashboard import Dashboard
-from app.core import asterisk_ari, cdr_manager, peer_manager, report_types_api, reports_api, Session
-from app.core import engine
+from app.core import asterisk_ari, cdr_manager, peer_manager, Session
 from app.manager.QueueManager import QueueManager
-from app.models.models import Base
+from app.models.models import Base, User
 from app.utilities.Hash import Hash
+from app.utilities.utils import un_auth
+
+from sqlalchemy.orm import scoped_session
 
 app = Flask(__name__)
+app.config["JWT_SECRET_KEY"] = core.secret_key
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=3)
+
+jwt = JWTManager(app)
 
 database = core.database
 database.reconnect()
 
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=core.engine)
 
-CORS(app, resources={r'/*': {'origins': '*'}})
+CORS(app)
 
 logger = core.logger
+
 app_manager = core.app_manager
 
 queue = QueueManager(core.cache)
 
 app_web_listener = core.asterisk_events_handler
+
+
+# Register a callback function that takes whatever object is passed in as the
+# identity when creating JWTs and converts it to a JSON serializable format.
+@jwt.user_identity_loader
+def user_identity_lookup(user):
+    return user.id
+
+
+# Register a callback function that loades a user from your database whenever
+# a protected route is accessed. This should return any python object on a
+# successful lookup, or None if the lookup failed for any reason (for example
+# if the user has been deleted from the database).
+@jwt.user_lookup_loader
+def user_lookup_callback(_jwt_header, jwt_data):
+    s_session = scoped_session(Session)
+    identity = jwt_data["sub"]
+    new_session = s_session()
+    user = new_session.query(User).filter_by(id=identity).one_or_none()
+    return user
 
 
 def is_valid_token(token: str):
@@ -80,7 +113,7 @@ def index():
 @app.route('/ivr/queue', methods=['GET'])
 def process_queue():
     if request.remote_addr != '127.0.0.1':
-        return {'status': 'error', 'message': 'Unauthorized Access'}
+        return un_auth()
 
     core.initialize_log()
 
@@ -99,7 +132,7 @@ def process_queue():
 @app.route('/ivr/events', methods=['GET'])
 def asterisk_events_handler():
     if request.remote_addr != '127.0.0.1':
-        return {'status': 'error', 'message': 'Unauthorized Access'}
+        return un_auth()
 
     name = request.args.get('name')
     status = request.args.get('status')
@@ -125,55 +158,63 @@ def asterisk_events_handler():
 
 
 @app.route('/api/dashboard-stats', methods=['GET'])
+@jwt_required()
 def dashboard_stats():
     dashboard = Dashboard(asterisk_ari, queue, logger, cdr_manager, peer_manager)
-    return jsonify(dashboard.get_stats())
+    return jsonify(dashboard.get_stats(current_user))
 
 
-@app.route('/api/charts')
+@app.route('/api/charts', methods=['GET'])
+@jwt_required()
 def charts():
     chart = Charts(database)
-    return jsonify(chart.get_cdr_data())
+    chart_data = chart.get_cdr_data(current_user, Session())
+    return jsonify(chart_data)
 
 
 @app.route('/api/apps', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@jwt_required()
 def ivr_apps():
-    if request.method == 'GET':
-        return jsonify({'apps': app_manager.get_all_apps()})
-    if request.method == 'POST':
-        app_name = request.form['name']
-        app_phone = request.form['phone']
-        voice_url = request.form['voice_url']
-        status_url = request.form['status_url']
-        caller_id = request.form['caller_id']
-        toll_free = request.form['toll_free']
-        response = app_manager.create_app(app_name, voice_url, status_url, app_phone, toll_free, caller_id)
-        return jsonify(response)
-    if request.method == 'DELETE':
-        app_id = int(request.args.get('id'))
-        return jsonify(app_manager.delete_app(app_id))
-    if request.method == 'PUT':
-        app_id = int(request.form['id'])
-        app_name = request.form['name']
-        app_phone = request.form['phone']
-        voice_url = request.form['voice_url']
-        status_url = request.form['status_url']
-        caller_id = request.form['caller_id']
-        toll_free = request.form['toll_free']
-        response = app_manager.update_app(app_id, app_name, voice_url, status_url, app_phone, toll_free, caller_id)
-        return jsonify(response)
+    return core.apps_api.process_request(request, Session(), current_user)
 
 
 @app.route('/api/reports', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@jwt_required()
 def report():
-    session = Session()
-    return reports_api.process(request, session)
+    return core.reports_api.process(request, Session(), current_user)
 
 
 @app.route('/api/report-types', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@jwt_required()
 def report_types():
-    session = Session()
-    return report_types_api.process(request, session)
+    return core.report_types_api.process(request, Session(), current_user)
+
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    user_details = core.login_api.verify(request, Session())
+    if not user_details:
+        return jsonify({'status': 'error', 'message': 'Bad username or password'}), 401
+    token = create_access_token(identity=user_details['user'])
+    return jsonify(token=token, user=user_details['details'])
+
+
+@app.route('/api/user', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@jwt_required()
+def register_user():
+    return core.users_api.handle_request(request, Session(), current_user)
+
+
+@app.route('/api/roles', methods=['GET'])
+@jwt_required()
+def roles():
+    return jsonify(core.roles)
+
+
+@app.route('/api/logs', methods=['GET'])
+@jwt_required()
+def logs():
+    return core.logs_api.process(request, current_user)
 
 
 if __name__ == '__main__':
