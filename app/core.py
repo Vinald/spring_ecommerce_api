@@ -132,13 +132,13 @@ def initiate_call(call_data):
         channel = outbound_call_details['channel']
         caller_id = outbound_call_details['caller-id']
 
-    logger.set_app(app_manager)
+    logger.set_app(app_data['name'])
     logger.set_phone(phone)
 
     if "+" not in caller_id:
         caller_id = "+{}".format(caller_id)
 
-    future = adapter.Originate(
+    adapter.Originate(
         Channel=channel,
         Exten='100',
         Priority=1,
@@ -149,8 +149,6 @@ def initiate_call(call_data):
         Timeout=40000,
         Async=True
     )
-
-    logger.log_info("Originate response: {}".format(future.response))
 
     cdr_data = {
         "app_name": app_data["name"],

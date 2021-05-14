@@ -9,7 +9,7 @@ from app.utilities.Logger import Logger
 
 class AsteriskEventsHandler:
     __COMPLETED = 'COMPLETED'
-    __CALL_LINK = "Call Link Uganda"
+    __CALL_LINK = "Academy IVR"
 
     __STATUS_CODES = {
         '0': 'FAILED',
