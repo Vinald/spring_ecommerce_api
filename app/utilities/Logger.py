@@ -116,4 +116,5 @@ class Logger:
                 log.removeHandler(log_handler)
         log.addHandler(file_handler)  # set the new handler
         log.setLevel(logging.INFO)
+        log.propagate = False
         return log
