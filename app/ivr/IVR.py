@@ -22,6 +22,7 @@ class IVR:
     def run(self):
         self.__initialize()
         parser = VXMLParser(self.__agi, self.__logger, self.__audio)
+        parser.referer = self.link
         parser.process_xml(self.link)
 
     def __initialize(self):
