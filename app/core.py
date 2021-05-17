@@ -10,6 +10,7 @@ from app.api.Applications import Applications
 from app.api.Apps import Apps
 from app.api.Login import Login
 from app.api.Logs import Logs
+from app.api.Profile import Profile
 from app.api.ReportTypes import ReportTypes
 from app.api.Reports import Reports
 from app.api.Users import Users
@@ -21,6 +22,7 @@ from app.manager.TrunkManager import TrunkManager
 from app.utilities.Config import Config
 from app.utilities.Database import Database
 from app.utilities.Logger import Logger
+from app.utilities.Mailer import Mailer
 
 project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 
@@ -72,13 +74,17 @@ logger.set_level(log_level)
 database = Database(config)
 app_manager = Apps(database, logger)
 
+# Set up mailer
+mailer = Mailer(config.set_section('email-server'), logger)
+
+# Set up Redis
 config.set_section('redis')
 redis_host = config.get('host')
 redis_port = config.get_int('port')
-
 cache = Redis(host=redis_host, port=redis_port)
-
 cache_manager = CacheManager(config, logger)
+
+
 cdr_manager = CDRManager(cache_manager, database, logger)
 
 asterisk_events_handler = AsteriskEventsHandler(logger, cache, cdr_manager)
@@ -96,11 +102,12 @@ cron_dir = '/etc/cron.d'
 bin_dir = os.path.join(project_dir, 'bin')
 
 apps_api = Applications(logger)
-users_api = Users(logger)
+users_api = Users(logger, mailer)
 login_api = Login(logger)
 reports_api = Reports(bin_dir, cron_dir, database.get_conn(), logger)
 report_types_api = ReportTypes(logger)
 logs_api = Logs(os.path.join(project_dir, 'logs'))
+profile_api = Profile(logger)
 
 
 def initialize_log():

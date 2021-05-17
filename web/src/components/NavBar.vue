@@ -33,7 +33,7 @@
         </ul>
         <ul class="navbar-nav">
           <li class="nav-item">
-            <router-link to="#" class="nav-link">{{ email }}
+            <router-link to="/profile" class="nav-link" active-class="active">{{ email }}
               <span v-if="isAdmin"> ({{ role }})</span>
             </router-link>
           </li>

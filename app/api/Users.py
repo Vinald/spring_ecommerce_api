@@ -1,13 +1,18 @@
 import bcrypt
-from flask import jsonify
-from app.models.models import User
-from app.utilities.Logger import Logger
-from app.utilities.utils import error_message, error, success, un_auth
 import datetime
+
+from flask import jsonify
+
+from app.models.models import User
+
+from app.utilities.Logger import Logger
+from app.utilities.Mailer import Mailer
+from app.utilities.utils import error_message, error, success, un_auth
 
 
 class Users:
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, mailer: Mailer):
+        self.__mailer = mailer
         self.__logger = logger
 
     def handle_request(self, request, session, user: User):
@@ -39,6 +44,22 @@ class Users:
             session.add(user)
             session.commit()
             self.__logger.log_user_action(current_user, 'CREATE USER', user.to_dict())
+
+            self.__mailer.set_to([user.email])
+            self.__mailer.set_subject('Academy IVR Account')
+            self.__mailer.set_message(f"""Hello,
+
+Your IVR account has been created successfully.
+Use the details below to login
+
+URL: ivr.callforlifeuganda.com:8000
+username: {user.email}
+password: {password}
+
+Please remember to change your password after login.
+Have a good day.
+""")
+            self.__mailer.send_email()
             return jsonify(success('User created successfully'))
         except Exception as e:
             return jsonify(error('Failed to create user', e))
@@ -73,7 +94,7 @@ class Users:
                     user.email = email
 
             if len(password) > 0:
-                user.password = password
+                user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
             user.modification_date = datetime.datetime.now()
 

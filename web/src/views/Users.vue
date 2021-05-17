@@ -18,11 +18,15 @@
               :items="users"
               :fields="fields"
               :busy="usersLoading"
+              class="text-center"
             >
               <template v-slot:table-busy>
                 <div class="text-center text-danger my-2">
                   <b-spinner class="align-middle"></b-spinner> <strong>Loading...</strong>
                 </div>
+              </template>
+              <template v-slot:cell(role)="data">
+                <i v-if="data.item.role === 'admin'" class="fas fa-check-circle text-success"></i>
               </template>
               <template v-slot:cell(action)="data">
                 <b-button-group>
@@ -100,7 +104,7 @@ export default {
       createUserForm: {
         role: '',
         email: '',
-        password: '',
+        password: Math.random().toString(36).slice(-10),
       },
       editForm: {
         id: '',
@@ -116,7 +120,7 @@ export default {
       fields: [
         { key: 'id', label: '#', sortable: true },
         'email',
-        'role',
+        { key: 'role', label: 'Admin' },
         { key: 'creation_date', label: 'Date Registered' },
         'action',
       ],

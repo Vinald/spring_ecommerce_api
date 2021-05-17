@@ -43,6 +43,7 @@ class Config:
 
     def set_section(self, section: str):
         self.__section = section
+        return self
 
     def get_section_content(self, section, default=None):
         try:
