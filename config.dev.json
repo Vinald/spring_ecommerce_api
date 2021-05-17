@@ -49,5 +49,8 @@
     "to": "user1@example.com,user2@example.com",
     "cc": "user1@example.com,user2@example.com"
   },
-  "roles": ["admin", "user"]
+  "roles": [
+    {"value": "admin", "text":  "Administrator"},
+    {"value": "user", "text": "Normal User"}
+  ]
 }

@@ -10,11 +10,12 @@
       </div>
       <div class="row mt-4" v-if="isAdmin">
         <div class="col-4">
-          <form @submit.prevent="createNewUser">
+          <form @submit.prevent="getLogs">
             <div class="form-group">
               <label>Select User</label>
-              <b-form-select v-model="selectedUser" :options="users"></b-form-select>
+              <b-form-select v-model="userId" :options="users"></b-form-select>
             </div>
+            <button type="submit" class="btn btn-primary mb-2">Get Logs</button>
           </form>
         </div>
       </div>
@@ -72,7 +73,6 @@ export default {
   },
   data() {
     return {
-      selectedUser: '',
       rows: 0,
       perPage: 5,
       currentPage: 1,
@@ -86,12 +86,15 @@ export default {
         { key: 'size', sortable: true },
         'action',
       ],
+      users: [],
+      users_objects: [],
     };
   },
   created() {
     this.role = this.$store.getters.getUser.role;
     this.isAdmin = this.role === 'admin';
     this.getLogs();
+    this.getUsers();
   },
   methods: {
     getLogs() {
@@ -115,6 +118,17 @@ export default {
         fileLink.setAttribute('download', `${name}`);
         document.body.appendChild(fileLink);
         fileLink.click();
+      }).catch((error) => {
+        // eslint-disable-next-line no-console
+        console.log(error);
+      });
+    },
+    getUsers() {
+      axios.get('user').then((response) => {
+        this.users_objects = response.data.users;
+        this.users_objects.forEach((item) => {
+          this.users.push({ value: item.id, text: item.email });
+        });
       }).catch((error) => {
         // eslint-disable-next-line no-console
         console.log(error);

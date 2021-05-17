@@ -72,7 +72,7 @@ def is_valid_token(token: str):
         return False
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/initiate', methods=['GET'])
 def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')
@@ -203,6 +203,12 @@ def login():
 @jwt_required()
 def register_user():
     return core.users_api.handle_request(request, Session(), current_user)
+
+
+@app.route('/api/profile', methods=['POST'])
+@jwt_required()
+def user_profile():
+    return core.profile_api.process(request, Session(), current_user)
 
 
 @app.route('/api/roles', methods=['GET'])
