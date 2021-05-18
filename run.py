@@ -9,6 +9,7 @@ from flask_jwt_extended import JWTManager
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import current_user
+from sqlalchemy.orm import scoped_session
 
 from app import core
 from app.api.Charts import Charts
@@ -41,7 +42,7 @@ queue = QueueManager(core.cache)
 
 app_web_listener = core.asterisk_events_handler
 
-db_session = Session()
+logged_in_users = {}
 
 
 # Register a callback function that takes whatever object is passed in as the
@@ -57,14 +58,21 @@ def user_identity_lookup(user):
 # if the user has been deleted from the database).
 @jwt.user_lookup_loader
 def user_lookup_callback(_jwt_header, jwt_data):
+    identity = jwt_data["sub"]
+
+    if identity in logged_in_users:
+        return logged_in_users[identity]
+
+    s_session = scoped_session(Session)
+    db_session = s_session()
+
     try:
-        identity = jwt_data["sub"]
         user = db_session.query(User).filter_by(id=identity).one_or_none()
+        logged_in_users[user.id] = user
         return user
     except Exception as e:
         core.logger.log_info(f"JWT user lookup DB error: {str(e)}")
         db_session.rollback()
-        return None
 
 
 def is_valid_token(token: str):
@@ -199,7 +207,9 @@ def login():
     user_details = core.login_api.verify(request, Session())
     if not user_details:
         return jsonify({'status': 'error', 'message': 'Bad username or password'}), 401
-    token = create_access_token(identity=user_details['user'])
+    user: User = user_details['user']
+    logged_in_users[user.id] = user
+    token = create_access_token(identity=user)
     return jsonify(token=token, user=user_details['details'])
 
 
