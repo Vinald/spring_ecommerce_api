@@ -9,6 +9,7 @@ from flask_jwt_extended import JWTManager
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import current_user
+from sqlalchemy.orm import scoped_session
 
 from app import core
 from app.api.Charts import Charts
@@ -19,7 +20,6 @@ from app.models.models import Base, User
 from app.utilities.Hash import Hash
 from app.utilities.utils import un_auth
 
-from sqlalchemy.orm import scoped_session
 
 app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = core.secret_key
@@ -42,6 +42,8 @@ queue = QueueManager(core.cache)
 
 app_web_listener = core.asterisk_events_handler
 
+logged_in_users = {}
+
 
 # Register a callback function that takes whatever object is passed in as the
 # identity when creating JWTs and converts it to a JSON serializable format.
@@ -56,11 +58,21 @@ def user_identity_lookup(user):
 # if the user has been deleted from the database).
 @jwt.user_lookup_loader
 def user_lookup_callback(_jwt_header, jwt_data):
-    s_session = scoped_session(Session)
     identity = jwt_data["sub"]
-    new_session = s_session()
-    user = new_session.query(User).filter_by(id=identity).one_or_none()
-    return user
+
+    if identity in logged_in_users:
+        return logged_in_users[identity]
+
+    s_session = scoped_session(Session)
+    db_session = s_session()
+
+    try:
+        user = db_session.query(User).filter_by(id=identity).one_or_none()
+        logged_in_users[user.id] = user
+        return user
+    except Exception as e:
+        core.logger.log_info(f"JWT user lookup DB error: {str(e)}")
+        db_session.rollback()
 
 
 def is_valid_token(token: str):
@@ -72,7 +84,7 @@ def is_valid_token(token: str):
         return False
 
 
-@app.route('/initiate', methods=['GET'])
+@app.route('/call.initiate', methods=['GET'])
 def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')
@@ -195,7 +207,9 @@ def login():
     user_details = core.login_api.verify(request, Session())
     if not user_details:
         return jsonify({'status': 'error', 'message': 'Bad username or password'}), 401
-    token = create_access_token(identity=user_details['user'])
+    user: User = user_details['user']
+    logged_in_users[user.id] = user
+    token = create_access_token(identity=user)
     return jsonify(token=token, user=user_details['details'])
 
 
