@@ -19,7 +19,6 @@ from app.models.models import Base, User
 from app.utilities.Hash import Hash
 from app.utilities.utils import un_auth
 
-from sqlalchemy.orm import scoped_session
 
 app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = core.secret_key
@@ -42,6 +41,8 @@ queue = QueueManager(core.cache)
 
 app_web_listener = core.asterisk_events_handler
 
+db_session = Session()
+
 
 # Register a callback function that takes whatever object is passed in as the
 # identity when creating JWTs and converts it to a JSON serializable format.
@@ -56,11 +57,14 @@ def user_identity_lookup(user):
 # if the user has been deleted from the database).
 @jwt.user_lookup_loader
 def user_lookup_callback(_jwt_header, jwt_data):
-    s_session = scoped_session(Session)
-    identity = jwt_data["sub"]
-    new_session = s_session()
-    user = new_session.query(User).filter_by(id=identity).one_or_none()
-    return user
+    try:
+        identity = jwt_data["sub"]
+        user = db_session.query(User).filter_by(id=identity).one_or_none()
+        return user
+    except Exception as e:
+        core.logger.log_info(f"JWT user lookup DB error: {str(e)}")
+        db_session.rollback()
+        return None
 
 
 def is_valid_token(token: str):
@@ -72,7 +76,7 @@ def is_valid_token(token: str):
         return False
 
 
-@app.route('/initiate', methods=['GET'])
+@app.route('/call.initiate', methods=['GET'])
 def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')

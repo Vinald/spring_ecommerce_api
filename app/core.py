@@ -46,8 +46,9 @@ db_name = config.get('database')
 db_link = 'mysql+pymysql://{}:{}@{}:{}/{}?charset=utf8mb4'
 engine = create_engine(
     db_link.format(db_user, db_pass, db_host, db_port, db_name),
+    pool_pre_ping=True,
     pool_timeout=20,
-    pool_recycle=120
+    pool_recycle=900,
 )
 Session = sessionmaker(bind=engine)
 
