@@ -26,7 +26,7 @@ class Profile:
             if user is None or not bcrypt.checkpw(old_password.encode('utf-8'), user.password.encode('utf-8')):
                 return jsonify(error_message('Wrong old password'))
 
-            if re.search('^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$', password) is None:
+            if re.search(r'^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$', password) is None:
                 msg = 'Password must be a minimum of 8 characters. Must contain a digit, upper and lower case letter'
                 return jsonify(error_message(msg))
 
@@ -39,4 +39,3 @@ class Profile:
         except Exception as e:
             self.__logger.log_error(f'Error updating user password: {str(e)}')
             return jsonify(error_message('Error updating password'))
-
