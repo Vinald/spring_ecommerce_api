@@ -14,7 +14,7 @@ class VXMLParser:
         self.__audio = audio
         self.__logger = logger
         self.__session = None
-        self.referer = ''
+        self.referer = None
 
     def process_xml(self, next_link: str):
         doc = BeautifulSoup(self.__get_content(next_link), "xml")
