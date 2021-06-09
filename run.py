@@ -16,7 +16,7 @@ from app.api.Charts import Charts
 from app.api.Dashboard import Dashboard
 from app.core import asterisk_ari, cdr_manager, peer_manager, Session
 from app.manager.QueueManager import QueueManager
-from app.models.models import Base, User
+from app.models.models import User
 from app.utilities.Hash import Hash
 from app.utilities.utils import un_auth
 
@@ -29,8 +29,6 @@ jwt = JWTManager(app)
 
 database = core.database
 database.reconnect()
-
-Base.metadata.create_all(bind=core.engine)
 
 CORS(app)
 
@@ -52,7 +50,7 @@ def user_identity_lookup(user):
     return user.id
 
 
-# Register a callback function that loades a user from your database whenever
+# Register a callback function that loads a user from your database whenever
 # a protected route is accessed. This should return any python object on a
 # successful lookup, or None if the lookup failed for any reason (for example
 # if the user has been deleted from the database).
