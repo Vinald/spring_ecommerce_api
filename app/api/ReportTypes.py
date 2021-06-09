@@ -1,25 +1,31 @@
 from datetime import datetime
 from flask import jsonify
-from app.models.models import ReportType
+from app.models.models import ReportType, User
+from app.utilities.Logger import Logger
 
 
 class ReportTypes:
-    def process(self, request, session):
+    def __init__(self, logger: Logger):
+        self.__logger = logger
+
+    def process(self, request, session, user: User):
+        if user.role != 'admin' and request.method != 'GET':
+            return {'msg': 'This operation will be reported'}, 401
         if request.method == 'GET':
             return self.__get(session)
         if request.method == 'POST':
-            return self.__post(request, session)
+            return self.__post(request, session, user)
         if request.method == 'DELETE':
-            return self.__delete(request, session)
+            return self.__delete(request, session, user)
         if request.method == 'PUT':
-            return self.__put(request, session)
+            return self.__put(request, session, user)
 
-    @staticmethod
-    def __post(request, session):
+    def __post(self, request, session, current_user):
         try:
             report_type = ReportType(sql=request.form['sql'], name=request.form['name'])
             session.add(report_type)
             session.commit()
+            self.__logger.log_user_action(current_user, 'CREATE REPORT TYPE', report_type.to_dict())
             return jsonify({'status': 'success', 'message': 'Report type created successfully'})
         except Exception as e:
             return jsonify({'status': 'error', 'message': 'Error creating report type: {}'.format(str(e))})
@@ -30,11 +36,10 @@ class ReportTypes:
         report_types = session.query(ReportType).all()
         if report_types:
             for report_type in report_types:
-                types.append({'id': report_type.id, 'sql': report_type.sql, 'name': report_type.name})
+                types.append(report_type.to_dict())
         return jsonify(types)
 
-    @staticmethod
-    def __put(request, session):
+    def __put(self, request, session, current_user):
         report_type_id = int(request.form['id'])
         sql = request.form['sql']
         name = request.form['name']
@@ -45,17 +50,18 @@ class ReportTypes:
             report_type.modification_date = datetime.now()
             session.add(report_type)
             session.commit()
+            self.__logger.log_user_action(current_user, 'UPDATE REPORT TYPE', report_type.to_dict())
             return jsonify({'status': 'success', 'message': 'Report type updated successfully'})
         except Exception as e:
             return jsonify({'status': 'error', 'message': 'Report type update failure: {}'.format(str(e))})
 
-    @staticmethod
-    def __delete(request, session):
+    def __delete(self, request, session, current_user):
         report_type_id = int(request.args.get('id'))
         try:
             report_type = session.query(ReportType).get(report_type_id)
             session.delete(report_type)
             session.commit()
+            self.__logger.log_user_action(current_user, 'DELETE REPORT TYPE', report_type.to_dict())
             return jsonify({'status': 'success', 'message': 'Report type deleted successfully'})
         except Exception as e:
             return jsonify({'status': 'error', 'message': 'Failed to delete report type: {}'.format(str(e))})

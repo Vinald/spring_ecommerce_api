@@ -19,6 +19,21 @@ class App(Base):
     status_url = Column(String(500), nullable=True)
     date_created = Column(DateTime, nullable=False, default=datetime.datetime.now)
     date_modified = Column(DateTime, nullable=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'phone': self.phone,
+            'token': self.token,
+            'voice_url': self.voice_url,
+            'status_url': self.status_url,
+            'date_created': self.date_created,
+            'date_modified': self.date_modified,
+            'toll_free': self.toll_free,
+            'caller_id': self.caller_id,
+        }
 
 
 class CDR(Base):
@@ -49,6 +64,15 @@ class ReportType(Base):
     creation_date = Column(DateTime, default=datetime.datetime.now, nullable=False)
     modification_date = Column(DateTime, nullable=True)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'sql': self.sql,
+            'creation_date': self.creation_date,
+            'modification_date': self.modification_date,
+        }
+
 
 class Report(Base):
     __tablename__ = 'reports'
@@ -56,7 +80,7 @@ class Report(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True)
     type_id = Column(Integer, ForeignKey('report_types.id'), nullable=False)
-    report_type = relationship("ReportType")
+    report_type = relationship("ReportType", lazy='subquery')
     scheduled = Column(Integer, nullable=False)
     cron_expression = Column(String(100), nullable=True)
     recipients_to = Column(Text, nullable=True)
@@ -66,3 +90,46 @@ class Report(Base):
     time = Column(String(8), nullable=True)
     day = Column(String(2), nullable=True)
     recurrence = Column(String(20), nullable=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'type_id': self.type_id,
+            'scheduled': self.scheduled,
+            'cron_expression': self.cron_expression,
+            'recipients_to': self.recipients_to,
+            'recipients_cc': self.recipients_cc,
+            'creation_date': self.creation_date,
+            'modification_date': self.modification_date,
+            'day': self.day,
+            'recurrence': self.recurrence,
+            'user_id': self.user_id,
+        }
+
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), nullable=False, unique=True)
+    password = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=True)
+    apps = relationship("App", backref="user", lazy='subquery')
+    reports = relationship("Report", backref="user", lazy='subquery')
+    creation_date = Column(DateTime, default=datetime.datetime.now, nullable=False)
+    modification_date = Column(DateTime, nullable=True)
+
+    def is_admin(self):
+        return self.role == 'admin'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'role': self.role,
+            'email': self.email,
+            'creation_date': self.creation_date,
+            'modification_date': self.modification_date,
+            'password': ''
+        }

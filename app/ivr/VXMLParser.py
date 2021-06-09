@@ -13,9 +13,11 @@ class VXMLParser:
         self.__agi = agi
         self.__audio = audio
         self.__logger = logger
+        self.__session = None
+        self.referer = None
 
     def process_xml(self, next_link: str):
-        doc = BeautifulSoup(requests.get(next_link).content, "xml")
+        doc = BeautifulSoup(self.__get_content(next_link), "xml")
         if log_vxml:
             self.__logger.log_info("VXML: {}".format(doc))
         form = doc.find('form')
@@ -215,3 +217,8 @@ class VXMLParser:
                 return self.process_xml(next_link + '&gNoMatchEventCount=1')
 
         return self.__process_audio_dialogue(form, input_attempts, no_match_attempts)
+
+    def __get_content(self, link):
+        if not self.__session:
+            self.__session = requests.Session()
+        return self.__session.get(link, headers={'referer': self.referer}).text

@@ -6,9 +6,14 @@ from asterisk.ami import AMIClientAdapter, AMIClient
 from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from app.api.Applications import Applications
 from app.api.Apps import Apps
+from app.api.Login import Login
+from app.api.Logs import Logs
+from app.api.Profile import Profile
 from app.api.ReportTypes import ReportTypes
 from app.api.Reports import Reports
+from app.api.Users import Users
 from app.asterisk.AsteriskARI import AsteriskARI
 from app.asterisk.AsteriskEventsHandler import AsteriskEventsHandler
 from app.manager.CDRManager import CDRManager
@@ -17,10 +22,12 @@ from app.manager.TrunkManager import TrunkManager
 from app.utilities.Config import Config
 from app.utilities.Database import Database
 from app.utilities.Logger import Logger
+from app.utilities.Mailer import Mailer
 
 project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 
 logger = Logger(project_dir)
+
 config = Config(project_dir, logger)
 
 config.set_section('asterisk-ami')
@@ -39,8 +46,9 @@ db_name = config.get('database')
 db_link = 'mysql+pymysql://{}:{}@{}:{}/{}?charset=utf8mb4'
 engine = create_engine(
     db_link.format(db_user, db_pass, db_host, db_port, db_name),
+    pool_pre_ping=True,
     pool_timeout=20,
-    pool_recycle=120
+    pool_recycle=900,
 )
 Session = sessionmaker(bind=engine)
 
@@ -48,6 +56,8 @@ asterisk_ari_config = config.get_section_content('asterisk-ari')
 
 trunk_list = config.get_section_content('sip-trunks')
 routed_numbers = config.get_section_content('routed-numbers')
+
+roles = config.get_section_content('roles')
 
 config.set_section('core')
 log_vxml = config.get_bool('log-vxml')
@@ -57,6 +67,7 @@ max_channels = config.get_int('max-channels')
 max_call_time = config.get_int('max-call-time-in-seconds')
 use_sip_trunks = config.get_bool('use-sip-trunks')
 dates_audio_path = config.get('dates-audio-path')
+secret_key = config.get('secret-key')
 
 # Set log level
 logger.set_level(log_level)
@@ -64,13 +75,17 @@ logger.set_level(log_level)
 database = Database(config)
 app_manager = Apps(database, logger)
 
+# Set up mailer
+mailer = Mailer(config.set_section('email-server'), logger)
+
+# Set up Redis
 config.set_section('redis')
 redis_host = config.get('host')
 redis_port = config.get_int('port')
-
 cache = Redis(host=redis_host, port=redis_port)
-
 cache_manager = CacheManager(config, logger)
+
+
 cdr_manager = CDRManager(cache_manager, database, logger)
 
 asterisk_events_handler = AsteriskEventsHandler(logger, cache, cdr_manager)
@@ -87,8 +102,13 @@ adapter = AMIClientAdapter(client)
 cron_dir = '/etc/cron.d'
 bin_dir = os.path.join(project_dir, 'bin')
 
-reports_api = Reports(bin_dir, cron_dir, database.get_conn())
-report_types_api = ReportTypes()
+apps_api = Applications(logger)
+users_api = Users(logger, mailer)
+login_api = Login(logger)
+reports_api = Reports(bin_dir, cron_dir, database.get_conn(), logger)
+report_types_api = ReportTypes(logger)
+logs_api = Logs(os.path.join(project_dir, 'logs'))
+profile_api = Profile(logger)
 
 
 def initialize_log():
@@ -120,13 +140,13 @@ def initiate_call(call_data):
         channel = outbound_call_details['channel']
         caller_id = outbound_call_details['caller-id']
 
-    logger.set_app(app_manager)
+    logger.set_app(app_data['name'])
     logger.set_phone(phone)
 
     if "+" not in caller_id:
         caller_id = "+{}".format(caller_id)
 
-    future = adapter.Originate(
+    adapter.Originate(
         Channel=channel,
         Exten='100',
         Priority=1,
@@ -137,8 +157,6 @@ def initiate_call(call_data):
         Timeout=40000,
         Async=True
     )
-
-    logger.log_info("Originate response: {}".format(future.response))
 
     cdr_data = {
         "app_name": app_data["name"],

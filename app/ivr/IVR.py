@@ -13,8 +13,10 @@ from app.utilities.Logger import Logger
 class IVR:
     def __init__(self, agi: AGI, logger: Logger, app_manager: Apps, audio: Audio):
         self.__agi = agi
+        self.__link = None
         data = str(self.__agi.get_variable('data'))
         self.__data = [] if data == '' else data.split('&')
+        self.__phone = None
         self.__audio = audio
         self.__logger = logger
         self.__app_manager = app_manager
@@ -22,7 +24,8 @@ class IVR:
     def run(self):
         self.__initialize()
         parser = VXMLParser(self.__agi, self.__logger, self.__audio)
-        parser.process_xml(self.link)
+        parser.referer = self.__link
+        parser.process_xml(self.__link)
 
     def __initialize(self):
         self.__logger.log_info('Initializing IVR')
@@ -36,14 +39,13 @@ class IVR:
             call_id = self.__data[2]
             jump_to = self.__data[3]
             voice_url = self.__app_manager.get_voice_url(token)
-            self.phone = self.__data[0]
+            self.__phone = self.__data[0]
             call_direction = 'OUTGOING'
-            outgoing_link = "{}?phone={}&callId={}&jumpTo={}"
-            self.link = outgoing_link.format(voice_url, self.phone, call_id, jump_to)
+            self.__link = f"{voice_url}?phone={self.__phone}&callId={call_id}&jumpTo={jump_to}"
         else:
             # Incoming details set up
             extension = str(self.__agi.env['agi_dnid'])
-            self.phone = str(self.__agi.env['agi_callerid'])
+            self.__phone = str(self.__agi.env['agi_callerid'])
             external_id = Hash.hash(self.__agi.env['agi_uniqueid'])
             channel = str(self.__agi.env['agi_channel'])
             peer = str(channel.split('-')[0]).split('/')[1]
@@ -52,7 +54,7 @@ class IVR:
                 "app_name": "App (INCOMING UNKNOWN)",
                 "creation_date": datetime.datetime.now(),
                 "peer": peer,
-                "caller_id": self.phone,
+                "caller_id": self.__phone,
                 "call_id": call_id,
                 "dialed_number": extension,
                 "external_id": external_id,
@@ -61,24 +63,33 @@ class IVR:
                 "call_state": "ANSWERED",
             }
 
-            cache.set(external_id, json.dumps({'phone': self.phone, 'is_incoming': 'true'}))
+            cache.set(external_id, json.dumps({'phone': self.__phone, 'is_incoming': 'true'}))
             cdr_cache_id = 'cdr-{}'.format(external_id)
             cache.set(cdr_cache_id, json.dumps(cdr_data, default=date_object_converter), 3600)
 
             token = self.__app_manager.get_token_by_dialed_number(extension)
             if token:
                 voice_url = self.__app_manager.get_voice_url(token)
-                self.link = "{}?phone={}".format(voice_url, self.phone)
+                self.__link = f'{voice_url}?phone={self.__phone}&session.callerid={self.__phone}'
             else:
-                exit_msg = "Extension does not exist: {}".format(extension)
+                exit_msg = f'Extension does not exist: {extension}'
                 self.__logger.log_info(exit_msg)
                 self.__agi.verbose(exit_msg)
                 self.__agi.hangup()
 
         results = self.__app_manager.get_data(token)
-        self.__logger.set_app(results['name'])
-        self.__logger.set_phone(self.phone)
+        app_name = results['name']
+
+        try:
+            user_id = int(results['user_id'])
+        except Exception as e:
+            user_id = 0
+            self.__logger.log_info(f'App[{app_name}] has no attached user: {str(e)}')
+
+        self.__logger.set_app(app_name)
+        self.__logger.set_phone(self.__phone)
+        self.__logger.set_user_id(user_id)
         self.__logger.log_info('Starting call')
-        self.__logger.log_info('Call ID: {}'.format(call_id))
-        self.__logger.log_info('Call Direction: {}'.format(call_direction))
-        self.__logger.log_info('Starting Voice URL: {}'.format(self.link))
+        self.__logger.log_info(f'Call ID: {call_id}')
+        self.__logger.log_info(f'Call Direction: {call_direction}')
+        self.__logger.log_info(f'Starting Voice URL: {self.__link}')
