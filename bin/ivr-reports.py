@@ -30,17 +30,9 @@ def report_data():
     return results
 
 
-def report_type_data(data):
-    sql = "SELECT `sql` FROM `{}` WHERE `id` = {}".format('report_types', data['type_id'])
-    cursor.execute(sql)
-    results = cursor.fetchone()
-    return results['sql']
-
-
 report = report_data()
-report_sql = report_type_data(report)
 
-sql_query = pd.read_sql_query(report_sql, connection)
+sql_query = pd.read_sql_query(report['sql'], connection)
 df = pd.DataFrame(sql_query)
 
 data_file = "/tmp/{}.csv".format(Hash.hash(report['name']))

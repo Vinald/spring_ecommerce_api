@@ -55,33 +55,11 @@ class CDR(Base):
     external_id = Column(String(255), nullable=True)
 
 
-class ReportType(Base):
-    __tablename__ = 'report_types'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False, unique=True)
-    sql = Column(Text(), nullable=False)
-    creation_date = Column(DateTime, default=datetime.datetime.now, nullable=False)
-    modification_date = Column(DateTime, nullable=True)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'sql': self.sql,
-            'creation_date': self.creation_date,
-            'modification_date': self.modification_date,
-        }
-
-
 class Report(Base):
     __tablename__ = 'reports'
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True)
-    type_id = Column(Integer, ForeignKey('report_types.id'), nullable=False)
-    report_type = relationship("ReportType", lazy='subquery')
-    scheduled = Column(Integer, nullable=False)
     cron_expression = Column(String(100), nullable=True)
     recipients_to = Column(Text, nullable=True)
     recipients_cc = Column(Text, nullable=True)
@@ -91,21 +69,23 @@ class Report(Base):
     day = Column(String(2), nullable=True)
     recurrence = Column(String(20), nullable=True)
     user_id = Column(Integer, ForeignKey('users.id'))
+    app = Column(Integer)
+    sql = Column(Text(), nullable=False)
 
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
-            'type_id': self.type_id,
-            'scheduled': self.scheduled,
             'cron_expression': self.cron_expression,
             'recipients_to': self.recipients_to,
             'recipients_cc': self.recipients_cc,
             'creation_date': self.creation_date,
             'modification_date': self.modification_date,
             'day': self.day,
+            'app': self.app,
             'recurrence': self.recurrence,
             'user_id': self.user_id,
+            'sql': self.sql,
         }
 
 

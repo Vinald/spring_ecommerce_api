@@ -11,7 +11,6 @@ from app.api.Apps import Apps
 from app.api.Login import Login
 from app.api.Logs import Logs
 from app.api.Profile import Profile
-from app.api.ReportTypes import ReportTypes
 from app.api.Reports import Reports
 from app.api.Users import Users
 from app.asterisk.AsteriskARI import AsteriskARI
@@ -106,7 +105,6 @@ apps_api = Applications(logger)
 users_api = Users(logger, mailer)
 login_api = Login(logger)
 reports_api = Reports(bin_dir, cron_dir, database.get_conn(), logger)
-report_types_api = ReportTypes(logger)
 logs_api = Logs(os.path.join(project_dir, 'logs'))
 profile_api = Profile(logger)
 
