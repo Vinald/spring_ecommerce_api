@@ -194,12 +194,6 @@ def report():
     return core.reports_api.process(request, Session(), current_user)
 
 
-@app.route('/api/report-types', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@jwt_required()
-def report_types():
-    return core.report_types_api.process(request, Session(), current_user)
-
-
 @app.route('/api/login', methods=['POST'])
 def login():
     user_details = core.login_api.verify(request, Session())
