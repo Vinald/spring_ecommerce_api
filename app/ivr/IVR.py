@@ -41,7 +41,7 @@ class IVR:
             voice_url = self.__app_manager.get_voice_url(token)
             self.__phone = self.__data[0]
             call_direction = 'OUTGOING'
-            self.__link = f"{voice_url}?phone={self.__phone}&callId={call_id}&jumpTo={jump_to}"
+            self.__link = f"{voice_url}?phone={self.__phone}&callId={call_id}&jumpTo={jump_to}&session.callerid={self.__phone}"
         else:
             # Incoming details set up
             extension = str(self.__agi.env['agi_dnid'])
