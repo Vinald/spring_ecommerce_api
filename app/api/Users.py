@@ -45,20 +45,18 @@ class Users:
             session.commit()
             self.__logger.log_user_action(current_user, 'CREATE USER', user.to_dict())
 
+            # Send a login link instead of the plaintext password
             self.__mailer.set_to([user.email])
             self.__mailer.set_subject('Academy IVR Account')
-            self.__mailer.set_message(f"""Hello,
-
-Your IVR account has been created successfully.
-Use the details below to login
-
-URL: ivr.callforlifeuganda.com:8000
-username: {user.email}
-password: {password}
-
-Please remember to change your password after login.
-Have a good day.
-""")
+            self.__mailer.set_message(
+                "Hello,\n\n"
+                "Your IVR account has been created successfully.\n"
+                "Use the details below to login:\n\n"
+                "Username: {}\n\n"
+                "Please contact your administrator for your temporary password "
+                "and change it immediately after your first login.\n\n"
+                "Have a good day.\n".format(user.email)
+            )
             self.__mailer.send_email()
             return jsonify(success('User created successfully'))
         except Exception as e:
@@ -69,7 +67,6 @@ Have a good day.
         try:
             users = []
             users_from_db = session.query(User).all()
-
             if users_from_db:
                 for user in users_from_db:
                     users.append(user.to_dict())

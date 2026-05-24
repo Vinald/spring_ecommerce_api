@@ -16,3 +16,4 @@ app.log.*
 .htpasswd
 *.bak
 config.json
+.env

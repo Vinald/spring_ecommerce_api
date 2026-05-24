@@ -2,7 +2,7 @@ import datetime
 import json
 import os
 import pathlib
-from asterisk.ami import AMIClientAdapter, AMIClient
+import threading
 from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -85,7 +85,6 @@ redis_port = config.get_int('port')
 cache = Redis(host=redis_host, port=redis_port)
 cache_manager = CacheManager(config, logger)
 
-
 cdr_manager = CDRManager(cache_manager, database, logger)
 
 asterisk_events_handler = AsteriskEventsHandler(logger, cache, cdr_manager)
@@ -94,10 +93,26 @@ asterisk_ari = AsteriskARI(asterisk_ari_config, logger, max_channels)
 
 peer_manager = TrunkManager(asterisk_ari, cache_manager, trunk_list, routed_numbers)
 
-client = AMIClient(address=ami_host, port=ami_port)
-client.login(username=ami_user, secret=ami_pass)
+# Connect to Asterisk AMI in a background thread so a down Asterisk
+# does not prevent the Flask app from starting.
+adapter = None
+_ami_lock = threading.Lock()
 
-adapter = AMIClientAdapter(client)
+
+def _connect_ami():
+    global adapter
+    try:
+        from asterisk.ami import AMIClientAdapter, AMIClient
+        client = AMIClient(address=ami_host, port=ami_port)
+        client.login(username=ami_user, secret=ami_pass)
+        with _ami_lock:
+            adapter = AMIClientAdapter(client)
+        logger.log_info("AMI connection established")
+    except Exception as e:
+        logger.log_error("AMI connection failed (will retry on next call): {}".format(str(e)))
+
+
+threading.Thread(target=_connect_ami, daemon=True).start()
 
 cron_dir = '/etc/cron.d'
 bin_dir = os.path.join(project_dir, 'bin')
@@ -122,6 +137,12 @@ def date_object_converter(o):
 
 
 def initiate_call(call_data):
+    global adapter
+    with _ami_lock:
+        if adapter is None:
+            logger.log_error("AMI not connected — cannot initiate call")
+            return
+
     flow = call_data['flow']
     phone = call_data['phone']
     token = call_data['token']
@@ -146,17 +167,18 @@ def initiate_call(call_data):
     if "+" not in caller_id:
         caller_id = "+{}".format(caller_id)
 
-    adapter.Originate(
-        Channel=channel,
-        Exten='100',
-        Priority=1,
-        Context='ivr',
-        CallerID="{} <{}>".format(caller_id, caller_id),
-        Variable='data={}&{}&{}&{}'.format(phone, token, call_id, flow),
-        ActionID=call_id,
-        Timeout=40000,
-        Async=True
-    )
+    with _ami_lock:
+        adapter.Originate(
+            Channel=channel,
+            Exten='100',
+            Priority=1,
+            Context='ivr',
+            CallerID="{} <{}>".format(caller_id, caller_id),
+            Variable='data={}&{}&{}&{}'.format(phone, token, call_id, flow),
+            ActionID=call_id,
+            Timeout=40000,
+            Async=True
+        )
 
     cdr_data = {
         "app_name": app_data["name"],

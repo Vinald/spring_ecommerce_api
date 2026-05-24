@@ -1,24 +1,41 @@
-python-dateutil==2.8.1
-Flask==1.1.2
-pyst2==0.5.1
-beautifulsoup4==4.8.2
-asterisk-ami==0.1.5
-lxml==4.5.1
-gunicorn==20.0.4
-flake8==3.8.1
-autopep8==1.5.2
-redis==3.5.2
-pandas
-SQLAlchemy
-alembic
-PyMySQL==0.9.3
-prettytable==0.7.2
-Flask-Cors==3.0.8
-requests
-flask-jwt-extended
-bcrypt
-hurry.filesize
+# Core framework
+Flask==2.3.3
+Flask-Cors==4.0.0
+flask-jwt-extended==4.6.0
+gunicorn==22.0.0
 
-# Install the correct python dev for psutil to work i.e if your using python3.7, use apt install python3.7-dev
-# then after run pip to install the requirements
-psutil==5.7.0
+# Telephony
+pyst2==0.5.1
+asterisk-ami==0.1.5
+
+# Database
+SQLAlchemy==1.4.52
+alembic==1.13.1
+PyMySQL==1.1.1
+
+# Cache
+redis==5.0.4
+
+# Data / reporting
+pandas==2.1.4
+prettytable==3.9.0
+python-dateutil==2.8.2
+
+# HTML / XML parsing
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# HTTP
+requests==2.31.0
+
+# Auth
+bcrypt==4.1.2
+
+# System
+psutil==5.9.8
+hurry.filesize==0.9
+
+# Dev / linting (not needed in production)
+flake8==7.0.0
+autopep8==2.0.4
+Flask-Limiter==3.5.0

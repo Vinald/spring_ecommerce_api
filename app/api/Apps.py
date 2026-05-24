@@ -11,10 +11,10 @@ class Apps:
     def get_token_by_dialed_number(self, dialed_num: str):
         try:
             self.__database.reconnect()
-            sql = 'SELECT token FROM apps WHERE phone = "{}"'.format(dialed_num)
-            self.__database.cursor.execute(sql)
+            sql = 'SELECT token FROM apps WHERE phone = %s'
+            self.__database.cursor.execute(sql, (dialed_num,))
             data = self.__database.cursor.fetchone()
-            return data['token']
+            return data['token'] if data else None
         except Exception as e:
             self.__logger.log_info("Database fetch error: {}".format(str(e)))
             return None
@@ -33,8 +33,8 @@ class Apps:
     def get_data(self, token):
         try:
             self.__database.reconnect()
-            sql = 'SELECT * FROM apps WHERE token = "{}"'.format(token)
-            self.__database.cursor.execute(sql)
+            sql = 'SELECT * FROM apps WHERE token = %s'
+            self.__database.cursor.execute(sql, (token,))
             return self.__database.cursor.fetchone()
         except Exception as e:
             self.__logger.log_info("Database fetch error: {}".format(str(e)))

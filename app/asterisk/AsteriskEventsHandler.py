@@ -6,6 +6,9 @@ from app.manager.CDRManager import CDRManager
 from app.utilities.Hash import Hash
 from app.utilities.Logger import Logger
 
+# Timeout (seconds) for outbound status-URL callbacks
+_HTTP_TIMEOUT = 10
+
 
 class AsteriskEventsHandler:
     __COMPLETED = 'COMPLETED'
@@ -83,32 +86,22 @@ class AsteriskEventsHandler:
                 self.__logger.log_info("Incoming call hangup detected: {}".format(phone))
 
     def __get_channel_status(self, status: str):
-        return self.__STATUS_CODES[status] if status in self.__STATUS_CODES.keys() else 'UNKNOWN'
+        return self.__STATUS_CODES.get(status, 'UNKNOWN')
 
     def __channel_reason(self, status: str):
-        return self.__CHANNEL_REASONS[status] if status in self.__CHANNEL_REASONS.keys() else 'unknown'
+        return self.__CHANNEL_REASONS.get(status, 'unknown')
 
     def __gen_status_link(self, call_id, status, reason, status_url, **optional_params):
-        """
-        :param status_url:
-        :param call_id:
-        :param status: NO_ANSWER,COMPLETED,FAILED,BUSY
-        :param reason: timeout,application,unreachable,busy
-        :param optional_params: externalID, externalType >> Used is status == COMPLETED
-        :return: status_link
-        """
-
         stamp = "_dt={}".format(self.__current_timestamp())
-        status = "status={}".format(status)
-        reason = "reason={}".format(reason)
+        status_param = "status={}".format(status)
+        reason_param = "reason={}".format(reason)
 
         link = "{}/{}".format(status_url, call_id)
-        status_link = "{}.vxml?{}&{}&{}".format(link, stamp, status, reason)
+        status_link = "{}.vxml?{}&{}&{}".format(link, stamp, status_param, reason_param)
 
-        if 'externalID' and 'externalType' in optional_params:
+        if 'externalID' in optional_params and 'externalType' in optional_params:
             external_id = optional_params['externalID']
             external_type = optional_params['externalType']
-
             params = '&externalId={}&externalType={}'.format(external_id, external_type)
             return status_link + params
 
@@ -158,4 +151,8 @@ class AsteriskEventsHandler:
     def __get_content(self, link):
         if not self.__session:
             self.__session = requests.Session()
-        return self.__session.get(link).text
+        try:
+            return self.__session.get(link, timeout=_HTTP_TIMEOUT).text
+        except requests.exceptions.RequestException as e:
+            self.__logger.log_error("Failed to reach status URL [{}]: {}".format(link, str(e)))
+            return ''
