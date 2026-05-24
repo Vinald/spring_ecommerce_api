@@ -1,7 +1,16 @@
+"""
+Reports API handler.
+
+CHANGED (dual DB layer): The report download action previously called
+pd.read_sql_query() with a raw PyMySQL connection from Database.get_conn().
+Now passes the SQLAlchemy engine URL directly so pandas uses SQLAlchemy
+under the hood — no raw PyMySQL connection needed.
+"""
 import datetime
 import os
 import subprocess
 from flask import jsonify, make_response
+from sqlalchemy import text
 from app.models.models import ReportType, Report, User
 from app.schemas.schemas import ReportCreateSchema, ReportUpdateSchema
 from app.utilities.Logger import Logger
@@ -11,11 +20,14 @@ import pandas as pd
 
 
 class Reports:
-    def __init__(self, bin_dir, cron_dir, raw_db_connection, logger: Logger):
+    def __init__(self, bin_dir, cron_dir, engine, logger: Logger):
+        # CHANGED: was __init__(self, bin_dir, cron_dir, raw_db_connection, logger)
+        # raw_db_connection (PyMySQL conn) replaced with SQLAlchemy engine so
+        # pandas report downloads no longer open a separate PyMySQL connection.
         self.__logger = logger
         self.__bin_dir = bin_dir
         self.__cron_dir = cron_dir
-        self.__raw_db_connection = raw_db_connection
+        self.__engine = engine
 
     def process(self, request, session, user: User):
         if request.method == 'GET':
@@ -29,8 +41,6 @@ class Reports:
 
     def __post(self, request, session, user):
         try:
-            # ADDED: validate required fields before saving.
-            # ReportCreateSchema enforces recurrence values and day-of-week range.
             errors, data = validate_request(request.form, ReportCreateSchema())
             if errors:
                 return jsonify({'status': 'error', 'message': errors}), 400
@@ -41,9 +51,6 @@ class Reports:
             time_val = data['time']
             recurrence = data['recurrence']
             scheduled = 1 if data['scheduled'] == 'true' else 0
-
-            # CHANGED: cron expression building was duplicated verbatim in __post
-            # and __put. Extracted to _build_cron_expression() to avoid drift.
             cron_expression = self._build_cron_expression(scheduled, recurrence, time_val, data['day'])
             if scheduled == 1 and recurrence == 'monthly':
                 time_val = "00:00"
@@ -51,13 +58,9 @@ class Reports:
             report = Report(
                 name=data['name'],
                 report_type=session.query(ReportType).get(data['type']),
-                scheduled=scheduled,
-                cron_expression=cron_expression,
-                recipients_to=data['to'],
-                recipients_cc=data['cc'],
-                time=time_val,
-                day=data['day'],
-                recurrence=recurrence,
+                scheduled=scheduled, cron_expression=cron_expression,
+                recipients_to=data['to'], recipients_cc=data['cc'],
+                time=time_val, day=data['day'], recurrence=recurrence,
                 user_id=user.id
             )
             session.add(report)
@@ -77,8 +80,11 @@ class Reports:
                 download_report: Report = session.query(Report).get(int(report_id))
                 if user.role != 'admin' and download_report.user_id != user.id:
                     return un_auth()
-                sql_query = pd.read_sql_query(download_report.report_type.sql, self.__raw_db_connection)
-                df = pd.DataFrame(sql_query)
+                # CHANGED: was pd.read_sql_query(sql, raw_pymysql_connection).
+                # Now uses the SQLAlchemy engine — pandas opens and closes its
+                # own connection via the pool, no raw cursor needed.
+                with self.__engine.connect() as conn:
+                    df = pd.read_sql_query(text(download_report.report_type.sql), conn)
                 resp = make_response(df.to_csv(index=False))
                 resp.headers["Content-Disposition"] = "attachment; filename=report.csv"
                 resp.headers["Content-Type"] = "text/csv"
@@ -103,7 +109,6 @@ class Reports:
 
     def __put(self, request, session, user: User):
         try:
-            # ADDED: validate update fields.
             errors, data = validate_request(request.form, ReportUpdateSchema())
             if errors:
                 return jsonify({'status': 'error', 'message': errors}), 400
@@ -158,18 +163,13 @@ class Reports:
 
     @staticmethod
     def _build_cron_expression(scheduled, recurrence, time_str, day_of_week):
-        """
-        Build a cron expression from report scheduling parameters.
-        CHANGED: was duplicated verbatim in __post and __put. Extracting
-        to a single method eliminates the risk of the two copies drifting.
-        """
+        """Build a validated cron expression from report scheduling parameters."""
         if scheduled != 1:
             return None
         if recurrence == 'monthly':
             return '0 0 1 * *'
         parts = str(time_str).split(':')
-        hours = parts[0]
-        minutes = parts[1] if len(parts) > 1 else '0'
+        hours, minutes = parts[0], (parts[1] if len(parts) > 1 else '0')
         if recurrence == 'weekly':
             return '{} {} * * {}'.format(minutes, hours, day_of_week)
         if recurrence == 'daily':
@@ -177,11 +177,7 @@ class Reports:
         return None
 
     def __reload_reports_cron_tab(self, session):
-        """
-        Rewrite the cron file using Python file I/O.
-        CHANGED: was os.system('echo "..." >> file') which allowed shell injection.
-        See Reports.py comments from PR #30 for the full explanation.
-        """
+        """Write cron file via Python file I/O — no shell injection risk."""
         reports_cron_file = os.path.join(self.__cron_dir, "ivr-reports")
         try:
             if os.path.exists(reports_cron_file):
@@ -194,7 +190,6 @@ class Reports:
         for report in session.query(Report).all():
             if report.scheduled == 1 and report.cron_expression:
                 expr = report.cron_expression
-                # Allowlist: cron expressions only contain digits, spaces, * and /
                 if not all(c in '0123456789* /' for c in expr):
                     self.__logger.log_warning(
                         'Skipping report {} — invalid cron expression: {}'.format(report.id, expr)
