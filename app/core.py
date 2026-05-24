@@ -1,3 +1,21 @@
+"""
+Application core — initialises all shared services at startup.
+
+CHANGED (dual DB layer consolidation):
+  Previously the app maintained two separate database connections:
+    1. SQLAlchemy ORM (Session) — used by all API handlers for CRUD
+    2. Raw PyMySQL (Database class) — used by Apps, CDRManager, and Reports
+
+  This caused two connection pools, inconsistent transaction handling, and
+  connection leaks in the raw PyMySQL layer.
+
+  After this change only SQLAlchemy is used:
+    - Apps receives a session_factory (Session) instead of a Database instance
+    - CDRManager receives a session_factory (Session) instead of a Database instance
+    - Reports receives the SQLAlchemy engine instead of a raw PyMySQL connection
+    - Database class is used only once at startup for CREATE DATABASE bootstrap
+      and then discarded
+"""
 import datetime
 import json
 import os
@@ -42,14 +60,21 @@ db_host = config.get('host')
 db_port = config.get_int('port')
 db_name = config.get('database')
 
-db_link = 'mysql+pymysql://{}:{}@{}:{}/{}?charset=utf8mb4'
+db_url = 'mysql+pymysql://{}:{}@{}:{}/{}?charset=utf8mb4'.format(
+    db_user, db_pass, db_host, db_port, db_name
+)
 engine = create_engine(
-    db_link.format(db_user, db_pass, db_host, db_port, db_name),
+    db_url,
     pool_pre_ping=True,
     pool_timeout=20,
     pool_recycle=900,
 )
 Session = sessionmaker(bind=engine)
+
+# Bootstrap: CREATE DATABASE IF NOT EXISTS via the raw Database class, then discard.
+# No service holds a reference to _bootstrap_db after this block.
+_bootstrap_db = Database(config)
+del _bootstrap_db
 
 asterisk_ari_config = config.get_section_content('asterisk-ari')
 trunk_list = config.get_section_content('sip-trunks')
@@ -68,8 +93,8 @@ secret_key = config.get('secret-key')
 
 logger.set_level(log_level)
 
-database = Database(config)
-app_manager = Apps(database, logger)
+# CHANGED: Apps now receives Session (sessionmaker) — no Database dependency.
+app_manager = Apps(Session, logger)
 
 mailer = Mailer(config.set_section('email-server'), logger)
 
@@ -79,17 +104,14 @@ redis_port = config.get_int('port')
 cache = Redis(host=redis_host, port=redis_port)
 cache_manager = CacheManager(config, logger)
 
-cdr_manager = CDRManager(cache_manager, database, logger)
+# CHANGED: CDRManager now receives Session (sessionmaker) — no Database dependency.
+cdr_manager = CDRManager(cache_manager, Session, logger)
+
 asterisk_events_handler = AsteriskEventsHandler(logger, cache, cdr_manager)
 asterisk_ari = AsteriskARI(asterisk_ari_config, logger, max_channels)
 peer_manager = TrunkManager(asterisk_ari, cache_manager, trunk_list, routed_numbers)
 
-# CHANGED: previously AMIClient.login() was called at module import time.
-# If Asterisk was unreachable, the entire Flask process would crash before
-# binding to any port — no API, no health endpoint, nothing would start.
-# Fix: connect in a background daemon thread so the app starts normally
-# regardless of Asterisk availability. initiate_call() checks that the
-# adapter is ready before using it.
+# AMI connects in a background thread — app starts even when Asterisk is down.
 adapter = None
 _ami_lock = threading.Lock()
 
@@ -104,7 +126,7 @@ def _connect_ami():
             adapter = AMIClientAdapter(client)
         logger.log_info("AMI connection established")
     except Exception as e:
-        logger.log_error("AMI connection failed (will retry on next call): {}".format(str(e)))
+        logger.log_error("AMI connection failed: {}".format(str(e)))
 
 
 threading.Thread(target=_connect_ami, daemon=True).start()
@@ -115,7 +137,8 @@ bin_dir = os.path.join(project_dir, 'bin')
 apps_api = Applications(logger)
 users_api = Users(logger, mailer)
 login_api = Login(logger)
-reports_api = Reports(bin_dir, cron_dir, database.get_conn(), logger)
+# CHANGED: Reports receives the SQLAlchemy engine — no raw PyMySQL connection.
+reports_api = Reports(bin_dir, cron_dir, engine, logger)
 report_types_api = ReportTypes(logger)
 logs_api = Logs(os.path.join(project_dir, 'logs'))
 profile_api = Profile(logger)
@@ -133,7 +156,6 @@ def date_object_converter(o):
 
 def initiate_call(call_data):
     global adapter
-    # Guard: do not attempt to originate if AMI has not connected yet.
     with _ami_lock:
         if adapter is None:
             logger.log_error("AMI not connected — cannot initiate call")
@@ -145,17 +167,16 @@ def initiate_call(call_data):
     call_id = call_data['call_id']
     app_data = call_data['app-data']
     external_id = call_data['external_id']
-    status_link = app_data['status_url']
 
     peer = ""
     channel = 'SIP/{}'.format(phone)
     caller_id = app_data['caller_id']
 
     if use_sip_trunks and len(trunk_list) > 0:
-        outbound_call_details = peer_manager.construct_channel_and_caller_id(phone, caller_id)
-        peer = outbound_call_details['peer']
-        channel = outbound_call_details['channel']
-        caller_id = outbound_call_details['caller-id']
+        outbound = peer_manager.construct_channel_and_caller_id(phone, caller_id)
+        peer = outbound['peer']
+        channel = outbound['channel']
+        caller_id = outbound['caller-id']
 
     logger.set_app(app_data['name'])
     logger.set_phone(phone)
@@ -165,38 +186,26 @@ def initiate_call(call_data):
 
     with _ami_lock:
         adapter.Originate(
-            Channel=channel,
-            Exten='100',
-            Priority=1,
-            Context='ivr',
+            Channel=channel, Exten='100', Priority=1, Context='ivr',
             CallerID="{} <{}>".format(caller_id, caller_id),
             Variable='data={}&{}&{}&{}'.format(phone, token, call_id, flow),
-            ActionID=call_id,
-            Timeout=40000,
-            Async=True
+            ActionID=call_id, Timeout=40000, Async=True
         )
 
     cdr_data = {
         "app_name": app_data["name"],
         "creation_date": datetime.datetime.now(),
         "token": app_data['token'],
-        "peer": peer,
-        "caller_id": caller_id,
-        "call_id": call_id,
-        "dialed_number": phone,
-        "external_id": external_id,
-        "call_direction": "OUTGOING"
+        "peer": peer, "caller_id": caller_id,
+        "call_id": call_id, "dialed_number": phone,
+        "external_id": external_id, "call_direction": "OUTGOING"
     }
 
     cdr_cache_id = 'cdr-{}'.format(call_id)
     cache.set(cdr_cache_id, json.dumps(cdr_data, default=date_object_converter), 3600)
-
-    cache_data = json.dumps({
-        'phone': phone,
-        'initiated': 'no',
+    cache.set(call_id, json.dumps({
+        'phone': phone, 'initiated': 'no',
         'external_id': external_id,
-        'status_link': status_link,
+        'status_link': app_data['status_url'],
         'app-data': app_data
-    }, default=date_object_converter)
-
-    cache.set(call_id, cache_data, 3600)
+    }, default=date_object_converter), 3600)
