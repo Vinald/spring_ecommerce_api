@@ -17,3 +17,4 @@ app.log.*
 *.bak
 config.json
 .env
+.DS_Store
