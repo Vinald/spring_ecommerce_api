@@ -1,0 +1,102 @@
+"""
+Request validation schemas for all API endpoints.
+
+Each schema maps to one API handler. Fields are validated before any
+business logic runs — a missing required field returns a 400 with a
+clear message rather than an unhandled KeyError (HTTP 500).
+"""
+from marshmallow import Schema, fields, validate, validates, ValidationError
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+class LoginSchema(Schema):
+    username = fields.Email(required=True, error_messages={'required': 'username is required'})
+    password = fields.Str(required=True, validate=validate.Length(min=1))
+
+
+class ProfileUpdateSchema(Schema):
+    oldPassword = fields.Str(required=True, validate=validate.Length(min=1))
+    password = fields.Str(
+        required=True,
+        validate=validate.Regexp(
+            r'^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$',
+            error='Password must be at least 8 characters and contain uppercase, lowercase, and a digit.'
+        )
+    )
+
+
+# ── Users ─────────────────────────────────────────────────────────────────────
+
+class UserCreateSchema(Schema):
+    email = fields.Email(required=True)
+    password = fields.Str(required=True, validate=validate.Length(min=6))
+    role = fields.Str(required=True, validate=validate.OneOf(['admin', 'user']))
+
+
+class UserUpdateSchema(Schema):
+    id = fields.Int(required=True, validate=validate.Range(min=1))
+    email = fields.Email(required=True)
+    password = fields.Str(load_default='')   # optional — blank = keep existing
+    role = fields.Str(required=True, validate=validate.OneOf(['admin', 'user']))
+
+
+class UserDeleteSchema(Schema):
+    id = fields.Int(required=True, validate=validate.Range(min=1))
+
+
+# ── Applications ──────────────────────────────────────────────────────────────
+
+class AppCreateSchema(Schema):
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=40))
+    phone = fields.Str(load_default='', validate=validate.Length(max=40))
+    voice_url = fields.Url(required=True)
+    status_url = fields.Url(required=True)
+    caller_id = fields.Str(load_default='', validate=validate.Length(max=40))
+    toll_free = fields.Str(load_default='', validate=validate.Length(max=40))
+
+
+class AppUpdateSchema(Schema):
+    id = fields.Int(required=True, validate=validate.Range(min=1))
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=40))
+    phone = fields.Str(load_default='', validate=validate.Length(max=40))
+    voice_url = fields.Url(required=True)
+    status_url = fields.Url(required=True)
+    caller_id = fields.Str(load_default='', validate=validate.Length(max=40))
+    toll_free = fields.Str(load_default='', validate=validate.Length(max=40))
+
+
+class AppDeleteSchema(Schema):
+    id = fields.Int(required=True, validate=validate.Range(min=1))
+
+
+# ── Reports ───────────────────────────────────────────────────────────────────
+
+_RECURRENCES = ['daily', 'weekly', 'monthly']
+_DAYS_OF_WEEK = ['0', '1', '2', '3', '4', '5', '6']
+
+
+class ReportCreateSchema(Schema):
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
+    type = fields.Int(required=True, validate=validate.Range(min=1))
+    scheduled = fields.Str(required=True, validate=validate.OneOf(['true', 'false']))
+    recurrence = fields.Str(required=True, validate=validate.OneOf(_RECURRENCES))
+    time = fields.Str(required=True)
+    day = fields.Str(required=True, validate=validate.OneOf(_DAYS_OF_WEEK + ['']))
+    to = fields.Str(required=True, validate=validate.Length(min=1))
+    cc = fields.Str(load_default='')
+
+
+class ReportUpdateSchema(ReportCreateSchema):
+    id = fields.Int(required=True, validate=validate.Range(min=1))
+
+
+# ── Report Types ──────────────────────────────────────────────────────────────
+
+class ReportTypeCreateSchema(Schema):
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
+    sql = fields.Str(required=True, validate=validate.Length(min=7))  # min = "SELECT "
+
+
+class ReportTypeUpdateSchema(ReportTypeCreateSchema):
+    id = fields.Int(required=True, validate=validate.Range(min=1))
