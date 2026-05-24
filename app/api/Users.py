@@ -28,37 +28,34 @@ class Users:
 
     def __post(self, request, session, current_user):
         try:
-            # ADDED: validate all required fields up-front.
+            # ADDED: validate all required fields before creating the user.
+            # UserCreateSchema enforces email format, min password length,
+            # and role allowlist. Previously a missing field → KeyError → 500.
             errors, data = validate_request(request.form, UserCreateSchema())
             if errors:
                 return jsonify(error_message(errors)), 400
 
-            email = data['email']
-            password = data['password']
-            role = data['role']
-
-            if session.query(User).filter_by(email=email).first():
+            if session.query(User).filter_by(email=data['email']).first():
                 return error_message('Email already taken')
 
             user = User(
-                role=role,
-                email=email,
-                password=bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+                role=data['role'],
+                email=data['email'],
+                password=bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
             )
             session.add(user)
             session.commit()
             self.__logger.log_user_action(current_user, 'CREATE USER', user.to_dict())
 
+            # CHANGED: previously emailed the plaintext password — serious security
+            # risk (visible in email logs and inboxes). Now tells the user to contact
+            # the admin for their temporary password.
             self.__mailer.set_to([user.email])
             self.__mailer.set_subject('Academy IVR Account')
             self.__mailer.set_message(
-                "Hello,\n\n"
-                "Your IVR account has been created successfully.\n"
-                "Use the details below to login:\n\n"
-                "Username: {}\n\n"
-                "Please contact your administrator for your temporary password "
-                "and change it immediately after your first login.\n\n"
-                "Have a good day.\n".format(user.email)
+                "Hello,\n\nYour IVR account has been created successfully.\n"
+                "Username: {}\n\nContact your administrator for your temporary "
+                "password and change it on first login.\n\nHave a good day.\n".format(user.email)
             )
             self.__mailer.send_email()
             return jsonify(success('User created successfully'))
@@ -68,36 +65,28 @@ class Users:
     @staticmethod
     def __get(session):
         try:
-            users = []
-            users_from_db = session.query(User).all()
-            if users_from_db:
-                for user in users_from_db:
-                    users.append(user.to_dict())
+            users = [u.to_dict() for u in session.query(User).all()]
             return jsonify(users=users)
         except Exception as e:
             return jsonify(error('Error fetching users', e))
 
     def __put(self, request, session, current_user):
         try:
-            # ADDED: validate update fields.
+            # ADDED: validate update fields including role allowlist and email format.
             errors, data = validate_request(request.form, UserUpdateSchema())
             if errors:
                 return jsonify(error_message(errors)), 400
 
             user = session.query(User).get(data['id'])
-            role = data['role']
-            email = data['email']
-            password = data['password']
+            user.role = data['role']
 
-            user.role = role
-            if user.email != email:
-                if session.query(User).filter_by(email=email).first():
+            if user.email != data['email']:
+                if session.query(User).filter_by(email=data['email']).first():
                     return error_message('Email already taken')
-                else:
-                    user.email = email
+                user.email = data['email']
 
-            if len(password) > 0:
-                user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            if len(data['password']) > 0:
+                user.password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
 
             user.modification_date = datetime.datetime.now()
             session.add(user)
@@ -109,7 +98,8 @@ class Users:
 
     def __delete(self, request, session, current_user):
         try:
-            # ADDED: validate the id query param.
+            # ADDED: validate the id query param — was previously int(request.args.get('id'))
+            # which raised ValueError if the param was missing or non-numeric → 500.
             errors, data = validate_request(request.args, UserDeleteSchema())
             if errors:
                 return jsonify(error_message(errors)), 400
