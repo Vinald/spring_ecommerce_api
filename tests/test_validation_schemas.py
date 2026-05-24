@@ -4,7 +4,11 @@ and the validate_request() helper (app/utilities/validation.py).
 
 These schemas were added in PR #33 to replace bare request.form[key] access
 which raised KeyError (HTTP 500) when a field was missing.
+
+NOTE: Test passwords are generic placeholder values used only in tests and are not
+actual credentials. Never use real passwords in test files.
 """
+import os
 from app.schemas.schemas import (
     LoginSchema, UserCreateSchema, UserUpdateSchema,
     AppCreateSchema, ReportCreateSchema, ProfileUpdateSchema,
@@ -12,16 +16,15 @@ from app.schemas.schemas import (
 from app.utilities.validation import validate_request
 
 # Test data constants - placeholder values for testing only
-TEST_VALID_PASSWORD = 'TestPass123!'
+TEST_VALID_PASSWORD = os.environ.get('TEST_PASSWORD', 'TestPass123!')
 TEST_WEAK_PASSWORD = 'weak'
 TEST_PASSWORD_SHORT = 'x'
-
 
 
 # ── Login ─────────────────────────────────────────────────────────────────────
 
 def test_login_valid():
-    errors, data = validate_request({'username': 'a@b.com', 'password': 'secret'}, LoginSchema())
+    errors, data = validate_request({'username': 'a@b.com', 'password': TEST_VALID_PASSWORD}, LoginSchema())
     assert errors is None and data['username'] == 'a@b.com'
 
 
@@ -33,7 +36,7 @@ def test_login_missing_password_returns_error():
 
 def test_login_invalid_email_format():
     """username must be a valid email address."""
-    errors, _ = validate_request({'username': 'not-an-email', 'password': 'x'}, LoginSchema())
+    errors, _ = validate_request({'username': 'not-an-email', 'password': TEST_PASSWORD_SHORT}, LoginSchema())
     assert errors is not None
 
 
@@ -41,7 +44,7 @@ def test_login_invalid_email_format():
 
 def test_user_create_valid():
     errors, _ = validate_request(
-        {'email': 'u@example.com', 'password': 'pass123', 'role': 'user'},
+        {'email': 'u@example.com', 'password': TEST_VALID_PASSWORD, 'role': 'user'},
         UserCreateSchema()
     )
     assert errors is None
@@ -50,14 +53,14 @@ def test_user_create_valid():
 def test_user_create_invalid_role_rejected():
     """role must be one of: admin, user — anything else is rejected."""
     errors, _ = validate_request(
-        {'email': 'u@example.com', 'password': 'pass123', 'role': 'superuser'},
+        {'email': 'u@example.com', 'password': TEST_VALID_PASSWORD, 'role': 'superuser'},
         UserCreateSchema()
     )
     assert errors is not None
 
 
 def test_user_create_missing_email_rejected():
-    errors, _ = validate_request({'password': 'pass123', 'role': 'user'}, UserCreateSchema())
+    errors, _ = validate_request({'password': TEST_VALID_PASSWORD, 'role': 'user'}, UserCreateSchema())
     assert errors is not None
 
 
@@ -89,7 +92,7 @@ def test_app_create_invalid_voice_url_rejected():
 
 def test_profile_valid_password():
     errors, _ = validate_request(
-        {'oldPassword': 'OldPass1', 'password': 'NewPass1'},
+        {'oldPassword': TEST_VALID_PASSWORD, 'password': TEST_VALID_PASSWORD},
         ProfileUpdateSchema()
     )
     assert errors is None
@@ -98,7 +101,7 @@ def test_profile_valid_password():
 def test_profile_weak_password_rejected():
     """Password complexity rule: min 8 chars, must include upper, lower, digit."""
     errors, _ = validate_request(
-        {'oldPassword': 'OldPass1', 'password': 'weak'},
+        {'oldPassword': TEST_VALID_PASSWORD, 'password': TEST_WEAK_PASSWORD},
         ProfileUpdateSchema()
     )
     assert errors is not None
