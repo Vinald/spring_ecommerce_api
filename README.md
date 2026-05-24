@@ -591,6 +591,40 @@ pytest tests/test_cdr_manager.py -v
 
 ---
 
+## Pre-commit Hooks (Secret Detection)
+
+This repository uses [pre-commit](https://pre-commit.com) with [detect-secrets](https://github.com/Yelp/detect-secrets) to block accidental credential commits before they leave your machine.
+
+**Install once after cloning:**
+
+```bash
+pip install pre-commit detect-secrets
+pre-commit install
+```
+
+After that, every `git commit` will automatically:
+- Scan staged files for secrets and block the commit if any are found
+- Prevent direct commits to `main` or `master`
+- Check Python syntax, YAML/JSON validity, and trailing whitespace
+
+**If detect-secrets flags a false positive** (e.g. a test fixture or example value):
+
+```bash
+# Review what was flagged
+detect-secrets scan > .secrets.baseline
+
+# Audit each finding and mark safe ones as approved
+detect-secrets audit .secrets.baseline
+
+# Then commit the updated baseline
+git add .secrets.baseline
+git commit -m "chore: update secrets baseline"
+```
+
+> **Never commit `config.json`** — it contains your real database password and JWT secret key. Only `config.dev.json` (with placeholder values) is tracked. The `.gitignore` blocks `config.json` by default.
+
+---
+
 ## Code Style
 
 This project follows [PEP 8](https://www.python.org/dev/peps/pep-0008/) with a max line length of 120.

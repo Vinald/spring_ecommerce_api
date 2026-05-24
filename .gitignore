@@ -1,27 +1,56 @@
+# ── Logs ──────────────────────────────────────────────────────────────────────
 app.log
 app_py.log
-.vscode
-venv
-audio
-audio.zip
-config.ini
-*.swp
-.idea/
-src/__pycache__/
-__pycache__
-app.pyc
-reports/
-bin/asterisk-googletts
 app.log.*
-.htpasswd
-*.bak
+logs/
+*.log
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+src/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# ── Secrets and credentials — NEVER commit these ──────────────────────────────
+# config.json is the live config that contains real DB passwords, JWT secrets,
+# and API credentials. Only config.dev.json (with placeholder values) is tracked.
 config.json
-# Environment & Secrets (NEVER commit these)
+
+# Environment files
 .env
 .env.*
+!.env.example          # .env.example is safe — it contains no real values
+
+# Key and certificate files
 *.key
 *.pem
+*.p12
+*.pfx
 secrets.json
 credentials.json
+.htpasswd
 
+# detect-secrets — baseline tracks known-safe findings
+# .secrets.baseline is committed so the pre-commit hook has a reference point
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
 .DS_Store
+Thumbs.db
+
+# ── Project-specific ──────────────────────────────────────────────────────────
+audio/
+audio.zip
+reports/
+bin/asterisk-googletts
+config.ini
+*.bak
