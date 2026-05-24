@@ -98,9 +98,10 @@ def create_app():
             core.logger.log_info(f"JWT user lookup DB error: {str(e)}")
             db_session.rollback()
             return None
+        finally:
+            db_session.close()
 
     # ── Shared services ───────────────────────────────────────────────────
-    core.database.reconnect()
     queue = QueueManager(core.cache)
 
     # ── Register blueprints ───────────────────────────────────────────────
@@ -108,7 +109,7 @@ def create_app():
     # direct imports from core — keeping them independently testable.
     init_ivr_blueprint(
         core, queue, asterisk_ari,
-        core.asterisk_events_handler, core.database, core.logger
+        core.asterisk_events_handler, core.logger
     )
     init_api_blueprint(
         core, queue, asterisk_ari,

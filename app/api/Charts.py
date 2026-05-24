@@ -1,12 +1,11 @@
 import datetime
 from sqlalchemy import func
 from app.models.models import User, CDR
-from app.utilities.Database import Database
 
 
 class Charts:
-    def __init__(self, database: Database):
-        self.__database = database
+    def __init__(self):
+        pass
 
     @staticmethod
     def __date_range(date1, date2):

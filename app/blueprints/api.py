@@ -59,7 +59,7 @@ def dashboard_stats():
 def charts():
     """CDR chart data for the last 15 days."""
     core = _deps['core']
-    chart = Charts(core.database)
+    chart = Charts()
     return jsonify(chart.get_cdr_data(current_user, _deps['Session']()))
 
 

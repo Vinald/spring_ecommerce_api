@@ -74,7 +74,12 @@ Session = sessionmaker(bind=engine)
 # Bootstrap: CREATE DATABASE IF NOT EXISTS via the raw Database class, then discard.
 # No service holds a reference to _bootstrap_db after this block.
 _bootstrap_db = Database(config)
-del _bootstrap_db
+try:
+    pass
+finally:
+    if getattr(_bootstrap_db, 'conn', None) is not None:
+        _bootstrap_db.conn.close()
+    del _bootstrap_db
 
 asterisk_ari_config = config.get_section_content('asterisk-ari')
 trunk_list = config.get_section_content('sip-trunks')
@@ -159,7 +164,7 @@ def initiate_call(call_data):
     with _ami_lock:
         if adapter is None:
             logger.log_error("AMI not connected — cannot initiate call")
-            return
+            return False
 
     flow = call_data['flow']
     phone = call_data['phone']
@@ -209,3 +214,4 @@ def initiate_call(call_data):
         'status_link': app_data['status_url'],
         'app-data': app_data
     }, default=date_object_converter), 3600)
+    return True

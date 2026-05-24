@@ -2,6 +2,7 @@ from datetime import datetime
 from flask import jsonify
 from app.models.models import ReportType, User
 from app.utilities.Logger import Logger
+import re
 
 # CHANGED: report type SQL was previously stored and executed with no restrictions.
 # An admin could run DROP TABLE, DELETE, or any destructive query. This allowlist
@@ -16,14 +17,28 @@ _FORBIDDEN_SQL_KEYWORDS = [
 def _validate_report_sql(sql: str):
     """
     Ensure report SQL is a read-only SELECT statement.
+    Uses word boundaries to avoid matching keywords in column/table names.
     Returns (True, None) if valid, (False, reason_string) if not.
     """
     stripped = sql.strip().lower()
     if not stripped.startswith('select'):
         return False, "Report SQL must be a SELECT statement"
+    
+    # Check for forbidden keywords using word boundaries (except for comments/operators)
     for keyword in _FORBIDDEN_SQL_KEYWORDS:
-        if keyword in stripped:
-            return False, "Report SQL contains forbidden keyword: '{}'".format(keyword)
+        if keyword in ('--', '/*', '*/'):
+            # For comment markers, check directly (they're always forbidden)
+            if keyword in stripped:
+                return False, "Report SQL contains forbidden keyword: '{}'".format(keyword)
+        elif keyword.startswith('xp_') or keyword.startswith('sp_'):
+            # For SQL Server procedures, check directly
+            if keyword in stripped:
+                return False, "Report SQL contains forbidden keyword: '{}'".format(keyword)
+        else:
+            # For SQL keywords, use word boundaries to avoid false positives
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            if re.search(pattern, stripped):
+                return False, "Report SQL contains forbidden keyword: '{}'".format(keyword)
     return True, None
 
 

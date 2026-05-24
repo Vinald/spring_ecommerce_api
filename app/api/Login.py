@@ -16,7 +16,7 @@ class Login:
         # LoginSchema also enforces email format on the username field.
         errors, data = validate_request(request.form, LoginSchema())
         if errors:
-            return False
+            return {'errors': errors}, 400
 
         username = data['username']
         password = data['password']

@@ -25,14 +25,13 @@ _deps = {}
 ivr_bp = Blueprint('ivr', __name__)
 
 
-def init_ivr_blueprint(core, queue, asterisk_ari, app_web_listener, database, logger):
+def init_ivr_blueprint(core, queue, asterisk_ari, app_web_listener, logger):
     """Inject shared dependencies — called once from create_app() in run.py."""
     _deps.update({
         'core': core,
         'queue': queue,
         'ari': asterisk_ari,
         'listener': app_web_listener,
-        'database': database,
         'logger': logger,
     })
 
@@ -56,7 +55,6 @@ def initiate_call():
     core = _deps['core']
     queue = _deps['queue']
     ari = _deps['ari']
-    database = _deps['database']
     logger = _deps['logger']
 
     flow = request.args.get('jumpTo')
@@ -66,7 +64,6 @@ def initiate_call():
 
     core.initialize_log()
     logger.log_info("Call request from external app: {}".format(request.url))
-    database.reconnect()
 
     try:
         results = core.app_manager.get_data(token)
@@ -87,7 +84,14 @@ def initiate_call():
         queue.queue_call(data)
         return jsonify({'status': 'CALL_QUEUED'})
 
-    core.initiate_call(data)
+    initiated = core.initiate_call(data)
+    if initiated is False:
+        logger.log_info(
+            "Failed to initiate call: backend unavailable or call initiation no-op for external_id={}".format(
+                data['external_id']
+            )
+        )
+        return jsonify({'status': 'FAILED TO INITIATE CALL'}), 503
     return jsonify({'status': 'INITIATED'})
 
 
