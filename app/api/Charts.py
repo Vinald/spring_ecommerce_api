@@ -38,9 +38,10 @@ class Charts:
         return x
 
     def get_cdr_data(self, user: User, session):
+        # Use 'ANSWERED' consistently — this is the value written by CDRManager
         all_data = []
         busy_data = {'name': 'BUSY', 'data': self.__chart_data('BUSY', session, user)}
-        answered_data = {'name': 'COMPLETED', 'data': self.__chart_data('ANSWERED', session, user)}
+        answered_data = {'name': 'ANSWERED', 'data': self.__chart_data('ANSWERED', session, user)}
         failed_data = {'name': 'FAILED', 'data': self.__chart_data('FAILED', session, user)}
         no_answer_data = {'name': 'NO_ANSWER', 'data': self.__chart_data('NO_ANSWER', session, user)}
         all_data.append(no_answer_data)

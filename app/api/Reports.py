@@ -1,5 +1,6 @@
 import datetime
 import os
+import subprocess
 from flask import jsonify, make_response
 from app.models.models import ReportType, Report, User
 import pandas as pd
@@ -30,7 +31,6 @@ class Reports:
             time = request.form['time']
             recurrence = request.form['recurrence']
             scheduled = 1 if request.form['scheduled'] == 'true' else 0
-            cron_expression = None
             report_type = session.query(ReportType).get(int(request.form['type']))
             report_name = request.form['name']
             recipients_to = str(request.form['to'])
@@ -40,18 +40,9 @@ class Reports:
             if session.query(Report).filter_by(name=report_name).first():
                 return error_message('Name already taken')
 
-            if scheduled == 1:
-                if recurrence == 'monthly':
-                    time = "00:00"
-                time_split = str(time).split(':')
-                hours = time_split[0]
-                minutes = time_split[1]
-                if recurrence == 'monthly':
-                    cron_expression = '0 0 1 * *'
-                if recurrence == 'weekly':
-                    cron_expression = '{} {} * * {}'.format(minutes, hours, day_of_week)
-                if recurrence == 'daily':
-                    cron_expression = '{} {} * * *'.format(minutes, hours)
+            cron_expression = self._build_cron_expression(scheduled, recurrence, time, day_of_week)
+            if scheduled == 1 and recurrence == 'monthly':
+                time = "00:00"
 
             report = Report(
                 name=report_name,
@@ -130,28 +121,19 @@ class Reports:
             time = request.form['time']
             recurrence = request.form['recurrence']
             scheduled = 1 if request.form['scheduled'] == 'true' else 0
-            cron_expression = None
             report_type = session.query(ReportType).get(int(request.form['type']))
             report_name = request.form['name']
             recipients_to = str(request.form['to'])
             recipients_cc = str(request.form['cc'])
             day_of_week = request.form['day']
 
-            if session.query(Report).filter_by(name=report_name).first():
+            existing = session.query(Report).filter_by(name=report_name).first()
+            if existing and existing.id != report.id:
                 return error_message('Name already taken')
 
-            if scheduled == 1:
-                if recurrence == 'monthly':
-                    time = "00:00"
-                time_split = str(time).split(':')
-                hours = time_split[0]
-                minutes = time_split[1]
-                if recurrence == 'monthly':
-                    cron_expression = '0 0 1 * *'
-                if recurrence == 'weekly':
-                    cron_expression = '{} {} * * {}'.format(minutes, hours, day_of_week)
-                if recurrence == 'daily':
-                    cron_expression = '{} {} * * *'.format(minutes, hours)
+            cron_expression = self._build_cron_expression(scheduled, recurrence, time, day_of_week)
+            if scheduled == 1 and recurrence == 'monthly':
+                time = "00:00"
 
             report.name = report_name
             report.report_type = report_type
@@ -186,19 +168,57 @@ class Reports:
         except Exception as e:
             return jsonify({'status': 'error', 'message': 'Error deleting report(s): {}'.format(str(e))})
 
+    @staticmethod
+    def _build_cron_expression(scheduled, recurrence, time_str, day_of_week):
+        """Build a cron expression safely without shell interpolation."""
+        if scheduled != 1:
+            return None
+        if recurrence == 'monthly':
+            return '0 0 1 * *'
+        parts = str(time_str).split(':')
+        hours = parts[0]
+        minutes = parts[1] if len(parts) > 1 else '0'
+        if recurrence == 'weekly':
+            return '{} {} * * {}'.format(minutes, hours, day_of_week)
+        if recurrence == 'daily':
+            return '{} {} * * *'.format(minutes, hours)
+        return None
+
     def __reload_reports_cron_tab(self, session):
+        """Rewrite the cron file using Python file I/O — no shell injection risk."""
         reports_cron_file = os.path.join(self.__cron_dir, "ivr-reports")
+
+        # Remove existing file safely
+        try:
+            if os.path.exists(reports_cron_file):
+                os.remove(reports_cron_file)
+        except OSError as e:
+            self.__logger.log_error('Failed to remove cron file: {}'.format(str(e)))
+            return
+
         reports = session.query(Report).all()
-        os.system("rm -rf {}".format(reports_cron_file))
+        lines = []
         for report in reports:
-            if report.scheduled == 1:
-                report_id = report.id
-                cron_expression = report.cron_expression
-                os.system('echo "{} root cd {} && python3 ivr-reports.py --report {}" >> {}'.format(
-                    cron_expression,
+            if report.scheduled == 1 and report.cron_expression:
+                # Validate cron expression contains only safe characters
+                expr = report.cron_expression
+                if not all(c in '0123456789* /' for c in expr):
+                    self.__logger.log_warning(
+                        'Skipping report {} — invalid cron expression: {}'.format(report.id, expr)
+                    )
+                    continue
+                line = '{} root cd {} && python3 ivr-reports.py --report {}\n'.format(
+                    expr,
                     self.__bin_dir,
-                    report_id,
-                    reports_cron_file
-                ))
-        os.system("chown root:root {}".format(reports_cron_file))
-        os.system("chmod 600 {}".format(reports_cron_file))
+                    int(report.id)
+                )
+                lines.append(line)
+
+        try:
+            with open(reports_cron_file, 'w') as f:
+                f.writelines(lines)
+            os.chmod(reports_cron_file, 0o600)
+            # chown root:root via subprocess with explicit args — no shell=True
+            subprocess.run(['chown', 'root:root', reports_cron_file], check=False)
+        except OSError as e:
+            self.__logger.log_error('Failed to write cron file: {}'.format(str(e)))
