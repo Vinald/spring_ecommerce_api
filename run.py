@@ -1,251 +1,104 @@
 #!/usr/bin/env python3
+"""
+Application entry point.
 
+CHANGED: all routes have been moved out of this file into Flask Blueprints:
+  app/blueprints/ivr.py  — telephony routes (/call.initiate, /ivr/*, /health)
+  app/blueprints/api.py  — authenticated REST routes (/api/*)
+
+This file now contains only the application factory (create_app) and the
+startup block. Benefits:
+  - Each domain is independently readable and testable.
+  - Blueprints can be mounted at different URL prefixes easily.
+  - Unit tests can call create_app() without side effects.
+"""
 import os
-import threading
-from flask import Flask, request, jsonify
+from datetime import timedelta
+
+from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from datetime import datetime, timedelta
-
-from flask_jwt_extended import JWTManager
-from flask_jwt_extended import jwt_required
-from flask_jwt_extended import create_access_token
-from flask_jwt_extended import current_user
 from sqlalchemy.orm import scoped_session
 
 from app import core
-from app.api.Charts import Charts
-from app.api.Dashboard import Dashboard
+from app.blueprints.ivr import ivr_bp, init_ivr_blueprint
+from app.blueprints.api import api_bp, init_api_blueprint
 from app.core import asterisk_ari, cdr_manager, peer_manager, Session
 from app.manager.QueueManager import QueueManager
 from app.models.models import User
-from app.utilities.Hash import Hash
-from app.utilities.utils import un_auth
 
 
-app = Flask(__name__)
+def create_app():
+    app = Flask(__name__)
 
-# Require a non-empty secret key — fail fast at startup rather than running insecurely
-_secret_key = core.secret_key
-if not _secret_key:
-    raise RuntimeError(
-        "JWT secret-key is empty. Set a strong value in config.json under [core] secret-key."
+    # ── JWT ───────────────────────────────────────────────────────────────
+    _secret_key = core.secret_key
+    if not _secret_key:
+        raise RuntimeError(
+            "JWT secret-key is empty. Set a strong value in config.json "
+            "under [core] secret-key."
+        )
+    app.config["JWT_SECRET_KEY"] = _secret_key
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=3)
+
+    jwt = JWTManager(app)
+
+    # ── CORS ──────────────────────────────────────────────────────────────
+    _frontend_origin = os.environ.get("FRONTEND_ORIGIN", "http://localhost:8080")
+    CORS(app, origins=[_frontend_origin])
+
+    # ── Rate limiting — backed by Redis ───────────────────────────────────
+    _redis_host = core.config.set_section('redis').get('host', 'localhost')
+    _redis_port = core.config.set_section('redis').get('port', '6379')
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        storage_uri="redis://{}:{}/1".format(_redis_host, _redis_port),
+        default_limits=["200 per minute"],
     )
-app.config["JWT_SECRET_KEY"] = _secret_key
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=3)
 
-jwt = JWTManager(app)
+    # ── JWT user loader ───────────────────────────────────────────────────
+    @jwt.user_identity_loader
+    def user_identity_lookup(user):
+        return user.id
 
-database = core.database
-database.reconnect()
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        identity = jwt_data["sub"]
+        s_session = scoped_session(Session)
+        db_session = s_session()
+        try:
+            return db_session.query(User).filter_by(id=identity).one_or_none()
+        except Exception as e:
+            core.logger.log_info(f"JWT user lookup DB error: {str(e)}")
+            db_session.rollback()
+            return None
 
-# Restrict CORS to the frontend origin — set FRONTEND_ORIGIN env var in production
-_frontend_origin = os.environ.get("FRONTEND_ORIGIN", "http://localhost:8080")
-CORS(app, origins=[_frontend_origin])
+    # ── Shared services ───────────────────────────────────────────────────
+    core.database.reconnect()
+    queue = QueueManager(core.cache)
 
-# Rate limiter — backed by Redis so limits survive restarts and work across workers
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    storage_uri="redis://{}:{}/1".format(
-        core.config.set_section('redis').get('host', 'localhost'),
-        core.config.set_section('redis').get('port', '6379'),
-    ),
-    default_limits=["200 per minute"],
-)
+    # ── Register blueprints ───────────────────────────────────────────────
+    # Inject dependencies then register — keeps blueprints free of global imports.
+    init_ivr_blueprint(core, queue, asterisk_ari, core.asterisk_events_handler, core.database, core.logger)
+    init_api_blueprint(core, queue, asterisk_ari, cdr_manager, peer_manager, Session, core.logger)
 
-logger = core.logger
-app_manager = core.app_manager
-queue = QueueManager(core.cache)
-app_web_listener = core.asterisk_events_handler
+    app.register_blueprint(ivr_bp)
+    app.register_blueprint(api_bp)
 
+    # Apply rate limits to specific routes by endpoint name
+    limiter.limit("30 per minute")(app.view_functions['ivr.initiate_call'])
+    limiter.limit("10 per minute")(app.view_functions['api.login'])
+    limiter.exempt(app.view_functions['ivr.health'])
+    limiter.exempt(app.view_functions['ivr.process_queue'])
+    limiter.exempt(app.view_functions['ivr.asterisk_events'])
 
-@jwt.user_identity_loader
-def user_identity_lookup(user):
-    return user.id
-
-
-@jwt.user_lookup_loader
-def user_lookup_callback(_jwt_header, jwt_data):
-    identity = jwt_data["sub"]
-    s_session = scoped_session(Session)
-    db_session = s_session()
-    try:
-        user = db_session.query(User).filter_by(id=identity).one_or_none()
-        return user
-    except Exception as e:
-        core.logger.log_info(f"JWT user lookup DB error: {str(e)}")
-        db_session.rollback()
-        return None
+    return app
 
 
-def is_valid_token(token: str):
-    try:
-        results = app_manager.get_data(token)
-        return False if not results else True
-    except Exception as e:
-        logger.log_info("Database error: {}".format(str(e)))
-        return False
-
-
-@app.route('/health', methods=['GET'])
-@limiter.exempt
-def health():
-    """Liveness probe for Docker / load balancers."""
-    return jsonify({'status': 'ok'}), 200
-
-
-@app.route('/call.initiate', methods=['GET'])
-@limiter.limit("30 per minute")   # per IP — prevents token flooding
-def index():
-    flow = request.args.get('jumpTo')
-    phone = request.args.get('phone')
-    token = request.args.get('token')
-    call_id = request.args.get('callId')
-
-    core.initialize_log()
-    logger.log_info("Call request from external app: {}".format(request.url))
-
-    database.reconnect()
-
-    if not is_valid_token(token):
-        logger.log_info("Failed to route call: Reason: Invalid token")
-        return {'status': 'FAILED TO ROUTE CALL'}, 401
-
-    app_data = app_manager.get_data(token)
-
-    data = {
-        'phone': phone,
-        'token': token,
-        'call_id': call_id,
-        'flow': flow,
-        'external_id': Hash.hash(str(datetime.now().timestamp())),
-        'app-data': app_data
-    }
-
-    if not asterisk_ari.has_free_channels():
-        queue.queue_call(data)
-        return {'status': 'CALL_QUEUED'}
-
-    core.initiate_call(data)
-    return {'status': 'INITIATED'}
-
-
-@app.route('/ivr/queue', methods=['GET'])
-@limiter.exempt
-def process_queue():
-    if request.remote_addr != '127.0.0.1':
-        return un_auth()
-
-    core.initialize_log()
-
-    empty_queue = queue.is_empty()
-    has_free_channels = asterisk_ari.has_free_channels()
-
-    if has_free_channels and not empty_queue:
-        call_data = queue.get_next_call_in_queue()
-        logger.log_info('Initiating queued call: {}'.format(str(call_data)))
-        core.initiate_call(call_data)
-        return {'status': 'INITIATED', 'data': call_data}
-
-    return {'has_free_channels': has_free_channels, 'empty_queue': empty_queue}
-
-
-@app.route('/ivr/events', methods=['GET'])
-@limiter.exempt
-def asterisk_events_handler():
-    if request.remote_addr != '127.0.0.1':
-        return un_auth()
-
-    name = request.args.get('name')
-    status = request.args.get('status')
-    call_id = request.args.get('call-id')
-    channel = request.args.get('channel')
-    unique_id = request.args.get('unique-id')
-
-    if name == 'OriginateResponse':
-        threading.Thread(
-            target=app_web_listener.handle_originate_event,
-            args=(status, call_id, unique_id)
-        ).start()
-        return '', 204
-    if name == 'Hangup':
-        threading.Thread(
-            target=app_web_listener.handle_hangup_event,
-            args=(unique_id, channel)
-        ).start()
-        return '', 204
-    return {'status': 'error', 'message': 'Unknown event'}
-
-
-@app.route('/api/dashboard-stats', methods=['GET'])
-@jwt_required()
-def dashboard_stats():
-    dashboard = Dashboard(asterisk_ari, queue, logger, cdr_manager, peer_manager)
-    return jsonify(dashboard.get_stats(current_user))
-
-
-@app.route('/api/charts', methods=['GET'])
-@jwt_required()
-def charts():
-    chart = Charts(database)
-    chart_data = chart.get_cdr_data(current_user, Session())
-    return jsonify(chart_data)
-
-
-@app.route('/api/apps', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@jwt_required()
-def ivr_apps():
-    return core.apps_api.process_request(request, Session(), current_user)
-
-
-@app.route('/api/reports', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@jwt_required()
-def report():
-    return core.reports_api.process(request, Session(), current_user)
-
-
-@app.route('/api/report-types', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@jwt_required()
-def report_types():
-    return core.report_types_api.process(request, Session(), current_user)
-
-
-@app.route('/api/login', methods=['POST'])
-@limiter.limit("10 per minute")   # brute-force protection on login
-def login():
-    user_details = core.login_api.verify(request, Session())
-    if not user_details:
-        return jsonify({'status': 'error', 'message': 'Bad username or password'}), 401
-    user: User = user_details['user']
-    token = create_access_token(identity=user)
-    return jsonify(token=token, user=user_details['details'])
-
-
-@app.route('/api/user', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@jwt_required()
-def register_user():
-    return core.users_api.handle_request(request, Session(), current_user)
-
-
-@app.route('/api/profile', methods=['POST'])
-@jwt_required()
-def user_profile():
-    return core.profile_api.process(request, Session(), current_user)
-
-
-@app.route('/api/roles', methods=['GET'])
-@jwt_required()
-def roles():
-    return jsonify(core.roles)
-
-
-@app.route('/api/logs', methods=['GET'])
-@jwt_required()
-def logs():
-    return core.logs_api.process(request, current_user)
-
+app = create_app()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
