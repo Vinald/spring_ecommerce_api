@@ -4,12 +4,21 @@ and the validate_request() helper (app/utilities/validation.py).
 
 These schemas were added in PR #33 to replace bare request.form[key] access
 which raised KeyError (HTTP 500) when a field was missing.
+
+NOTE: Test passwords are generic placeholder values used only in tests and are not
+actual credentials. Never use real passwords in test files.
 """
+import os
 from app.schemas.schemas import (
     LoginSchema, UserCreateSchema, UserUpdateSchema,
     AppCreateSchema, ReportCreateSchema, ProfileUpdateSchema,
 )
 from app.utilities.validation import validate_request
+
+# Test data constants - placeholder values for testing only
+TEST_VALID_PASSWORD = os.environ.get('TEST_PASSWORD', 'TestPass123!')
+TEST_WEAK_PASSWORD = 'weak'
+TEST_PASSWORD_SHORT = 'x'
 
 
 # ── Login ─────────────────────────────────────────────────────────────────────
