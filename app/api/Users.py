@@ -1,13 +1,12 @@
 import bcrypt
 import datetime
-
 from flask import jsonify
-
 from app.models.models import User
-
+from app.schemas.schemas import UserCreateSchema, UserUpdateSchema, UserDeleteSchema
 from app.utilities.Logger import Logger
 from app.utilities.Mailer import Mailer
 from app.utilities.utils import error_message, error, success, un_auth
+from app.utilities.validation import validate_request
 
 
 class Users:
@@ -29,9 +28,14 @@ class Users:
 
     def __post(self, request, session, current_user):
         try:
-            role = request.form['role']
-            email = request.form['email']
-            password = request.form['password']
+            # ADDED: validate all required fields up-front.
+            errors, data = validate_request(request.form, UserCreateSchema())
+            if errors:
+                return jsonify(error_message(errors)), 400
+
+            email = data['email']
+            password = data['password']
+            role = data['role']
 
             if session.query(User).filter_by(email=email).first():
                 return error_message('Email already taken')
@@ -45,10 +49,6 @@ class Users:
             session.commit()
             self.__logger.log_user_action(current_user, 'CREATE USER', user.to_dict())
 
-            # CHANGED: previously emailed the plaintext password in the message body —
-            # a serious security risk (password visible in email logs, inboxes, etc.).
-            # Now instructs the user to get their temporary password from the admin
-            # and change it on first login.
             self.__mailer.set_to([user.email])
             self.__mailer.set_subject('Academy IVR Account')
             self.__mailer.set_message(
@@ -79,18 +79,26 @@ class Users:
 
     def __put(self, request, session, current_user):
         try:
-            user = session.query(User).get(int(request.form['id']))
-            role = request.form['role']
-            email = request.form['email']
-            password = request.form['password']
+            # ADDED: validate update fields.
+            errors, data = validate_request(request.form, UserUpdateSchema())
+            if errors:
+                return jsonify(error_message(errors)), 400
+
+            user = session.query(User).get(data['id'])
+            role = data['role']
+            email = data['email']
+            password = data['password']
+
             user.role = role
             if user.email != email:
                 if session.query(User).filter_by(email=email).first():
                     return error_message('Email already taken')
                 else:
                     user.email = email
+
             if len(password) > 0:
                 user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
             user.modification_date = datetime.datetime.now()
             session.add(user)
             session.commit()
@@ -101,8 +109,12 @@ class Users:
 
     def __delete(self, request, session, current_user):
         try:
-            user_id = int(request.args.get('id'))
-            user = session.query(User).get(user_id)
+            # ADDED: validate the id query param.
+            errors, data = validate_request(request.args, UserDeleteSchema())
+            if errors:
+                return jsonify(error_message(errors)), 400
+
+            user = session.query(User).get(data['id'])
             session.delete(user)
             session.commit()
             self.__logger.log_user_action(current_user, 'DELETE USER', user.to_dict())
