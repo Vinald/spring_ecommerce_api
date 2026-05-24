@@ -18,22 +18,26 @@ class Profile:
 
     def __post(self, request, session, user):
         try:
-            # ADDED: validate fields before processing. Previously a missing
-            # 'password' or 'oldPassword' key would crash with KeyError → 500.
+            # ADDED: validate both password fields up-front.
+            # ProfileUpdateSchema enforces the complexity regex that was
+            # previously duplicated as a re.search() call inside this method.
+            # A missing field previously caused KeyError → HTTP 500.
             errors, data = validate_request(request.form, ProfileUpdateSchema())
             if errors:
                 return jsonify(error_message(errors)), 400
 
-            user = session.query(User).filter(User.email == user.email).first()
+            db_user = session.query(User).filter(User.email == user.email).first()
             old_password = data['oldPassword']
             password = data['password']
 
-            if user is None or not bcrypt.checkpw(old_password.encode('utf-8'), user.password.encode('utf-8')):
+            if db_user is None or not bcrypt.checkpw(
+                old_password.encode('utf-8'), db_user.password.encode('utf-8')
+            ):
                 return jsonify(error_message('Wrong old password'))
 
-            user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-            user.modification_date = datetime.datetime.now()
-            session.add(user)
+            db_user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            db_user.modification_date = datetime.datetime.now()
+            session.add(db_user)
             session.commit()
             return jsonify(success('Password updated successfully'))
         except Exception as e:

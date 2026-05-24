@@ -29,34 +29,34 @@ class Reports:
 
     def __post(self, request, session, user):
         try:
-            # ADDED: validate all required fields before saving.
+            # ADDED: validate required fields before saving.
+            # ReportCreateSchema enforces recurrence values and day-of-week range.
             errors, data = validate_request(request.form, ReportCreateSchema())
             if errors:
                 return jsonify({'status': 'error', 'message': errors}), 400
 
-            report_name = data['name']
-            if session.query(Report).filter_by(name=report_name).first():
+            if session.query(Report).filter_by(name=data['name']).first():
                 return error_message('Name already taken')
 
-            time = data['time']
+            time_val = data['time']
             recurrence = data['recurrence']
             scheduled = 1 if data['scheduled'] == 'true' else 0
-            report_type = session.query(ReportType).get(data['type'])
-            day_of_week = data['day']
 
-            cron_expression = self._build_cron_expression(scheduled, recurrence, time, day_of_week)
+            # CHANGED: cron expression building was duplicated verbatim in __post
+            # and __put. Extracted to _build_cron_expression() to avoid drift.
+            cron_expression = self._build_cron_expression(scheduled, recurrence, time_val, data['day'])
             if scheduled == 1 and recurrence == 'monthly':
-                time = "00:00"
+                time_val = "00:00"
 
             report = Report(
-                name=report_name,
-                report_type=report_type,
+                name=data['name'],
+                report_type=session.query(ReportType).get(data['type']),
                 scheduled=scheduled,
                 cron_expression=cron_expression,
                 recipients_to=data['to'],
                 recipients_cc=data['cc'],
-                time=time,
-                day=day_of_week,
+                time=time_val,
+                day=data['day'],
                 recurrence=recurrence,
                 user_id=user.id
             )
@@ -86,8 +86,8 @@ class Reports:
             except Exception as e:
                 return jsonify({'status': 'error', 'message': 'Error downloading report: {}'.format(str(e))})
 
-        reports = []
         reports_from_db = session.query(Report).all() if user.role == 'admin' else user.reports
+        reports = []
         if reports_from_db:
             for report in reports_from_db:
                 owner = report.user.email if report.user else 'admin'
@@ -112,29 +112,25 @@ class Reports:
             if user.role != 'admin' and report.user_id != user.id:
                 return un_auth()
 
-            report_name = data['name']
-            existing = session.query(Report).filter_by(name=report_name).first()
+            existing = session.query(Report).filter_by(name=data['name']).first()
             if existing and existing.id != report.id:
                 return error_message('Name already taken')
 
-            time = data['time']
+            time_val = data['time']
             recurrence = data['recurrence']
             scheduled = 1 if data['scheduled'] == 'true' else 0
-            report_type = session.query(ReportType).get(data['type'])
-            day_of_week = data['day']
-
-            cron_expression = self._build_cron_expression(scheduled, recurrence, time, day_of_week)
+            cron_expression = self._build_cron_expression(scheduled, recurrence, time_val, data['day'])
             if scheduled == 1 and recurrence == 'monthly':
-                time = "00:00"
+                time_val = "00:00"
 
-            report.name = report_name
-            report.report_type = report_type
+            report.name = data['name']
+            report.report_type = session.query(ReportType).get(data['type'])
             report.scheduled = scheduled
             report.cron_expression = cron_expression
             report.recipients_to = data['to']
             report.recipients_cc = data['cc']
-            report.time = time
-            report.day = day_of_week
+            report.time = time_val
+            report.day = data['day']
             report.recurrence = recurrence
             report.modification_date = datetime.datetime.now()
 
@@ -162,7 +158,11 @@ class Reports:
 
     @staticmethod
     def _build_cron_expression(scheduled, recurrence, time_str, day_of_week):
-        """Build a cron expression from report scheduling parameters."""
+        """
+        Build a cron expression from report scheduling parameters.
+        CHANGED: was duplicated verbatim in __post and __put. Extracting
+        to a single method eliminates the risk of the two copies drifting.
+        """
         if scheduled != 1:
             return None
         if recurrence == 'monthly':
@@ -177,7 +177,11 @@ class Reports:
         return None
 
     def __reload_reports_cron_tab(self, session):
-        """Rewrite the cron file using Python file I/O — no shell injection risk."""
+        """
+        Rewrite the cron file using Python file I/O.
+        CHANGED: was os.system('echo "..." >> file') which allowed shell injection.
+        See Reports.py comments from PR #30 for the full explanation.
+        """
         reports_cron_file = os.path.join(self.__cron_dir, "ivr-reports")
         try:
             if os.path.exists(reports_cron_file):
@@ -186,11 +190,11 @@ class Reports:
             self.__logger.log_error('Failed to remove cron file: {}'.format(str(e)))
             return
 
-        reports = session.query(Report).all()
         lines = []
-        for report in reports:
+        for report in session.query(Report).all():
             if report.scheduled == 1 and report.cron_expression:
                 expr = report.cron_expression
+                # Allowlist: cron expressions only contain digits, spaces, * and /
                 if not all(c in '0123456789* /' for c in expr):
                     self.__logger.log_warning(
                         'Skipping report {} — invalid cron expression: {}'.format(report.id, expr)

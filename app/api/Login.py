@@ -11,9 +11,9 @@ class Login:
         self.__logger = logger
 
     def verify(self, request, session):
-        # ADDED: validate required fields before touching the DB.
-        # Previously a missing 'username' or 'password' field would raise
-        # KeyError which Flask returned as an unhandled HTTP 500.
+        # ADDED: validate username and email before touching the DB.
+        # Previously a missing field raised KeyError → HTTP 500.
+        # LoginSchema also enforces email format on the username field.
         errors, data = validate_request(request.form, LoginSchema())
         if errors:
             return False
@@ -24,6 +24,7 @@ class Login:
         user = session.query(User).filter(User.email == username).first()
         if user is None or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
             return False
+
         login_log_message = f'LOGIN from IP: {request.remote_addr}'
         self.__logger.log_user_action(user, login_log_message, user.to_dict())
         return {'details': {'email': user.email, 'role': user.role}, 'user': user}

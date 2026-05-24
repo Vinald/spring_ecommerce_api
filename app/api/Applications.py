@@ -27,16 +27,10 @@ class Applications:
     def __get(session, user):
         try:
             apps = []
-            if user.role == 'admin':
-                apps_from_db = session.query(App).all()
-            else:
-                apps_from_db = user.apps
-
+            apps_from_db = session.query(App).all() if user.role == 'admin' else user.apps
             if apps_from_db:
                 for app in apps_from_db:
-                    owner = 'admin'
-                    if app.user is not None:
-                        owner = app.user.email
+                    owner = app.user.email if app.user else 'admin'
                     app_data = app.to_dict()
                     app_data['owner'] = owner
                     apps.append(app_data)
@@ -46,17 +40,18 @@ class Applications:
 
     def __post(self, request, session, user):
         try:
-            # ADDED: validate all required fields before saving.
+            # ADDED: validate all required fields.
+            # AppCreateSchema enforces that voice_url and status_url are valid URLs
+            # — previously invalid URLs were silently saved and only failed at call time.
             errors, data = validate_request(request.form, AppCreateSchema())
             if errors:
                 return jsonify(error_message(errors)), 400
 
-            name = data['name']
-            if session.query(App).filter_by(name=name).first():
+            if session.query(App).filter_by(name=data['name']).first():
                 return error_message('Name already taken')
 
             app = App(
-                name=name,
+                name=data['name'],
                 token=self.__token_generator(),
                 voice_url=data['voice_url'],
                 status_url=data['status_url'],
@@ -76,7 +71,7 @@ class Applications:
 
     def __put(self, request, session, user):
         try:
-            # ADDED: validate update fields.
+            # ADDED: validate update fields including URL validation.
             errors, data = validate_request(request.form, AppUpdateSchema())
             if errors:
                 return jsonify(error_message(errors)), 400
@@ -104,7 +99,8 @@ class Applications:
 
     def __delete(self, request, session, user):
         try:
-            # ADDED: validate the id query param.
+            # ADDED: validate the id query param — previously int(request.args.get('id'))
+            # raised ValueError on a missing or non-numeric param → unhandled 500.
             errors, data = validate_request(request.args, AppDeleteSchema())
             if errors:
                 return jsonify(error_message(errors)), 400
@@ -121,5 +117,5 @@ class Applications:
 
     @staticmethod
     def __token_generator():
-        unique_id = str(uuid.uuid1())
-        return Hash.hash(unique_id)
+        # Uses SHA-256 (via Hash.hash) after the MD5 fix in PR #30.
+        return Hash.hash(str(uuid.uuid1()))

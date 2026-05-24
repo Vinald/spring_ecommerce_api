@@ -1,12 +1,18 @@
-"""Tests for app/manager/CDRManager.py"""
+"""
+Tests for app/manager/CDRManager.py
+
+Focuses on the midnight boundary bug fixed in PR #30:
+  Old code: subtracted two HH:MM:SS strings — negative duration for calls spanning midnight.
+  Fix: store a Unix float timestamp (call_start_timestamp) alongside the formatted time
+       and subtract timestamps instead of parsing strings.
+"""
 import json
 import time
-import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock
 
 
 def _make_cdr_manager():
-    """Build a CDRManager with mocked dependencies."""
+    """Build a CDRManager with fully mocked dependencies."""
     from app.manager.CDRManager import CDRManager
     cache = MagicMock()
     database = MagicMock()
@@ -15,10 +21,13 @@ def _make_cdr_manager():
 
 
 def test_update_call_start_time_stores_unix_timestamp():
-    """update_call_start_time must store call_start_timestamp (Unix float)."""
+    """
+    update_call_start_time must store call_start_timestamp as a Unix float.
+    This is the key field used by end_call_and_flush_cdr_to_db() to calculate
+    duration correctly across midnight.
+    """
     mgr, cache, db, _ = _make_cdr_manager()
-    existing = {'call_state': 'INITIATED', 'call_start_time': None}
-    cache.get.return_value = json.dumps(existing).encode()
+    cache.get.return_value = json.dumps({'call_state': 'INITIATED'}).encode()
 
     mgr.update_call_start_time('call-123')
 
@@ -29,12 +38,76 @@ def test_update_call_start_time_stores_unix_timestamp():
 
 
 def test_end_call_uses_unix_timestamp_for_duration():
-    """Duration must be calculated from Unix timestamps, not HH:MM:SS strings."""
+    """
+    Duration must be derived from Unix timestamps, not HH:MM:SS strings.
+    A call started ~90 seconds ago should have duration ≈ 90.
+    """
     mgr, cache, db, _ = _make_cdr_manager()
-    start_ts = time.time() - 90  # 90 seconds ago
-    cdr = {
-        'call_start_time': '23:00:00',
-        'call_start_timestamp': start_ts,
+    start_ts = time.time() - 90
+    cdr = _base_cdr(call_start_timestamp=start_ts, call_start_time='10:00:00')
+    cache.get.return_value = json.dumps(cdr).encode()
+
+    mgr.end_call_and_flush_cdr_to_db('call-123')
+
+    inserted = db.insert.call_args[0][0]
+    # Allow ±3 seconds for test execution time
+    assert 87 <= inserted['duration'] <= 93
+
+
+def test_midnight_boundary_never_negative():
+    """
+    A call started 5 minutes ago must have a non-negative duration even if
+    the HH:MM:SS strings would produce a negative delta (e.g. 23:58 → 00:02).
+    """
+    mgr, cache, db, _ = _make_cdr_manager()
+    cdr = _base_cdr(call_start_timestamp=time.time() - 300, call_start_time='23:58:00')
+    cache.get.return_value = json.dumps(cdr).encode()
+
+    mgr.end_call_and_flush_cdr_to_db('call-456')
+
+    assert db.insert.call_args[0][0]['duration'] >= 0
+
+
+def test_internal_timestamp_not_inserted_into_db():
+    """
+    call_start_timestamp is an internal field used only for duration math.
+    It must be stripped before inserting into the CDR table (not a DB column).
+    """
+    mgr, cache, db, _ = _make_cdr_manager()
+    cdr = _base_cdr(call_start_timestamp=time.time() - 60, call_start_time='10:00:00')
+    cache.get.return_value = json.dumps(cdr).encode()
+
+    mgr.end_call_and_flush_cdr_to_db('call-789')
+
+    assert 'call_start_timestamp' not in db.insert.call_args[0][0]
+
+
+def test_flush_cdr_to_db_sets_call_state():
+    """flush_cdr_to_db must write the provided call_state value to the DB."""
+    mgr, cache, db, _ = _make_cdr_manager()
+    cache.get.return_value = json.dumps(_base_cdr()).encode()
+
+    mgr.flush_cdr_to_db('call-999', 'FAILED')
+
+    assert db.insert.call_args[0][0]['call_state'] == 'FAILED'
+
+
+def test_flush_cdr_strips_internal_timestamp():
+    """flush_cdr_to_db must also strip call_start_timestamp before DB insert."""
+    mgr, cache, db, _ = _make_cdr_manager()
+    cdr = _base_cdr(call_start_timestamp=time.time())
+    cache.get.return_value = json.dumps(cdr).encode()
+
+    mgr.flush_cdr_to_db('call-888', 'NO_ANSWER')
+
+    assert 'call_start_timestamp' not in db.insert.call_args[0][0]
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _base_cdr(**overrides):
+    """Return a minimal valid CDR dict, with optional field overrides."""
+    base = {
         'caller_id': '256700000000',
         'dialed_number': '256711111111',
         'call_direction': 'OUTGOING',
@@ -45,75 +118,5 @@ def test_end_call_uses_unix_timestamp_for_duration():
         'external_id': 'eid-1',
         'token': 'tok-1',
     }
-    cache.get.return_value = json.dumps(cdr).encode()
-
-    mgr.end_call_and_flush_cdr_to_db('call-123')
-
-    inserted = db.insert.call_args[0][0]
-    # Duration should be ~90 seconds (allow ±3s for test execution time)
-    assert 87 <= inserted['duration'] <= 93
-
-
-def test_end_call_midnight_boundary():
-    """Duration must never be negative even for calls spanning midnight."""
-    mgr, cache, db, _ = _make_cdr_manager()
-    # Simulate a call that started 5 minutes ago (crosses midnight in the old code)
-    start_ts = time.time() - 300
-    cdr = {
-        'call_start_time': '23:58:00',
-        'call_start_timestamp': start_ts,
-        'caller_id': '256700000000',
-        'dialed_number': '256711111111',
-        'call_direction': 'OUTGOING',
-        'app_name': 'TestApp',
-        'creation_date': '2024-01-01 00:00:00',
-        'peer': 'airtel',
-        'call_id': 'cid-2',
-        'external_id': 'eid-2',
-        'token': 'tok-2',
-    }
-    cache.get.return_value = json.dumps(cdr).encode()
-
-    mgr.end_call_and_flush_cdr_to_db('call-456')
-
-    inserted = db.insert.call_args[0][0]
-    assert inserted['duration'] >= 0
-
-
-def test_flush_cdr_removes_internal_timestamp():
-    """The call_start_timestamp field must not be inserted into the DB."""
-    mgr, cache, db, _ = _make_cdr_manager()
-    cdr = {
-        'call_start_time': '10:00:00',
-        'call_start_timestamp': time.time() - 60,
-        'caller_id': '256700000000',
-        'dialed_number': '256711111111',
-        'call_direction': 'OUTGOING',
-        'app_name': 'TestApp',
-        'creation_date': '2024-01-01 00:00:00',
-        'peer': 'airtel',
-        'call_id': 'cid-3',
-        'external_id': 'eid-3',
-        'token': 'tok-3',
-    }
-    cache.get.return_value = json.dumps(cdr).encode()
-    mgr.end_call_and_flush_cdr_to_db('call-789')
-
-    inserted = db.insert.call_args[0][0]
-    assert 'call_start_timestamp' not in inserted
-
-
-def test_flush_cdr_to_db_sets_call_state():
-    """flush_cdr_to_db must write the provided call_state to the DB."""
-    mgr, cache, db, _ = _make_cdr_manager()
-    cdr = {
-        'caller_id': '256700000000', 'dialed_number': '256711111111',
-        'call_direction': 'OUTGOING', 'app_name': 'TestApp',
-        'creation_date': '2024-01-01 00:00:00', 'peer': 'airtel',
-        'call_id': 'cid-4', 'external_id': 'eid-4', 'token': 'tok-4',
-    }
-    cache.get.return_value = json.dumps(cdr).encode()
-    mgr.flush_cdr_to_db('call-999', 'FAILED')
-
-    inserted = db.insert.call_args[0][0]
-    assert inserted['call_state'] == 'FAILED'
+    base.update(overrides)
+    return base

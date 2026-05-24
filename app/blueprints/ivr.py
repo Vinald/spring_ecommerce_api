@@ -1,10 +1,14 @@
 """
 IVR blueprint — telephony-facing routes.
 
-These routes are called by Asterisk (events, queue) or external apps
-(call.initiate). They do not require JWT authentication.
-Internal-only routes (/ivr/queue, /ivr/events) are restricted to
-127.0.0.1 so they cannot be reached from outside the server.
+ADDED: These routes were previously in run.py mixed with API routes.
+Moving them to a dedicated blueprint makes the telephony concerns
+independently readable and testable.
+
+Routes here do NOT require JWT authentication because they are called by
+Asterisk or external app servers, not the Vue frontend. Internal-only
+routes (/ivr/queue, /ivr/events) are restricted to 127.0.0.1 so they
+cannot be reached from outside the server.
 """
 import threading
 from datetime import datetime
@@ -13,14 +17,16 @@ from flask import Blueprint, request, jsonify
 from app.utilities.utils import un_auth
 from app.utilities.Hash import Hash
 
-# Dependencies injected by create_app() via blueprint.app_context
+# Shared dependencies injected once by init_ivr_blueprint() from create_app().
+# Using a module-level dict avoids circular imports while keeping blueprints
+# free of direct references to the core module.
 _deps = {}
 
 ivr_bp = Blueprint('ivr', __name__)
 
 
 def init_ivr_blueprint(core, queue, asterisk_ari, app_web_listener, database, logger):
-    """Inject shared dependencies — called once from create_app()."""
+    """Inject shared dependencies — called once from create_app() in run.py."""
     _deps.update({
         'core': core,
         'queue': queue,
@@ -33,12 +39,20 @@ def init_ivr_blueprint(core, queue, asterisk_ari, app_web_listener, database, lo
 
 @ivr_bp.route('/health', methods=['GET'])
 def health():
-    """Liveness probe for Docker and load balancers. No auth required."""
+    """
+    Liveness probe for Docker and load balancers.
+    ADDED: was missing — Docker healthchecks and monitoring tools need this.
+    No authentication required; exempt from rate limiting.
+    """
     return jsonify({'status': 'ok'}), 200
 
 
 @ivr_bp.route('/call.initiate', methods=['GET'])
 def initiate_call():
+    """
+    Entry point for external apps to trigger an outbound IVR call.
+    Rate limited to 30 req/min per IP (set in create_app).
+    """
     core = _deps['core']
     queue = _deps['queue']
     ari = _deps['ari']
@@ -52,7 +66,6 @@ def initiate_call():
 
     core.initialize_log()
     logger.log_info("Call request from external app: {}".format(request.url))
-
     database.reconnect()
 
     try:
@@ -64,11 +77,10 @@ def initiate_call():
         logger.log_info("Database error: {}".format(str(e)))
         return jsonify({'status': 'FAILED TO ROUTE CALL'}), 401
 
-    app_data = results
     data = {
         'phone': phone, 'token': token, 'call_id': call_id, 'flow': flow,
         'external_id': Hash.hash(str(datetime.now().timestamp())),
-        'app-data': app_data
+        'app-data': results
     }
 
     if not ari.has_free_channels():
@@ -81,6 +93,10 @@ def initiate_call():
 
 @ivr_bp.route('/ivr/queue', methods=['GET'])
 def process_queue():
+    """
+    Internal endpoint — drain one call from the Redis queue.
+    Restricted to 127.0.0.1 only; called by the cron queue processor.
+    """
     if request.remote_addr != '127.0.0.1':
         return un_auth()
 
@@ -104,6 +120,11 @@ def process_queue():
 
 @ivr_bp.route('/ivr/events', methods=['GET'])
 def asterisk_events():
+    """
+    Internal endpoint — receives Asterisk AMI event callbacks.
+    Restricted to 127.0.0.1; handled in background threads so the
+    response is returned to Asterisk immediately.
+    """
     if request.remote_addr != '127.0.0.1':
         return un_auth()
 
