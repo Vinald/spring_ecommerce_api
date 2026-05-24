@@ -22,7 +22,9 @@ class CDRManager:
             if cdr_data is not None:
                 data = json.loads(cdr_data)
                 data['call_state'] = 'ANSWERED'
-                # Store Unix timestamp to avoid midnight boundary bug
+                # CHANGED: store a Unix float timestamp alongside the formatted time.
+                # This is used in end_call_and_flush_cdr_to_db() for duration
+                # calculation to avoid the midnight boundary bug (see below).
                 data['call_start_timestamp'] = time.time()
                 data['call_start_time'] = time.strftime(self.__TIME_FORMAT)
                 self.__cache.save(key, json.dumps(data), 3600)
@@ -37,7 +39,7 @@ class CDRManager:
                 self.__cache.delete(key)
                 data = json.loads(cdr_data)
                 data['call_state'] = call_state
-                # Remove internal timestamp field not in DB schema
+                # Remove the internal Unix timestamp — it is not a DB column.
                 data.pop('call_start_timestamp', None)
                 self.__database.insert(data, self.__CDR_TABLE)
         except Exception as e:
@@ -53,12 +55,16 @@ class CDRManager:
                 end_time = time.strftime(self.__TIME_FORMAT)
                 data['call_end_time'] = end_time
 
-                # Use stored Unix timestamp for duration to handle midnight boundary correctly
+                # CHANGED: the original code subtracted two HH:MM:SS strings using
+                # datetime.strptime(). This produced a negative duration for calls
+                # that span midnight (e.g. start 23:58, end 00:02 → -86 seconds).
+                # Fix: use the stored Unix float timestamp so the subtraction is
+                # always correct regardless of clock rollover.
                 start_ts = data.pop('call_start_timestamp', None)
                 if start_ts is not None:
                     data['duration'] = max(0, int(time.time() - start_ts))
                 else:
-                    # Fallback: parse HH:MM:SS strings (same-day calls only)
+                    # Fallback for CDRs written before this fix was deployed.
                     start_time = data.get('call_start_time')
                     if start_time:
                         start_dt = datetime.strptime(start_time, self.__TIME_FORMAT)

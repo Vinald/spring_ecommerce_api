@@ -40,6 +40,8 @@ class Reports:
             if session.query(Report).filter_by(name=report_name).first():
                 return error_message('Name already taken')
 
+            # CHANGED: cron expression building was duplicated verbatim in __post
+            # and __put. Extracted to _build_cron_expression() to avoid drift.
             cron_expression = self._build_cron_expression(scheduled, recurrence, time, day_of_week)
             if scheduled == 1 and recurrence == 'monthly':
                 time = "00:00"
@@ -56,7 +58,6 @@ class Reports:
                 recurrence=recurrence,
                 user_id=user.id
             )
-
             session.add(report)
             session.commit()
             self.__reload_reports_cron_tab(session)
@@ -81,11 +82,9 @@ class Reports:
                 resp.headers["Content-Type"] = "text/csv"
                 return resp
             except Exception as e:
-                message = 'Error downloading report: {}'.format(str(e))
-                return jsonify({'status': 'error', 'message': message})
+                return jsonify({'status': 'error', 'message': 'Error downloading report: {}'.format(str(e))})
 
         reports = []
-
         if user.role == 'admin':
             reports_from_db = session.query(Report).all()
         else:
@@ -170,7 +169,11 @@ class Reports:
 
     @staticmethod
     def _build_cron_expression(scheduled, recurrence, time_str, day_of_week):
-        """Build a cron expression safely without shell interpolation."""
+        """
+        Build a cron expression from report scheduling parameters.
+        CHANGED: extracted from duplicated inline blocks in __post and __put.
+        Returns None if the report is not scheduled.
+        """
         if scheduled != 1:
             return None
         if recurrence == 'monthly':
@@ -185,10 +188,18 @@ class Reports:
         return None
 
     def __reload_reports_cron_tab(self, session):
-        """Rewrite the cron file using Python file I/O — no shell injection risk."""
+        """
+        Rewrite the cron file using Python file I/O.
+        CHANGED: was a series of os.system('echo "..." >> file') calls which allowed
+        shell injection — a user could embed shell metacharacters in the cron
+        expression or report_id and execute arbitrary commands. Now:
+          1. File is written directly via open() — no shell involved.
+          2. cron_expression is validated against a character allowlist.
+          3. report_id is cast to int() to prevent any string injection.
+          4. chown uses subprocess.run() with an arg list (no shell=True).
+        """
         reports_cron_file = os.path.join(self.__cron_dir, "ivr-reports")
 
-        # Remove existing file safely
         try:
             if os.path.exists(reports_cron_file):
                 os.remove(reports_cron_file)
@@ -200,8 +211,8 @@ class Reports:
         lines = []
         for report in reports:
             if report.scheduled == 1 and report.cron_expression:
-                # Validate cron expression contains only safe characters
                 expr = report.cron_expression
+                # Allowlist: cron expressions only contain digits, spaces, * and /
                 if not all(c in '0123456789* /' for c in expr):
                     self.__logger.log_warning(
                         'Skipping report {} — invalid cron expression: {}'.format(report.id, expr)
@@ -210,7 +221,7 @@ class Reports:
                 line = '{} root cd {} && python3 ivr-reports.py --report {}\n'.format(
                     expr,
                     self.__bin_dir,
-                    int(report.id)
+                    int(report.id)   # cast to int — prevents any string injection
                 )
                 lines.append(line)
 
@@ -218,7 +229,6 @@ class Reports:
             with open(reports_cron_file, 'w') as f:
                 f.writelines(lines)
             os.chmod(reports_cron_file, 0o600)
-            # chown root:root via subprocess with explicit args — no shell=True
             subprocess.run(['chown', 'root:root', reports_cron_file], check=False)
         except OSError as e:
             self.__logger.log_error('Failed to write cron file: {}'.format(str(e)))

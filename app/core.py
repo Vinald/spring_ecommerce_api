@@ -27,7 +27,6 @@ from app.utilities.Mailer import Mailer
 project_dir = pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent
 
 logger = Logger(project_dir)
-
 config = Config(project_dir, logger)
 
 config.set_section('asterisk-ami')
@@ -53,10 +52,8 @@ engine = create_engine(
 Session = sessionmaker(bind=engine)
 
 asterisk_ari_config = config.get_section_content('asterisk-ari')
-
 trunk_list = config.get_section_content('sip-trunks')
 routed_numbers = config.get_section_content('routed-numbers')
-
 roles = config.get_section_content('roles')
 
 config.set_section('core')
@@ -69,16 +66,13 @@ use_sip_trunks = config.get_bool('use-sip-trunks')
 dates_audio_path = config.get('dates-audio-path')
 secret_key = config.get('secret-key')
 
-# Set log level
 logger.set_level(log_level)
 
 database = Database(config)
 app_manager = Apps(database, logger)
 
-# Set up mailer
 mailer = Mailer(config.set_section('email-server'), logger)
 
-# Set up Redis
 config.set_section('redis')
 redis_host = config.get('host')
 redis_port = config.get_int('port')
@@ -86,15 +80,16 @@ cache = Redis(host=redis_host, port=redis_port)
 cache_manager = CacheManager(config, logger)
 
 cdr_manager = CDRManager(cache_manager, database, logger)
-
 asterisk_events_handler = AsteriskEventsHandler(logger, cache, cdr_manager)
-
 asterisk_ari = AsteriskARI(asterisk_ari_config, logger, max_channels)
-
 peer_manager = TrunkManager(asterisk_ari, cache_manager, trunk_list, routed_numbers)
 
-# Connect to Asterisk AMI in a background thread so a down Asterisk
-# does not prevent the Flask app from starting.
+# CHANGED: previously AMIClient.login() was called at module import time.
+# If Asterisk was unreachable, the entire Flask process would crash before
+# binding to any port — no API, no health endpoint, nothing would start.
+# Fix: connect in a background daemon thread so the app starts normally
+# regardless of Asterisk availability. initiate_call() checks that the
+# adapter is ready before using it.
 adapter = None
 _ami_lock = threading.Lock()
 
@@ -138,6 +133,7 @@ def date_object_converter(o):
 
 def initiate_call(call_data):
     global adapter
+    # Guard: do not attempt to originate if AMI has not connected yet.
     with _ami_lock:
         if adapter is None:
             logger.log_error("AMI not connected — cannot initiate call")

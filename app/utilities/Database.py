@@ -42,6 +42,8 @@ class Database:
         columns = ", ".join(key_list)
         tuple_values = tuple(value_list)
 
+        # CHANGED: was WHERE id={} with string formatting — SQL injection risk.
+        # Now uses a parameterised placeholder with the id appended to the tuple.
         sql = "UPDATE `{}` SET {} WHERE id=%s LIMIT 1".format(table_name, columns)
         self.cursor.execute(sql, tuple_values + (unique_id,))
         self.conn.commit()
@@ -51,6 +53,8 @@ class Database:
             self.conn.ping(reconnect=True)
         except Exception as e:
             print("Database reconnect error: {}".format(str(e)))
+            # CHANGED: previously a failed ping would leave the connection broken.
+            # Now re-initialise fully so the next query has a working connection.
             self.__initialize()
 
     def get_cursor(self):
@@ -65,7 +69,8 @@ class Database:
         self.__config.set_section('database')
         try:
             db = self.__config.get('database')
-            # Bootstrap: ensure the database exists
+            # Bootstrap connection: create the database schema if it does not exist.
+            # Uses a context manager so the cursor is always closed cleanly.
             bootstrap = pymysql.connect(
                 host=self.__config.get('host'),
                 user=self.__config.get('user'),
@@ -85,6 +90,8 @@ class Database:
                 password=self.__config.get('pass'),
                 port=self.__config.get_int('port'),
                 cursorclass=pymysql.cursors.DictCursor,
+                # CHANGED: explicit autocommit=False so transactions are always
+                # controlled deliberately by calling conn.commit().
                 autocommit=False,
             )
             self.cursor = self.conn.cursor()
