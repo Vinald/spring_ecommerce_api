@@ -1,0 +1,47 @@
+# Pre-commit hooks — run `pre-commit install` once after cloning to activate.
+# https://pre-commit.com
+#
+# These hooks run on every `git commit` and block the commit if they find issues.
+# They catch secrets, syntax errors, and common mistakes BEFORE they reach GitHub.
+
+repos:
+
+  # ── Secret detection ────────────────────────────────────────────────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect hardcoded secrets
+        args:
+          - --baseline
+          - .secrets.baseline
+        # Exclude test fixtures and example config — these contain intentional
+        # placeholder values, not real credentials.
+        exclude: |
+          (?x)^(
+            tests/|
+            config\.dev\.json|
+            \.env\.example
+          )$
+
+  # ── Basic file hygiene ──────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: config\.dev\.json   # dev config has placeholder creds — excluded
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+
+  # ── Python syntax ───────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-ast
+        name: Check Python syntax
