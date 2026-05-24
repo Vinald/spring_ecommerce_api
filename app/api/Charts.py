@@ -38,9 +38,11 @@ class Charts:
         return x
 
     def get_cdr_data(self, user: User, session):
-        # Use 'ANSWERED' consistently — this is the value written by CDRManager
         all_data = []
         busy_data = {'name': 'BUSY', 'data': self.__chart_data('BUSY', session, user)}
+        # CHANGED: was querying 'ANSWERED' but labelling the series 'COMPLETED'.
+        # CDRManager writes 'ANSWERED' as the call_state so the query and label
+        # must match. Using 'ANSWERED' consistently across both.
         answered_data = {'name': 'ANSWERED', 'data': self.__chart_data('ANSWERED', session, user)}
         failed_data = {'name': 'FAILED', 'data': self.__chart_data('FAILED', session, user)}
         no_answer_data = {'name': 'NO_ANSWER', 'data': self.__chart_data('NO_ANSWER', session, user)}

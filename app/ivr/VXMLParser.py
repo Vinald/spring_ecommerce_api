@@ -7,7 +7,9 @@ from app.elements.BlockElement import BlockElement
 from app.ivr.Audio import Audio
 from app.utilities.Logger import Logger
 
-# Timeout (seconds) for all outbound VXML HTTP requests
+# CHANGED: added a timeout for all outbound VXML HTTP requests.
+# Without this, a slow/dead external VXML server would block the AGI channel
+# indefinitely, tying up a SIP trunk for the duration of the TCP timeout.
 _HTTP_TIMEOUT = 10
 
 
@@ -20,13 +22,19 @@ class VXMLParser:
         self.referer = None
 
     def process_xml(self, next_link: str):
-        """Iterative VXML processor — avoids recursion-depth issues on long call flows."""
+        """
+        CHANGED: was recursive — process_xml() called itself on every VXML goto.
+        A VXML app with many steps (long surveys, deep menus) would exhaust
+        Python's default recursion limit (~1000) and raise an unhandled
+        RecursionError mid-call. Refactored to an iterative while loop:
+        each step returns the next URL to follow, or None to stop.
+        """
         current_link = next_link
         while current_link:
             current_link = self.__process_single_step(current_link)
 
     def __process_single_step(self, link: str):
-        """Process one VXML document. Returns the next link to follow, or None to stop."""
+        """Process one VXML document. Returns the next link, or None to stop."""
         doc = BeautifulSoup(self.__get_content(link), "xml")
         if log_vxml:
             self.__logger.log_info("VXML: {}".format(doc))
@@ -36,7 +44,9 @@ class VXMLParser:
         filled = doc.find('filled')
         blocks = doc.find_all('block')
 
-        # Guard: field element must exist before accessing attrs
+        # CHANGED: original code accessed field.attrs['name'] without checking if
+        # field is None first. A VXML document without a <field> element would
+        # raise AttributeError and drop the call silently.
         if field is None:
             self.__logger.log_warning('VXML document has no <field> element: {}'.format(link))
             return None
@@ -114,7 +124,6 @@ class VXMLParser:
                 audio = prompt.find('audio').attrs['src']
                 audio_file = self.__audio.gen_audio_file(audio)
                 raw_timeout = prompt.attrs.get('timeout', '')
-
                 if raw_timeout:
                     timeout = int(float(raw_timeout[:-1]) * 1000)
 
@@ -130,8 +139,6 @@ class VXMLParser:
                     if len(input_digit) > 0:
                         break
 
-        choices = []
-
         if field_length is not None and len(input_digit) < field_length:
             input_digit = self.__agi.get_data('silence/1', timeout, field_length)
 
@@ -146,6 +153,7 @@ class VXMLParser:
             )
 
         if grammar is not None and items is not None:
+            choices = []
             for item in items:
                 choices.append(int(item.get_text()))
 
@@ -219,6 +227,7 @@ class VXMLParser:
     def __get_content(self, link):
         if not self.__session:
             self.__session = requests.Session()
+        # CHANGED: added timeout — see module-level _HTTP_TIMEOUT comment above.
         return self.__session.get(
             link,
             headers={'referer': self.referer},

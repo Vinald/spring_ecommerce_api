@@ -42,12 +42,13 @@ class CacheManager:
             self.__cache = Redis(host=host, port=port, socket_connect_timeout=2)
             self.__cache.ping()
         except Exception as e:
-            # Log and fall back to stderr — do not exit(1) as it kills active calls
+            # CHANGED: was exit(1) which killed the entire Flask process including
+            # any active Asterisk calls. Now prints to stderr and raises RuntimeError
+            # so the caller can decide how to handle Redis being unavailable.
             msg = "Redis -> connection failed: {}".format(str(e))
             print(msg, file=sys.stderr)
             try:
                 self.__logger.log_critical(msg)
             except Exception:
                 pass
-            # Re-raise so the caller knows Redis is unavailable at startup
             raise RuntimeError(msg) from e

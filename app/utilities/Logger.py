@@ -73,7 +73,8 @@ class Logger:
             self.__logger.log(level, msg)
             self.__app_logger(level, msg)
         except Exception as e:
-            # Fall back to stderr instead of exit(1) to avoid killing active calls
+            # CHANGED: was exit(1) which killed the entire process including active
+            # Asterisk calls. Now falls back to stderr so the app stays alive.
             print(f'Logger error: {str(e)}', file=sys.stderr)
 
     @staticmethod
@@ -82,7 +83,7 @@ class Logger:
             with open(log_file, 'a+') as f:
                 f.close()
         except Exception as e:
-            # Fall back to stderr — do not exit; let the app continue
+            # CHANGED: was exit(1) — same reason as above, fall back to stderr only.
             print(f'Log file [{log_file}] not writable or does not exist: {str(e)}', file=sys.stderr)
 
     def set_user_id(self, user_id):
@@ -92,10 +93,11 @@ class Logger:
         if self.__user_id and self.__user_id > 0:
             try:
                 log_dir = f'{self.__log_dir}/user-logs/{self.__user_id}'
+                # CHANGED: was os.system('mkdir -p ...') which is unsafe and untestable.
+                # os.makedirs with exist_ok=True is the correct Python idiom.
                 os.makedirs(log_dir, exist_ok=True)
                 log_date = datetime.datetime.now().strftime("%Y-%m-%d")
                 log_file = f'{log_dir}/{log_date}.log'
-
                 log = self.__self_made_logger('user-log', log_file)
                 log.log(level, msg)
             except Exception as e:
