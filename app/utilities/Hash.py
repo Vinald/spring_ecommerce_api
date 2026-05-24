@@ -4,4 +4,4 @@ import hashlib
 class Hash:
     @staticmethod
     def hash(string: str):
-        return hashlib.md5(string.encode()).hexdigest()
+        return hashlib.sha256(string.encode()).hexdigest()

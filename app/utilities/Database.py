@@ -31,10 +31,9 @@ class Database:
         self.conn.commit()
 
     def update(self, unique_id: int, data: dict, table_name: str):
+        self.reconnect()
         key_list = []
         value_list = []
-
-        self.reconnect()
 
         for key, value in data.items():
             key_list.append("{}=%s".format(key))
@@ -43,8 +42,8 @@ class Database:
         columns = ", ".join(key_list)
         tuple_values = tuple(value_list)
 
-        sql = "UPDATE `{}` SET {} WHERE id={} LIMIT 1".format(table_name, columns, unique_id)
-        self.cursor.execute(sql, tuple_values)
+        sql = "UPDATE `{}` SET {} WHERE id=%s LIMIT 1".format(table_name, columns)
+        self.cursor.execute(sql, tuple_values + (unique_id,))
         self.conn.commit()
 
     def reconnect(self):
@@ -52,6 +51,7 @@ class Database:
             self.conn.ping(reconnect=True)
         except Exception as e:
             print("Database reconnect error: {}".format(str(e)))
+            self.__initialize()
 
     def get_cursor(self):
         self.reconnect()
@@ -65,16 +65,18 @@ class Database:
         self.__config.set_section('database')
         try:
             db = self.__config.get('database')
-            conn = pymysql.connect(
+            # Bootstrap: ensure the database exists
+            bootstrap = pymysql.connect(
                 host=self.__config.get('host'),
                 user=self.__config.get('user'),
                 password=self.__config.get('pass'),
                 port=self.__config.get_int('port')
             )
-            cursor = conn.cursor()
-            cursor._defer_warnings = True
-            cursor.execute("CREATE DATABASE IF NOT EXISTS %s;" % db)
-            conn.close()
+            with bootstrap.cursor() as cur:
+                cur._defer_warnings = True
+                cur.execute("CREATE DATABASE IF NOT EXISTS `%s`;" % db)
+            bootstrap.close()
+
             self.conn = pymysql.connect(
                 host=self.__config.get('host'),
                 user=self.__config.get('user'),
@@ -82,7 +84,8 @@ class Database:
                 db=db,
                 password=self.__config.get('pass'),
                 port=self.__config.get_int('port'),
-                cursorclass=pymysql.cursors.DictCursor
+                cursorclass=pymysql.cursors.DictCursor,
+                autocommit=False,
             )
             self.cursor = self.conn.cursor()
         except Exception as e:

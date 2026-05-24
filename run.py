@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+import os
 import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from datetime import datetime, timedelta
 
 from flask_jwt_extended import JWTManager
@@ -22,7 +25,14 @@ from app.utilities.utils import un_auth
 
 
 app = Flask(__name__)
-app.config["JWT_SECRET_KEY"] = core.secret_key
+
+# Require a non-empty secret key — fail fast at startup rather than running insecurely
+_secret_key = core.secret_key
+if not _secret_key:
+    raise RuntimeError(
+        "JWT secret-key is empty. Set a strong value in config.json under [core] secret-key."
+    )
+app.config["JWT_SECRET_KEY"] = _secret_key
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=3)
 
 jwt = JWTManager(app)
@@ -30,47 +40,44 @@ jwt = JWTManager(app)
 database = core.database
 database.reconnect()
 
-CORS(app)
+# Restrict CORS to the frontend origin — set FRONTEND_ORIGIN env var in production
+_frontend_origin = os.environ.get("FRONTEND_ORIGIN", "http://localhost:8080")
+CORS(app, origins=[_frontend_origin])
+
+# Rate limiter — backed by Redis so limits survive restarts and work across workers
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    storage_uri="redis://{}:{}/1".format(
+        core.config.set_section('redis').get('host', 'localhost'),
+        core.config.set_section('redis').get('port', '6379'),
+    ),
+    default_limits=["200 per minute"],
+)
 
 logger = core.logger
-
 app_manager = core.app_manager
-
 queue = QueueManager(core.cache)
-
 app_web_listener = core.asterisk_events_handler
 
-logged_in_users = {}
 
-
-# Register a callback function that takes whatever object is passed in as the
-# identity when creating JWTs and converts it to a JSON serializable format.
 @jwt.user_identity_loader
 def user_identity_lookup(user):
     return user.id
 
 
-# Register a callback function that loads a user from your database whenever
-# a protected route is accessed. This should return any python object on a
-# successful lookup, or None if the lookup failed for any reason (for example
-# if the user has been deleted from the database).
 @jwt.user_lookup_loader
 def user_lookup_callback(_jwt_header, jwt_data):
     identity = jwt_data["sub"]
-
-    if identity in logged_in_users:
-        return logged_in_users[identity]
-
     s_session = scoped_session(Session)
     db_session = s_session()
-
     try:
         user = db_session.query(User).filter_by(id=identity).one_or_none()
-        logged_in_users[user.id] = user
         return user
     except Exception as e:
         core.logger.log_info(f"JWT user lookup DB error: {str(e)}")
         db_session.rollback()
+        return None
 
 
 def is_valid_token(token: str):
@@ -82,7 +89,15 @@ def is_valid_token(token: str):
         return False
 
 
+@app.route('/health', methods=['GET'])
+@limiter.exempt
+def health():
+    """Liveness probe for Docker / load balancers."""
+    return jsonify({'status': 'ok'}), 200
+
+
 @app.route('/call.initiate', methods=['GET'])
+@limiter.limit("30 per minute")   # per IP — prevents token flooding
 def index():
     flow = request.args.get('jumpTo')
     phone = request.args.get('phone')
@@ -90,16 +105,13 @@ def index():
     call_id = request.args.get('callId')
 
     core.initialize_log()
-
     logger.log_info("Call request from external app: {}".format(request.url))
 
-    #  Database has tendency of disconnecting making it seem like every token is invalid.
-    #  So we shall try to reconnect on every request only if the connection closed
     database.reconnect()
 
     if not is_valid_token(token):
         logger.log_info("Failed to route call: Reason: Invalid token")
-        return {'status': 'FAILED TO ROUTE CALL'}
+        return {'status': 'FAILED TO ROUTE CALL'}, 401
 
     app_data = app_manager.get_data(token)
 
@@ -121,6 +133,7 @@ def index():
 
 
 @app.route('/ivr/queue', methods=['GET'])
+@limiter.exempt
 def process_queue():
     if request.remote_addr != '127.0.0.1':
         return un_auth()
@@ -140,6 +153,7 @@ def process_queue():
 
 
 @app.route('/ivr/events', methods=['GET'])
+@limiter.exempt
 def asterisk_events_handler():
     if request.remote_addr != '127.0.0.1':
         return un_auth()
@@ -151,18 +165,16 @@ def asterisk_events_handler():
     unique_id = request.args.get('unique-id')
 
     if name == 'OriginateResponse':
-        originate_thread = threading.Thread(
+        threading.Thread(
             target=app_web_listener.handle_originate_event,
             args=(status, call_id, unique_id)
-        )
-        originate_thread.start()
+        ).start()
         return '', 204
     if name == 'Hangup':
-        hangup_thread = threading.Thread(
+        threading.Thread(
             target=app_web_listener.handle_hangup_event,
             args=(unique_id, channel)
-        )
-        hangup_thread.start()
+        ).start()
         return '', 204
     return {'status': 'error', 'message': 'Unknown event'}
 
@@ -201,12 +213,12 @@ def report_types():
 
 
 @app.route('/api/login', methods=['POST'])
+@limiter.limit("10 per minute")   # brute-force protection on login
 def login():
     user_details = core.login_api.verify(request, Session())
     if not user_details:
         return jsonify({'status': 'error', 'message': 'Bad username or password'}), 401
     user: User = user_details['user']
-    logged_in_users[user.id] = user
     token = create_access_token(identity=user)
     return jsonify(token=token, user=user_details['details'])
 
@@ -236,4 +248,4 @@ def logs():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)

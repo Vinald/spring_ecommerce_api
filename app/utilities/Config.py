@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from app.utilities.Logger import Logger
 
 
@@ -55,11 +56,10 @@ class Config:
     def __parse_config_file(self):
         try:
             if not os.path.exists(self.__config_file):
-                os.system("cp {} {}".format(self.__config_dev_file, self.__config_file))
-                os.system("chmod 775 {}".format(self.__config_file))
-            file = open(self.__config_file)
-            self.__config = json.load(file)
-            file.close()
+                shutil.copy(self.__config_dev_file, self.__config_file)
+                os.chmod(self.__config_file, 0o775)
+            with open(self.__config_file) as f:
+                self.__config = json.load(f)
         except Exception as e:
             log_msg = 'Failed to read config file: {}'.format(str(e))
             self.__logger.log_critical(log_msg)

@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import datetime
 from app.models.models import User
 
@@ -72,8 +73,8 @@ class Logger:
             self.__logger.log(level, msg)
             self.__app_logger(level, msg)
         except Exception as e:
-            print('Failed to start the logger: {}'.format(str(e)))
-            exit(1)
+            # Fall back to stderr instead of exit(1) to avoid killing active calls
+            print(f'Logger error: {str(e)}', file=sys.stderr)
 
     @staticmethod
     def __check_if_log_file_is_writable(log_file):
@@ -81,8 +82,8 @@ class Logger:
             with open(log_file, 'a+') as f:
                 f.close()
         except Exception as e:
-            print(f'Log file [{log_file}] not writable or does not exist: {str(e)}')
-            exit(1)
+            # Fall back to stderr — do not exit; let the app continue
+            print(f'Log file [{log_file}] not writable or does not exist: {str(e)}', file=sys.stderr)
 
     def set_user_id(self, user_id):
         self.__user_id = user_id
@@ -91,9 +92,7 @@ class Logger:
         if self.__user_id and self.__user_id > 0:
             try:
                 log_dir = f'{self.__log_dir}/user-logs/{self.__user_id}'
-                if not os.path.exists(log_dir):
-                    os.system(f'mkdir -p {log_dir}')
-                    os.system(f'chown -R asterisk {self.__log_dir}')
+                os.makedirs(log_dir, exist_ok=True)
                 log_date = datetime.datetime.now().strftime("%Y-%m-%d")
                 log_file = f'{log_dir}/{log_date}.log'
 
@@ -110,11 +109,11 @@ class Logger:
             datefmt='%Y-%m-%d %H:%M:%S'
         )
         file_handler.setFormatter(formatter)
-        log = logging.getLogger(logger_name)  # root logger - Good to get it only once.
-        for log_handler in log.handlers[:]:  # remove the existing file handlers
+        log = logging.getLogger(logger_name)
+        for log_handler in log.handlers[:]:
             if isinstance(log_handler, logging.FileHandler):
                 log.removeHandler(log_handler)
-        log.addHandler(file_handler)  # set the new handler
+        log.addHandler(file_handler)
         log.setLevel(logging.INFO)
         log.propagate = False
         return log
