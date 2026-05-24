@@ -1,12 +1,12 @@
 import datetime
 import uuid
 from flask import jsonify
-
 from app.models.models import App
-
+from app.schemas.schemas import AppCreateSchema, AppUpdateSchema, AppDeleteSchema
 from app.utilities.Hash import Hash
 from app.utilities.Logger import Logger
 from app.utilities.utils import error, success, un_auth, error_message
+from app.utilities.validation import validate_request
 
 
 class Applications:
@@ -27,7 +27,6 @@ class Applications:
     def __get(session, user):
         try:
             apps = []
-
             if user.role == 'admin':
                 apps_from_db = session.query(App).all()
             else:
@@ -41,36 +40,32 @@ class Applications:
                     app_data = app.to_dict()
                     app_data['owner'] = owner
                     apps.append(app_data)
-
             return jsonify(apps=apps)
         except Exception as e:
             return jsonify(error('Error fetching apps', e))
 
     def __post(self, request, session, user):
         try:
-            name = request.form['name']
-            phone = request.form['phone']
-            token = self.__token_generator()
-            voice_url = request.form['voice_url']
-            status_url = request.form['status_url']
-            caller_id = request.form['caller_id']
-            toll_free = request.form['toll_free']
+            # ADDED: validate all required fields before saving.
+            errors, data = validate_request(request.form, AppCreateSchema())
+            if errors:
+                return jsonify(error_message(errors)), 400
 
+            name = data['name']
             if session.query(App).filter_by(name=name).first():
                 return error_message('Name already taken')
 
             app = App(
                 name=name,
-                token=token,
-                voice_url=voice_url,
-                status_url=status_url,
+                token=self.__token_generator(),
+                voice_url=data['voice_url'],
+                status_url=data['status_url'],
                 user_id=user.id,
             )
-
             if user.is_admin():
-                app.phone = phone
-                app.toll_free = toll_free
-                app.caller_id = caller_id
+                app.phone = data['phone']
+                app.toll_free = data['toll_free']
+                app.caller_id = data['caller_id']
 
             session.add(app)
             session.commit()
@@ -81,27 +76,24 @@ class Applications:
 
     def __put(self, request, session, user):
         try:
-            app = session.query(App).get(int(request.form['id']))
+            # ADDED: validate update fields.
+            errors, data = validate_request(request.form, AppUpdateSchema())
+            if errors:
+                return jsonify(error_message(errors)), 400
 
+            app = session.query(App).get(data['id'])
             if user.role != 'admin' and app.user_id != user.id:
                 return un_auth()
 
-            name = request.form['name']
-            phone = request.form['phone']
-            voice_url = request.form['voice_url']
-            status_url = request.form['status_url']
-            caller_id = request.form['caller_id']
-            toll_free = request.form['toll_free']
-
-            app.name = name
-            app.voice_url = voice_url
-            app.status_url = status_url
+            app.name = data['name']
+            app.voice_url = data['voice_url']
+            app.status_url = data['status_url']
             app.date_modified = datetime.datetime.now()
 
             if user.is_admin():
-                app.phone = phone
-                app.toll_free = toll_free
-                app.caller_id = caller_id
+                app.phone = data['phone']
+                app.toll_free = data['toll_free']
+                app.caller_id = data['caller_id']
 
             session.add(app)
             session.commit()
@@ -112,8 +104,12 @@ class Applications:
 
     def __delete(self, request, session, user):
         try:
-            app_id = int(request.args.get('id'))
-            app = session.query(App).get(app_id)
+            # ADDED: validate the id query param.
+            errors, data = validate_request(request.args, AppDeleteSchema())
+            if errors:
+                return jsonify(error_message(errors)), 400
+
+            app = session.query(App).get(data['id'])
             if user.role != 'admin' and app.user_id != user.id:
                 return un_auth()
             session.delete(app)

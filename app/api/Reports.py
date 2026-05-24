@@ -3,10 +3,11 @@ import os
 import subprocess
 from flask import jsonify, make_response
 from app.models.models import ReportType, Report, User
-import pandas as pd
-
+from app.schemas.schemas import ReportCreateSchema, ReportUpdateSchema
 from app.utilities.Logger import Logger
 from app.utilities.utils import un_auth, error_message
+from app.utilities.validation import validate_request
+import pandas as pd
 
 
 class Reports:
@@ -28,20 +29,21 @@ class Reports:
 
     def __post(self, request, session, user):
         try:
-            time = request.form['time']
-            recurrence = request.form['recurrence']
-            scheduled = 1 if request.form['scheduled'] == 'true' else 0
-            report_type = session.query(ReportType).get(int(request.form['type']))
-            report_name = request.form['name']
-            recipients_to = str(request.form['to'])
-            recipients_cc = str(request.form['cc'])
-            day_of_week = request.form['day']
+            # ADDED: validate all required fields before saving.
+            errors, data = validate_request(request.form, ReportCreateSchema())
+            if errors:
+                return jsonify({'status': 'error', 'message': errors}), 400
 
+            report_name = data['name']
             if session.query(Report).filter_by(name=report_name).first():
                 return error_message('Name already taken')
 
-            # CHANGED: cron expression building was duplicated verbatim in __post
-            # and __put. Extracted to _build_cron_expression() to avoid drift.
+            time = data['time']
+            recurrence = data['recurrence']
+            scheduled = 1 if data['scheduled'] == 'true' else 0
+            report_type = session.query(ReportType).get(data['type'])
+            day_of_week = data['day']
+
             cron_expression = self._build_cron_expression(scheduled, recurrence, time, day_of_week)
             if scheduled == 1 and recurrence == 'monthly':
                 time = "00:00"
@@ -51,8 +53,8 @@ class Reports:
                 report_type=report_type,
                 scheduled=scheduled,
                 cron_expression=cron_expression,
-                recipients_to=recipients_to,
-                recipients_cc=recipients_cc,
+                recipients_to=data['to'],
+                recipients_cc=data['cc'],
                 time=time,
                 day=day_of_week,
                 recurrence=recurrence,
@@ -85,50 +87,41 @@ class Reports:
                 return jsonify({'status': 'error', 'message': 'Error downloading report: {}'.format(str(e))})
 
         reports = []
-        if user.role == 'admin':
-            reports_from_db = session.query(Report).all()
-        else:
-            reports_from_db = user.reports
-
+        reports_from_db = session.query(Report).all() if user.role == 'admin' else user.reports
         if reports_from_db:
             for report in reports_from_db:
-                owner = 'admin'
-                if report.user is not None:
-                    owner = report.user.email
+                owner = report.user.email if report.user else 'admin'
                 reports.append({
-                    'id': report.id,
-                    'name': report.name,
-                    'type': report.report_type.id,
-                    'time': report.time,
-                    'day': report.day,
-                    'recurrence': report.recurrence,
-                    'to': report.recipients_to,
-                    'cc': report.recipients_cc,
+                    'id': report.id, 'name': report.name,
+                    'type': report.report_type.id, 'time': report.time,
+                    'day': report.day, 'recurrence': report.recurrence,
+                    'to': report.recipients_to, 'cc': report.recipients_cc,
                     'scheduled': True if report.scheduled == 1 else False,
-                    'date_created': report.creation_date,
-                    'owner': owner,
+                    'date_created': report.creation_date, 'owner': owner,
                 })
         return jsonify(reports)
 
     def __put(self, request, session, user: User):
         try:
-            report = session.query(Report).get(int(request.form['id']))
+            # ADDED: validate update fields.
+            errors, data = validate_request(request.form, ReportUpdateSchema())
+            if errors:
+                return jsonify({'status': 'error', 'message': errors}), 400
 
+            report = session.query(Report).get(data['id'])
             if user.role != 'admin' and report.user_id != user.id:
                 return un_auth()
 
-            time = request.form['time']
-            recurrence = request.form['recurrence']
-            scheduled = 1 if request.form['scheduled'] == 'true' else 0
-            report_type = session.query(ReportType).get(int(request.form['type']))
-            report_name = request.form['name']
-            recipients_to = str(request.form['to'])
-            recipients_cc = str(request.form['cc'])
-            day_of_week = request.form['day']
-
+            report_name = data['name']
             existing = session.query(Report).filter_by(name=report_name).first()
             if existing and existing.id != report.id:
                 return error_message('Name already taken')
+
+            time = data['time']
+            recurrence = data['recurrence']
+            scheduled = 1 if data['scheduled'] == 'true' else 0
+            report_type = session.query(ReportType).get(data['type'])
+            day_of_week = data['day']
 
             cron_expression = self._build_cron_expression(scheduled, recurrence, time, day_of_week)
             if scheduled == 1 and recurrence == 'monthly':
@@ -138,8 +131,8 @@ class Reports:
             report.report_type = report_type
             report.scheduled = scheduled
             report.cron_expression = cron_expression
-            report.recipients_to = recipients_to
-            report.recipients_cc = recipients_cc
+            report.recipients_to = data['to']
+            report.recipients_cc = data['cc']
             report.time = time
             report.day = day_of_week
             report.recurrence = recurrence
@@ -169,11 +162,7 @@ class Reports:
 
     @staticmethod
     def _build_cron_expression(scheduled, recurrence, time_str, day_of_week):
-        """
-        Build a cron expression from report scheduling parameters.
-        CHANGED: extracted from duplicated inline blocks in __post and __put.
-        Returns None if the report is not scheduled.
-        """
+        """Build a cron expression from report scheduling parameters."""
         if scheduled != 1:
             return None
         if recurrence == 'monthly':
@@ -188,18 +177,8 @@ class Reports:
         return None
 
     def __reload_reports_cron_tab(self, session):
-        """
-        Rewrite the cron file using Python file I/O.
-        CHANGED: was a series of os.system('echo "..." >> file') calls which allowed
-        shell injection — a user could embed shell metacharacters in the cron
-        expression or report_id and execute arbitrary commands. Now:
-          1. File is written directly via open() — no shell involved.
-          2. cron_expression is validated against a character allowlist.
-          3. report_id is cast to int() to prevent any string injection.
-          4. chown uses subprocess.run() with an arg list (no shell=True).
-        """
+        """Rewrite the cron file using Python file I/O — no shell injection risk."""
         reports_cron_file = os.path.join(self.__cron_dir, "ivr-reports")
-
         try:
             if os.path.exists(reports_cron_file):
                 os.remove(reports_cron_file)
@@ -212,19 +191,14 @@ class Reports:
         for report in reports:
             if report.scheduled == 1 and report.cron_expression:
                 expr = report.cron_expression
-                # Allowlist: cron expressions only contain digits, spaces, * and /
                 if not all(c in '0123456789* /' for c in expr):
                     self.__logger.log_warning(
                         'Skipping report {} — invalid cron expression: {}'.format(report.id, expr)
                     )
                     continue
-                line = '{} root cd {} && python3 ivr-reports.py --report {}\n'.format(
-                    expr,
-                    self.__bin_dir,
-                    int(report.id)   # cast to int — prevents any string injection
-                )
-                lines.append(line)
-
+                lines.append('{} root cd {} && python3 ivr-reports.py --report {}\n'.format(
+                    expr, self.__bin_dir, int(report.id)
+                ))
         try:
             with open(reports_cron_file, 'w') as f:
                 f.writelines(lines)
