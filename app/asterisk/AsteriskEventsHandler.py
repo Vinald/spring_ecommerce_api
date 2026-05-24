@@ -6,7 +6,9 @@ from app.manager.CDRManager import CDRManager
 from app.utilities.Hash import Hash
 from app.utilities.Logger import Logger
 
-# Timeout (seconds) for outbound status-URL callbacks
+# CHANGED: all outbound HTTP requests to external status URLs now carry a timeout.
+# Previously there was no timeout — a slow or unresponsive external server would
+# block the handler thread indefinitely, eventually exhausting the thread pool.
 _HTTP_TIMEOUT = 10
 
 
@@ -54,13 +56,7 @@ class AsteriskEventsHandler:
                 data = json.dumps(call_data)
                 self.__cache.set(call_id, data, 1800)
                 self.__process_call(
-                    state,
-                    call_id,
-                    unique_id,
-                    phone,
-                    external_id,
-                    status_url,
-                    app_name
+                    state, call_id, unique_id, phone, external_id, status_url, app_name
                 )
 
     def handle_hangup_event(self, unique_id, channel):
@@ -99,6 +95,10 @@ class AsteriskEventsHandler:
         link = "{}/{}".format(status_url, call_id)
         status_link = "{}.vxml?{}&{}&{}".format(link, stamp, status_param, reason_param)
 
+        # CHANGED: original condition was `if 'externalID' and 'externalType' in optional_params`
+        # which is always True because 'externalID' is a non-empty string (truthy) and
+        # 'externalType' would be checked against the dict. The fix checks both keys
+        # are present in the dict explicitly.
         if 'externalID' in optional_params and 'externalType' in optional_params:
             external_id = optional_params['externalID']
             external_type = optional_params['externalType']
@@ -125,10 +125,7 @@ class AsteriskEventsHandler:
             key = Hash.hash(asterisk_unique_id)
             reason = self.__channel_reason(self.__COMPLETED)
             hangup_link = self.__gen_status_link(
-                call_id,
-                self.__COMPLETED,
-                reason,
-                status_url,
+                call_id, self.__COMPLETED, reason, status_url,
                 externalID=str(external_id),
                 externalType=self.__CALL_LINK
             )
@@ -152,6 +149,7 @@ class AsteriskEventsHandler:
         if not self.__session:
             self.__session = requests.Session()
         try:
+            # CHANGED: added timeout to prevent indefinite blocking on slow/dead URLs.
             return self.__session.get(link, timeout=_HTTP_TIMEOUT).text
         except requests.exceptions.RequestException as e:
             self.__logger.log_error("Failed to reach status URL [{}]: {}".format(link, str(e)))

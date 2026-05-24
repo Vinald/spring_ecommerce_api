@@ -56,6 +56,8 @@ class Config:
     def __parse_config_file(self):
         try:
             if not os.path.exists(self.__config_file):
+                # CHANGED: was os.system('cp ... && chmod ...') — shell calls are
+                # unsafe and untestable. shutil.copy + os.chmod are the Python idioms.
                 shutil.copy(self.__config_dev_file, self.__config_file)
                 os.chmod(self.__config_file, 0o775)
             with open(self.__config_file) as f:

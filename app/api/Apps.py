@@ -11,6 +11,9 @@ class Apps:
     def get_token_by_dialed_number(self, dialed_num: str):
         try:
             self.__database.reconnect()
+            # CHANGED: was 'SELECT ... WHERE phone = "{}"'.format(dialed_num) —
+            # direct string interpolation allows SQL injection. Now uses a
+            # parameterised %s placeholder so the driver escapes the value safely.
             sql = 'SELECT token FROM apps WHERE phone = %s'
             self.__database.cursor.execute(sql, (dialed_num,))
             data = self.__database.cursor.fetchone()
@@ -33,6 +36,8 @@ class Apps:
     def get_data(self, token):
         try:
             self.__database.reconnect()
+            # CHANGED: was 'SELECT * FROM apps WHERE token = "{}"'.format(token) —
+            # same SQL injection fix as above.
             sql = 'SELECT * FROM apps WHERE token = %s'
             self.__database.cursor.execute(sql, (token,))
             return self.__database.cursor.fetchone()

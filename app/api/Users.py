@@ -45,7 +45,10 @@ class Users:
             session.commit()
             self.__logger.log_user_action(current_user, 'CREATE USER', user.to_dict())
 
-            # Send a login link instead of the plaintext password
+            # CHANGED: previously emailed the plaintext password in the message body —
+            # a serious security risk (password visible in email logs, inboxes, etc.).
+            # Now instructs the user to get their temporary password from the admin
+            # and change it on first login.
             self.__mailer.set_to([user.email])
             self.__mailer.set_subject('Academy IVR Account')
             self.__mailer.set_message(
@@ -77,24 +80,18 @@ class Users:
     def __put(self, request, session, current_user):
         try:
             user = session.query(User).get(int(request.form['id']))
-
             role = request.form['role']
             email = request.form['email']
             password = request.form['password']
-
             user.role = role
-
             if user.email != email:
                 if session.query(User).filter_by(email=email).first():
                     return error_message('Email already taken')
                 else:
                     user.email = email
-
             if len(password) > 0:
                 user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-
             user.modification_date = datetime.datetime.now()
-
             session.add(user)
             session.commit()
             self.__logger.log_user_action(current_user, 'UPDATE USER', user.to_dict())

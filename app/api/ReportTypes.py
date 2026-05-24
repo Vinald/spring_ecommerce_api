@@ -3,7 +3,9 @@ from flask import jsonify
 from app.models.models import ReportType, User
 from app.utilities.Logger import Logger
 
-# Basic SQL keyword allowlist — report type SQLs must be read-only SELECT statements
+# CHANGED: report type SQL was previously stored and executed with no restrictions.
+# An admin could run DROP TABLE, DELETE, or any destructive query. This allowlist
+# enforces that only read-only SELECT statements are accepted.
 _FORBIDDEN_SQL_KEYWORDS = [
     'drop', 'delete', 'truncate', 'insert', 'update', 'alter',
     'create', 'replace', 'grant', 'revoke', 'exec', 'execute',
@@ -14,7 +16,7 @@ _FORBIDDEN_SQL_KEYWORDS = [
 def _validate_report_sql(sql: str):
     """
     Ensure report SQL is a read-only SELECT statement.
-    Returns (True, None) if valid, (False, reason) if not.
+    Returns (True, None) if valid, (False, reason_string) if not.
     """
     stripped = sql.strip().lower()
     if not stripped.startswith('select'):
@@ -46,6 +48,8 @@ class ReportTypes:
             sql = request.form['sql']
             name = request.form['name']
 
+            # CHANGED: validate SQL before saving — rejects anything that is not
+            # a read-only SELECT or contains destructive keywords.
             valid, reason = _validate_report_sql(sql)
             if not valid:
                 return jsonify({'status': 'error', 'message': reason}), 400
@@ -72,6 +76,7 @@ class ReportTypes:
         sql = request.form['sql']
         name = request.form['name']
 
+        # CHANGED: same SQL validation on update as on create.
         valid, reason = _validate_report_sql(sql)
         if not valid:
             return jsonify({'status': 'error', 'message': reason}), 400
