@@ -10,7 +10,7 @@ with a clear message before any business logic runs.
 Each schema maps to one API handler. Use validate_request() from
 app/utilities/validation.py to apply a schema to request.form or request.args.
 """
-from marshmallow import Schema, fields, validate
+from marshmallow import Schema, fields, validate, validates_schema, ValidationError
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -96,6 +96,22 @@ class ReportCreateSchema(Schema):
     to = fields.Str(required=True, validate=validate.Length(min=1))
     cc = fields.Str(load_default='')
 
+    @validates_schema
+    def validate_weekly_day(self, data, **kwargs):
+        """
+        FIXED (Copilot review): day='' was accepted for all recurrences.
+        If recurrence='weekly' and day='', _build_cron_expression() would
+        produce an invalid cron expression like '30 09 * * ' which
+        __reload_reports_cron_tab() would still write (passes char allowlist).
+        Now enforced: weekly recurrence requires an explicit day 0-6.
+        """
+        if data.get('recurrence') == 'weekly' and data.get('scheduled') == 'true':
+            if data.get('day', '') == '':
+                raise ValidationError(
+                    'day is required (0=Sun … 6=Sat) when recurrence is weekly',
+                    field_name='day'
+                )
+
 
 class ReportUpdateSchema(ReportCreateSchema):
     # id is required on update but not on create.
@@ -111,4 +127,12 @@ class ReportTypeCreateSchema(Schema):
 
 
 class ReportTypeUpdateSchema(ReportTypeCreateSchema):
+    # FIXED (Copilot review): added id field so ReportTypes.__put() can validate
+    # the id param instead of doing bare int(request.form['id']).
+    id = fields.Int(required=True, validate=validate.Range(min=1))
+
+
+class ReportTypeDeleteSchema(Schema):
+    # FIXED (Copilot review): added so ReportTypes.__delete() can validate the
+    # id query param instead of doing bare int(request.args.get('id')).
     id = fields.Int(required=True, validate=validate.Range(min=1))

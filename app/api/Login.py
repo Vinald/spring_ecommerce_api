@@ -1,5 +1,4 @@
 import bcrypt
-from flask import jsonify
 from app.models.models import User
 from app.schemas.schemas import LoginSchema
 from app.utilities.Logger import Logger
@@ -11,12 +10,25 @@ class Login:
         self.__logger = logger
 
     def verify(self, request, session):
-        # ADDED: validate username and email before touching the DB.
-        # Previously a missing field raised KeyError → HTTP 500.
-        # LoginSchema also enforces email format on the username field.
+        """
+        Verify credentials and return user details, or False on any failure.
+
+        Returns:
+            {'user': User, 'details': {...}}  on success
+            False                             on bad credentials OR bad input
+
+        FIXED (Copilot review): previously returned a tuple ({'errors':...}, 400)
+        on validation failure. That is truthy, so the blueprint would attempt
+        user_details['user'] on a tuple and raise TypeError/KeyError.
+        Now returns False consistently so callers only need one check.
+        The blueprint logs the 400 detail separately so it isn't swallowed.
+        """
         errors, data = validate_request(request.form, LoginSchema())
         if errors:
-            return {'errors': errors}, 400
+            # Log the validation error for debugging but return False so the
+            # route layer returns a generic 401 (avoids leaking field names).
+            self.__logger.log_warning('Login validation error: {}'.format(errors))
+            return False
 
         username = data['username']
         password = data['password']
@@ -25,6 +37,6 @@ class Login:
         if user is None or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
             return False
 
-        login_log_message = f'LOGIN from IP: {request.remote_addr}'
+        login_log_message = 'LOGIN from IP: {}'.format(request.remote_addr)
         self.__logger.log_user_action(user, login_log_message, user.to_dict())
         return {'details': {'email': user.email, 'role': user.role}, 'user': user}
