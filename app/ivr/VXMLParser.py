@@ -44,11 +44,25 @@ class VXMLParser:
         filled = doc.find('filled')
         blocks = doc.find_all('block')
 
-        # CHANGED: original code accessed field.attrs['name'] without checking if
-        # field is None first. A VXML document without a <field> element would
-        # raise AttributeError and drop the call silently.
+        # FIXED (Copilot review): the previous fix returned None immediately when
+        # field was absent. However, many valid VXML documents are block-only
+        # (e.g. a prompt + <goto> with no user input required). Returning None
+        # would silently terminate those call flows.
+        #
+        # New logic:
+        #   1. If the document has blocks but no <field>, execute the blocks and
+        #      follow any <goto> found inside them (block-only / announcement flow).
+        #   2. If it has a <field name='finishedHearing'>, run the listening flow.
+        #   3. If it has a <field> + <filled>, run the audio dialogue flow.
+        #   4. Only return None (end of flow) when none of the above applies.
+
         if field is None:
-            self.__logger.log_warning('VXML document has no <field> element: {}'.format(link))
+            if blocks:
+                # Block-only document — process blocks and follow any goto.
+                self.__logger.log_info('Block-only VXML document (no <field>): {}'.format(link))
+                return self.__process_block_only(blocks)
+            # Truly empty document — nothing to do.
+            self.__logger.log_warning('Empty VXML document (no <field> or <block>): {}'.format(link))
             return None
 
         field_name = field.attrs.get('name')
@@ -61,6 +75,22 @@ class VXMLParser:
             self.__logger.log_info('Starting Audio Dialogue')
             return self.__process_audio_dialogue(form)
 
+        return None
+
+    def __process_block_only(self, blocks):
+        """
+        Execute blocks from a block-only VXML document (no <field> element).
+        Returns the next link from the first <goto> found, or None if none exists.
+        """
+        block_parser = BlockElement(self.__agi, self.__audio, self.__logger)
+        for block in blocks:
+            block_parser.process(block)
+            goto = block.find('goto')
+            if goto is not None:
+                next_link = goto.attrs.get('next')
+                if next_link:
+                    self.__logger.log_info('Block-only goto: {}'.format(next_link))
+                    return next_link
         return None
 
     def __process_blocks(self, blocks):

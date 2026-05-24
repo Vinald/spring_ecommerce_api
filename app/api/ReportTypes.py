@@ -1,8 +1,10 @@
+import re
 from datetime import datetime
 from flask import jsonify
 from app.models.models import ReportType, User
+from app.schemas.schemas import ReportTypeCreateSchema, ReportTypeUpdateSchema, ReportTypeDeleteSchema
 from app.utilities.Logger import Logger
-import re
+from app.utilities.validation import validate_request
 
 # CHANGED: report type SQL was previously stored and executed with no restrictions.
 # An admin could run DROP TABLE, DELETE, or any destructive query. This allowlist
@@ -17,27 +19,22 @@ _FORBIDDEN_SQL_KEYWORDS = [
 def _validate_report_sql(sql: str):
     """
     Ensure report SQL is a read-only SELECT statement.
-    Uses word boundaries to avoid matching keywords in column/table names.
+    Uses word boundaries to avoid false positives on column/table names.
     Returns (True, None) if valid, (False, reason_string) if not.
     """
     stripped = sql.strip().lower()
     if not stripped.startswith('select'):
         return False, "Report SQL must be a SELECT statement"
-    
-    # Check for forbidden keywords using word boundaries (except for comments/operators)
+
     for keyword in _FORBIDDEN_SQL_KEYWORDS:
         if keyword in ('--', '/*', '*/'):
-            # For comment markers, check directly (they're always forbidden)
             if keyword in stripped:
-                return False, "Report SQL contains forbidden keyword: '{}'".format(keyword)
-        elif keyword.startswith('xp_') or keyword.startswith('sp_'):
-            # For SQL Server procedures, check directly
+                return False, "Report SQL contains forbidden sequence: '{}'".format(keyword)
+        elif keyword.startswith(('xp_', 'sp_')):
             if keyword in stripped:
                 return False, "Report SQL contains forbidden keyword: '{}'".format(keyword)
         else:
-            # For SQL keywords, use word boundaries to avoid false positives
-            pattern = r'\b' + re.escape(keyword) + r'\b'
-            if re.search(pattern, stripped):
+            if re.search(r'\b' + re.escape(keyword) + r'\b', stripped):
                 return False, "Report SQL contains forbidden keyword: '{}'".format(keyword)
     return True, None
 
@@ -48,7 +45,7 @@ class ReportTypes:
 
     def process(self, request, session, user: User):
         if user.role != 'admin' and request.method != 'GET':
-            return {'msg': 'This operation will be reported'}, 401
+            return {'msg': 'Unauthorised'}, 401
         if request.method == 'GET':
             return self.__get(session)
         if request.method == 'POST':
@@ -60,11 +57,15 @@ class ReportTypes:
 
     def __post(self, request, session, current_user):
         try:
-            sql = request.form['sql']
-            name = request.form['name']
+            # FIXED (Copilot review): was reading request.form['sql'/'name'] directly.
+            # Missing fields raised KeyError → HTTP 500. Now validates via schema first.
+            errors, data = validate_request(request.form, ReportTypeCreateSchema())
+            if errors:
+                return jsonify({'status': 'error', 'message': errors}), 400
 
-            # CHANGED: validate SQL before saving — rejects anything that is not
-            # a read-only SELECT or contains destructive keywords.
+            sql = data['sql']
+            name = data['name']
+
             valid, reason = _validate_report_sql(sql)
             if not valid:
                 return jsonify({'status': 'error', 'message': reason}), 400
@@ -82,22 +83,29 @@ class ReportTypes:
         types = []
         report_types = session.query(ReportType).all()
         if report_types:
-            for report_type in report_types:
-                types.append(report_type.to_dict())
+            for rt in report_types:
+                types.append(rt.to_dict())
         return jsonify(types)
 
     def __put(self, request, session, current_user):
-        report_type_id = int(request.form['id'])
-        sql = request.form['sql']
-        name = request.form['name']
-
-        # CHANGED: same SQL validation on update as on create.
-        valid, reason = _validate_report_sql(sql)
-        if not valid:
-            return jsonify({'status': 'error', 'message': reason}), 400
-
         try:
-            report_type = session.query(ReportType).get(report_type_id)
+            # FIXED (Copilot review): was int(request.form['id']) and bare form access.
+            # Missing/non-numeric id raised ValueError → HTTP 500. Now validated first.
+            errors, data = validate_request(request.form, ReportTypeUpdateSchema())
+            if errors:
+                return jsonify({'status': 'error', 'message': errors}), 400
+
+            sql = data['sql']
+            name = data['name']
+
+            valid, reason = _validate_report_sql(sql)
+            if not valid:
+                return jsonify({'status': 'error', 'message': reason}), 400
+
+            report_type = session.query(ReportType).get(data['id'])
+            if report_type is None:
+                return jsonify({'status': 'error', 'message': 'Report type not found'}), 404
+
             report_type.sql = sql
             report_type.name = name
             report_type.modification_date = datetime.now()
@@ -109,9 +117,17 @@ class ReportTypes:
             return jsonify({'status': 'error', 'message': 'Report type update failure: {}'.format(str(e))})
 
     def __delete(self, request, session, current_user):
-        report_type_id = int(request.args.get('id'))
         try:
-            report_type = session.query(ReportType).get(report_type_id)
+            # FIXED (Copilot review): was int(request.args.get('id')) — raises on
+            # missing or non-numeric param. Now validated via schema.
+            errors, data = validate_request(request.args, ReportTypeDeleteSchema())
+            if errors:
+                return jsonify({'status': 'error', 'message': errors}), 400
+
+            report_type = session.query(ReportType).get(data['id'])
+            if report_type is None:
+                return jsonify({'status': 'error', 'message': 'Report type not found'}), 404
+
             session.delete(report_type)
             session.commit()
             self.__logger.log_user_action(current_user, 'DELETE REPORT TYPE', report_type.to_dict())
