@@ -7,29 +7,34 @@ Academy IVR is an in-house Interactive Voice Response (IVR) system built for the
 ## Table of Contents
 
 - [Architecture Overview](#architecture-overview)
+- [What Each Component Does](#what-each-component-does)
 - [Prerequisites](#prerequisites)
-- [Bare Ubuntu VM Setup (No Docker)](#bare-ubuntu-vm-setup-no-docker)
-  - [1. System packages](#1-system-packages)
-  - [2. MySQL 8.0](#2-mysql-80)
-  - [3. Redis](#3-redis)
-  - [4. Asterisk 20](#4-asterisk-20)
-  - [5. Node.js and npm](#5-nodejs-and-npm)
-  - [6. Clone the repository](#6-clone-the-repository)
-  - [7. Python dependencies](#7-python-dependencies)
-  - [8. Configure the application](#8-configure-the-application)
-  - [9. Run Alembic database migrations](#9-run-alembic-database-migrations)
-  - [10. Configure Asterisk](#10-configure-asterisk)
-  - [11. Start the Flask API](#11-start-the-flask-api)
-  - [12. Start the Asterisk events listener](#12-start-the-asterisk-events-listener)
-  - [13. Configure the call queue cron job](#13-configure-the-call-queue-cron-job)
-  - [14. Start the Vue.js web dashboard](#14-start-the-vuejs-web-dashboard)
-  - [15. Run as systemd services (production)](#15-run-as-systemd-services-production)
-  - [16. Verify everything is running](#16-verify-everything-is-running)
-- [SIP Phone Configuration](#sip-phone-configuration)
-- [Docker Setup (Alternative)](#docker-setup-alternative)
+- [Installation on a Bare Ubuntu Server](#installation-on-a-bare-ubuntu-server)
+  - [Step 1 — Update the system](#step-1--update-the-system)
+  - [Step 2 — Install system dependencies](#step-2--install-system-dependencies)
+  - [Step 3 — Install MySQL 8](#step-3--install-mysql-8)
+  - [Step 4 — Install Redis](#step-4--install-redis)
+  - [Step 5 — Install Asterisk](#step-5--install-asterisk)
+  - [Step 6 — Install Node.js](#step-6--install-nodejs)
+  - [Step 7 — Clone the repository](#step-7--clone-the-repository)
+  - [Step 8 — Create a Python virtual environment](#step-8--create-a-python-virtual-environment)
+  - [Step 9 — Install Python dependencies](#step-9--install-python-dependencies)
+  - [Step 10 — Create and edit config.json](#step-10--create-and-edit-configjson)
+  - [Step 11 — Run database migrations](#step-11--run-database-migrations)
+  - [Step 12 — Configure Asterisk](#step-12--configure-asterisk)
+  - [Step 13 — Create the first admin user](#step-13--create-the-first-admin-user)
+  - [Step 14 — Set up the IVR API as a systemd service](#step-14--set-up-the-ivr-api-as-a-systemd-service)
+  - [Step 15 — Set up the Asterisk events listener as a systemd service](#step-15--set-up-the-asterisk-events-listener-as-a-systemd-service)
+  - [Step 16 — Set up cron jobs](#step-16--set-up-cron-jobs)
+  - [Step 17 — Build and serve the Vue dashboard with nginx](#step-17--build-and-serve-the-vue-dashboard-with-nginx)
+  - [Step 18 — Verify everything is running](#step-18--verify-everything-is-running)
+- [SIP Phone Setup](#sip-phone-setup)
+- [Updating the Application](#updating-the-application)
 - [Environment Variables Reference](#environment-variables-reference)
 - [Running the Test Suite](#running-the-test-suite)
+- [Pre-commit Hooks](#pre-commit-hooks)
 - [Code Style](#code-style)
+- [Docker Alternative](#docker-alternative)
 - [Troubleshooting](#troubleshooting)
 - [References](#references)
 
@@ -38,208 +43,259 @@ Academy IVR is an in-house Interactive Voice Response (IVR) system built for the
 ## Architecture Overview
 
 ```
-External App ──► /call.initiate ──► Flask API (port 5000)
-                                         │
-                              ┌──────────┼──────────┐
-                         Asterisk AMI  Redis     MySQL 8
-                         (port 5038)  (port 6379) (port 3306)
-                              │
-                         Asterisk AGI ──► agi.py ──► VXML Parser
-                              │
-                         Asterisk ARI ──► Event Handler ──► CDR
+External App / SIP Phone
+        │
+        ▼
+  Asterisk PBX ──────────────── SIP (port 5060)
+        │
+        ├── AMI (port 5038) ──► Events Listener ──► Flask API
+        ├── ARI (port 8088) ──► Flask API
+        └── AGI ─────────────► agi.py ──► VXMLParser ──► External VXML Server
+                                               │
+                                        Asterisk plays audio,
+                                        captures DTMF input
+        │
+        ▼
+  Flask API (port 5000, via nginx)
+        │
+        ├── MySQL 8 (port 3306)   — users, apps, CDR, reports
+        ├── Redis  (port 6379)    — call queue, CDR cache, JWT sessions
+        └── Gunicorn workers
+        │
+        ▼
+  Vue Dashboard (port 8000, served by nginx)
 ```
 
-| Component | Technology | Port |
-|---|---|---|
-| REST API | Python / Flask + Gunicorn | 5000 |
-| Web Dashboard | Vue 3 / Node.js | 8080 |
-| Telephony engine | Asterisk 20 | 5038 (AMI), 8088 (ARI), 5060 (SIP) |
-| Database | MySQL 8.0 | 3306 |
-| Cache / Queue | Redis 7 | 6379 |
+---
+
+## What Each Component Does
+
+| Component | Role |
+|---|---|
+| **Asterisk** | The telephony engine. Answers and originates SIP calls, runs `agi.py` on each call, fires AMI events on call state changes |
+| **agi.py** | Called by Asterisk on every call. Reads the VXML app URL from config, fetches and parses VXML, plays audio, captures DTMF input |
+| **Flask API** | REST API for the dashboard. Also receives AMI event callbacks from the events listener and processes the call queue |
+| **Events Listener** | Long-running Python script that connects to the Asterisk AMI and forwards `OriginateResponse` and `Hangup` events to the Flask API |
+| **MySQL** | Stores users, IVR applications, call detail records (CDR), scheduled reports |
+| **Redis** | Short-lived call state cache (CDR data during a call), call queue for when all channels are busy |
+| **Vue Dashboard** | Web UI for admins — manage IVR apps, view CDR charts, manage users, download reports |
+| **nginx** | Serves the built Vue dashboard as static files on port 8000 |
 
 ---
 
 ## Prerequisites
 
-**Hardware (minimum)**
+**Server requirements (minimum)**
 
-| CPU | RAM | Disk |
-|---|---|---|
-| 2 cores | 2 GB | 20 GB |
+| Resource | Minimum |
+|---|---|
+| OS | Ubuntu 22.04 LTS or 24.04 LTS |
+| CPU | 2 cores |
+| RAM | 2 GB |
+| Disk | 20 GB |
 
-**Operating system:** Ubuntu 22.04 LTS or 24.04 LTS (fresh install recommended)
-
-**Network:** A working internet connection is required during installation.
-
-**SIP Phone:** A softphone such as [Zoiper](https://www.zoiper.com/en/voip-softphone/download/current) or a physical SIP phone (Fanvil, Grandstream, Yealink).
-
----
-
-## Bare Ubuntu VM Setup (No Docker)
-
-All commands below are run as **root** or with `sudo` unless noted. The instructions assume you are installing to `/root/ivr`. Adjust paths if you use a different directory.
+**Your machine needs:**
+- Root or sudo access
+- A working internet connection during installation
+- A SIP phone or softphone to test calls (see [SIP Phone Setup](#sip-phone-setup))
 
 ---
 
-### 1. System packages
+## Installation on a Bare Ubuntu Server
+
+All commands assume you are logged in as **root**, or you prefix each with `sudo`. The application is installed to `/root/ivr`. If you use a different path, replace `/root/ivr` everywhere below.
+
+---
+
+### Step 1 — Update the system
 
 ```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y \
+apt update && apt upgrade -y
+reboot
+```
+
+After the reboot, log back in before continuing.
+
+---
+
+### Step 2 — Install system dependencies
+
+```bash
+apt install -y \
     git curl wget gnupg2 lsb-release ca-certificates \
-    python3 python3-pip python3-venv \
-    build-essential libssl-dev libffi-dev python3-dev \
-    libmysqlclient-dev pkg-config \
-    lxml libxml2-dev libxslt1-dev \
+    python3 python3-pip python3-venv python3-dev \
+    build-essential libssl-dev libffi-dev \
+    default-libmysqlclient-dev pkg-config \
+    libxml2-dev libxslt1-dev \
     sox libsox-fmt-all \
-    cron
+    nginx cron
 ```
 
 ---
 
-### 2. MySQL 8.0
+### Step 3 — Install MySQL 8
 
 ```bash
-sudo apt install -y mysql-server
-sudo systemctl enable --now mysql
+apt install -y mysql-server
+systemctl enable --now mysql
 ```
 
-Secure the installation and create the IVR database user:
+Run the security wizard. When prompted, set a root password and answer **Y** to all questions:
 
 ```bash
-sudo mysql_secure_installation
+mysql_secure_installation
 ```
 
-Then open a MySQL shell and run:
+Now create the IVR database and a dedicated user. Open a MySQL shell:
+
+```bash
+mysql -u root -p
+```
+
+Inside the shell, run (replace `your_db_password` with a strong password you choose):
 
 ```sql
 CREATE DATABASE ivr CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'ivr_user'@'localhost' IDENTIFIED BY 'choose_a_strong_password';
+CREATE USER 'ivr_user'@'localhost' IDENTIFIED BY 'your_db_password';
 GRANT ALL PRIVILEGES ON ivr.* TO 'ivr_user'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
 ```
 
-> **Note:** Use the username and password you create here in `config.json` (step 8).
+> Write down `your_db_password` — you will need it in Step 10.
 
 ---
 
-### 3. Redis
+### Step 4 — Install Redis
 
 ```bash
-sudo apt install -y redis-server
-sudo systemctl enable --now redis-server
+apt install -y redis-server
 ```
 
-Verify Redis is running:
+Bind Redis to localhost only and enable it:
+
+```bash
+sed -i 's/^bind .*/bind 127.0.0.1/' /etc/redis/redis.conf
+sed -i 's/^supervised .*/supervised systemd/' /etc/redis/redis.conf
+systemctl enable --now redis-server
+```
+
+Test it:
 
 ```bash
 redis-cli ping
-# Expected output: PONG
+# Expected: PONG
 ```
 
 ---
 
-### 4. Asterisk 20
+### Step 5 — Install Asterisk
 
-Asterisk must be compiled from source on Ubuntu 22/24 to get version 20.
+Ubuntu 22/24 package repositories contain Asterisk 20. Install it directly:
 
 ```bash
-cd /tmp
-sudo apt install -y \
-    subversion libjansson-dev libxml2-dev libncurses5-dev \
-    libsqlite3-dev uuid-dev libiksemel-dev libedit-dev \
-    libspandsp-dev libsrtp2-dev
-
-# Download Asterisk 20 LTS
-wget https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-20-current.tar.gz
-tar xzf asterisk-20-current.tar.gz
-cd asterisk-20*/
-
-# Install prerequisites
-sudo contrib/scripts/install_prereq install
-
-# Configure and compile
-sudo ./configure --with-jansson-bundled
-sudo make menuselect  # Enable: res_ari, res_http_websocket, chan_sip, app_agi, cdr_csv
-sudo make -j$(nproc)
-sudo make install
-sudo make samples      # installs sample config files to /etc/asterisk/
-sudo make config       # installs init scripts
-sudo ldconfig
-
-# Create the asterisk user/group
-sudo groupadd -r asterisk 2>/dev/null || true
-sudo useradd -r -g asterisk -d /var/lib/asterisk -s /sbin/nologin asterisk 2>/dev/null || true
-
-sudo systemctl enable asterisk
+apt install -y asterisk
+systemctl enable asterisk
 ```
+
+Verify the version:
+
+```bash
+asterisk -V
+# Expected: Asterisk 20.x.x or similar
+```
+
+> If your Ubuntu version only provides Asterisk 18, that also works. Asterisk 20 is preferred but not strictly required.
 
 ---
 
-### 5. Node.js and npm
+### Step 6 — Install Node.js
+
+The Vue dashboard requires Node.js 20 LTS:
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-node --version   # should be v20.x
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+node --version   # should be v20.x.x
 npm --version
 ```
 
 ---
 
-### 6. Clone the repository
+### Step 7 — Clone the repository
 
 ```bash
 cd /root
 git clone https://github.com/Vinald/ivr-demo.git ivr
-cd ivr
+cd /root/ivr
 ```
+
+Your project is now at `/root/ivr`.
 
 ---
 
-### 7. Python dependencies
-
-Create a virtual environment and install all dependencies:
-
-```bash
-python3 -m venv /root/ivr/venv
-source /root/ivr/venv/bin/activate
-
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-> **Tip:** Add `source /root/ivr/venv/bin/activate` to your `~/.bashrc` so the venv activates automatically on login.
-
----
-
-### 8. Configure the application
-
-Copy the example config and edit it with your values:
+### Step 8 — Create a Python virtual environment
 
 ```bash
 cd /root/ivr
-cp config.dev.json config.json
-nano config.json
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
 ```
 
-Key fields to update in `config.json`:
+> To avoid having to run `source venv/bin/activate` every time, add it to your shell profile:
+> ```bash
+> echo "source /root/ivr/venv/bin/activate" >> ~/.bashrc
+> source ~/.bashrc
+> ```
+
+---
+
+### Step 9 — Install Python dependencies
+
+With the venv active:
+
+```bash
+pip install -r /root/ivr/requirements.txt
+```
+
+This installs Flask, Gunicorn, SQLAlchemy, Alembic, Asterisk libraries, marshmallow, and all other dependencies listed in `requirements.txt`.
+
+---
+
+### Step 10 — Create and edit config.json
+
+Copy the example config:
+
+```bash
+cp /root/ivr/config.dev.json /root/ivr/config.json
+```
+
+Open it for editing:
+
+```bash
+nano /root/ivr/config.json
+```
+
+**Fill in every value below. Do not leave any as the placeholder.**
 
 ```json
 {
   "core": {
-    "secret-key": "replace_with_a_long_random_string_at_least_32_chars",
     "log-level": "info",
+    "log-vxml": "false",
     "audio-path": "/var/lib/asterisk/sounds/ivr",
+    "dates-audio-path": "https://idi-audio.s3-us-west-2.amazonaws.com/academy-ivr/dates",
     "max-channels": "10",
-    "use-sip-trunks": "false"
+    "use-sip-trunks": "false",
+    "max-call-time-in-seconds": "300",
+    "secret-key": "REPLACE_THIS_WITH_A_RANDOM_64_CHAR_STRING"
   },
   "database": {
     "host": "127.0.0.1",
     "port": "3306",
     "user": "ivr_user",
-    "pass": "the_password_you_set_in_step_2",
+    "pass": "your_db_password",
     "database": "ivr"
   },
   "redis": {
@@ -250,42 +306,59 @@ Key fields to update in `config.json`:
     "host": "127.0.0.1",
     "port": "5038",
     "user": "ivr",
-    "pass": "choose_a_strong_ami_password"
+    "pass": "REPLACE_WITH_STRONG_AMI_PASSWORD"
   },
   "asterisk-ari": {
     "host": "127.0.0.1",
     "port": "8088",
     "user": "ivr",
-    "pass": "choose_a_strong_ari_password"
+    "pass": "REPLACE_WITH_STRONG_ARI_PASSWORD"
   },
   "email-server": {
     "host": "smtp.office365.com",
     "port": "587",
     "user": "your_email@example.com",
     "pass": "your_email_password"
-  }
+  },
+  "sip-trunks": [],
+  "routed-numbers": [],
+  "email-recipients": {
+    "to": "",
+    "cc": ""
+  },
+  "roles": [
+    {"value": "admin", "text": "Administrator"},
+    {"value": "user",  "text": "Normal User"}
+  ]
 }
+```
+
+**Generate the `secret-key`** — copy the output and paste it into the `secret-key` field:
+
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 Create the audio directory:
 
 ```bash
-sudo mkdir -p /var/lib/asterisk/sounds/ivr
-sudo chown asterisk:asterisk /var/lib/asterisk/sounds/ivr
+mkdir -p /var/lib/asterisk/sounds/ivr
+chown asterisk:asterisk /var/lib/asterisk/sounds/ivr
 ```
 
-Fix project directory permissions so the API can write logs:
+Set permissions on the project directory so the API can write logs:
 
 ```bash
-sudo chown -R $USER:asterisk /root/ivr
-sudo chmod -R 775 /root/ivr
+chown -R root:asterisk /root/ivr
+chmod -R 775 /root/ivr
+mkdir -p /root/ivr/logs
 ```
 
 ---
 
-### 9. Run Alembic database migrations
+### Step 11 — Run database migrations
 
-With the venv active:
+With the venv active, run Alembic to create all tables:
 
 ```bash
 cd /root/ivr
@@ -293,285 +366,410 @@ source venv/bin/activate
 alembic upgrade head
 ```
 
-This creates all required tables (`users`, `apps`, `cdr`, `reports`, `report_types`) in the `ivr` database.
+You should see output like:
+
+```
+INFO  [alembic.runtime.migration] Running upgrade  -> 430998fabc17, ...
+INFO  [alembic.runtime.migration] Running upgrade 430998fabc17 -> bfb81da8b93b, ...
+```
+
+Verify the tables exist:
+
+```bash
+mysql -u ivr_user -p ivr -e "SHOW TABLES;"
+# Expected: apps, cdr, report_types, reports, users
+```
 
 ---
 
-### 10. Configure Asterisk
+### Step 12 — Configure Asterisk
 
-Copy the IVR Asterisk config files to `/etc/asterisk/`:
+Copy the IVR Asterisk configuration files:
 
 ```bash
-# Backup originals
-sudo cp /etc/asterisk/sip.conf /etc/asterisk/sip.conf.bak
-sudo cp /etc/asterisk/extensions.conf /etc/asterisk/extensions.conf.bak
-sudo cp /etc/asterisk/manager.conf /etc/asterisk/manager.conf.bak
+# Back up the originals first
+cp /etc/asterisk/sip.conf        /etc/asterisk/sip.conf.orig
+cp /etc/asterisk/extensions.conf /etc/asterisk/extensions.conf.orig
+cp /etc/asterisk/manager.conf    /etc/asterisk/manager.conf.orig
 
-# Copy IVR configs
-sudo cp /root/ivr/asterisk/sip.conf        /etc/asterisk/sip.conf
-sudo cp /root/ivr/asterisk/extensions.conf /etc/asterisk/extensions.conf
-sudo cp /root/ivr/asterisk/manager.conf    /etc/asterisk/manager.conf
-sudo cp /root/ivr/asterisk/ari.conf        /etc/asterisk/ari.conf
-sudo cp /root/ivr/asterisk/http.conf       /etc/asterisk/http.conf
-sudo cp /root/ivr/asterisk/cdr.conf        /etc/asterisk/cdr.conf
+# Copy the IVR configs
+cp /root/ivr/asterisk/sip.conf        /etc/asterisk/sip.conf
+cp /root/ivr/asterisk/extensions.conf /etc/asterisk/extensions.conf
+cp /root/ivr/asterisk/manager.conf    /etc/asterisk/manager.conf
+cp /root/ivr/asterisk/ari.conf        /etc/asterisk/ari.conf
+cp /root/ivr/asterisk/http.conf       /etc/asterisk/http.conf
+cp /root/ivr/asterisk/cdr.conf        /etc/asterisk/cdr.conf
 ```
 
-Update the AMI and ARI passwords in the copied config files to match what you set in `config.json`:
+Set the AMI password in `manager.conf` to match the `asterisk-ami.pass` you put in `config.json`:
 
 ```bash
-# Update AMI password (manager.conf)
-sudo sed -i 's/^secret=.*/secret=choose_a_strong_ami_password/' /etc/asterisk/manager.conf
-
-# Update ARI password (ari.conf)
-sudo sed -i 's/^password = .*/password = choose_a_strong_ari_password/' /etc/asterisk/ari.conf
+# Replace YOUR_AMI_PASSWORD with the value from config.json
+sed -i 's/^secret=.*/secret=YOUR_AMI_PASSWORD/' /etc/asterisk/manager.conf
 ```
 
-Update `extensions.conf` to point to the correct path of `agi.py`:
+Set the ARI password in `ari.conf` to match the `asterisk-ari.pass` you put in `config.json`:
 
 ```bash
-sudo sed -i 's|AGI(/root/ivr/agi.py)|AGI(/root/ivr/venv/bin/python3 /root/ivr/agi.py)|' \
+# Replace YOUR_ARI_PASSWORD with the value from config.json
+sed -i 's/^password = .*/password = YOUR_ARI_PASSWORD/' /etc/asterisk/ari.conf
+```
+
+Point `extensions.conf` at the actual `agi.py` path with the venv Python:
+
+```bash
+sed -i 's|AGI(.*agi.py)|AGI(/root/ivr/venv/bin/python3 /root/ivr/agi.py)|' \
     /etc/asterisk/extensions.conf
 ```
 
-Set correct ownership and restart Asterisk:
+Verify the AGI line looks correct:
 
 ```bash
-sudo chown -R asterisk:asterisk /etc/asterisk
-sudo systemctl restart asterisk
-sudo systemctl status asterisk
+grep AGI /etc/asterisk/extensions.conf
+# Should show: same = n,AGI(/root/ivr/venv/bin/python3 /root/ivr/agi.py)
 ```
 
-Verify Asterisk is up and the AMI is listening:
+Set ownership and restart Asterisk:
 
 ```bash
-sudo asterisk -rvvv
-# Inside the Asterisk CLI:
-# core show channels
-# manager show connected
-# quit
+chown -R asterisk:asterisk /etc/asterisk
+systemctl restart asterisk
+systemctl status asterisk
+```
+
+Confirm Asterisk started cleanly:
+
+```bash
+asterisk -rx "core show version"
+# Expected: Asterisk 20.x.x ...
 ```
 
 ---
 
-### 11. Start the Flask API
+### Step 13 — Create the first admin user
 
-For development (single process, auto-reload):
+The database starts empty. Create an admin user directly in MySQL:
 
 ```bash
-cd /root/ivr
-source venv/bin/activate
-export FRONTEND_ORIGIN=http://$(hostname -I | awk '{print $1}'):8080
-python3 run.py
+mysql -u ivr_user -p ivr
 ```
 
-The API will be available at `http://<your-server-ip>:5000`.
-
-For production (Gunicorn with multiple workers):
+Inside the MySQL shell (replace the email and password hash — generate the hash with the Python command below):
 
 ```bash
-cd /root/ivr
-source venv/bin/activate
-export FRONTEND_ORIGIN=http://$(hostname -I | awk '{print $1}'):8080
-gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 run:app
+# First, generate a bcrypt hash for your chosen password
+python3 -c "
+import bcrypt
+pw = b'YourChosenPassword'
+print(bcrypt.hashpw(pw, bcrypt.gensalt()).decode())
+"
+```
+
+Then in the MySQL shell:
+
+```sql
+INSERT INTO users (email, password, role, creation_date)
+VALUES (
+  'admin@example.com',
+  'PASTE_THE_BCRYPT_HASH_HERE',
+  'admin',
+  NOW()
+);
+EXIT;
+```
+
+> Use this email and password to log in to the dashboard in Step 18. Change the password after first login via the Profile page.
+
+---
+
+### Step 14 — Set up the IVR API as a systemd service
+
+Create the service file:
+
+```bash
+cat > /etc/systemd/system/ivr-api.service << 'EOF'
+[Unit]
+Description=Academy IVR API Service
+After=network.target mysql.service redis.service
+
+[Service]
+WorkingDirectory=/root/ivr
+ExecStart=/root/ivr/venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 run:app
+Restart=on-failure
+RestartSec=5
+Environment=FRONTEND_ORIGIN=http://YOUR_SERVER_IP:8000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+Replace `YOUR_SERVER_IP` with your actual server IP address:
+
+```bash
+# Find your server IP
+ip a | grep 'inet ' | grep -v '127.0.0.1'
+
+# Then replace it in the service file
+sed -i 's/YOUR_SERVER_IP/THE_IP_YOU_FOUND/' /etc/systemd/system/ivr-api.service
+```
+
+Enable and start the service:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now ivr-api
+systemctl status ivr-api
+```
+
+Test it:
+
+```bash
+curl http://localhost:5000/health
+# Expected: {"status":"ok"}
 ```
 
 ---
 
-### 12. Start the Asterisk events listener
-
-The events listener forwards AMI events (call originate responses, hangups) to the Flask API. Run it in a separate terminal or as a service (see step 15):
+### Step 15 — Set up the Asterisk events listener as a systemd service
 
 ```bash
-cd /root/ivr/bin
-source /root/ivr/venv/bin/activate
-python3 asterisk-events-listener.py
+cat > /etc/systemd/system/ivr-events.service << 'EOF'
+[Unit]
+Description=Academy IVR Asterisk Events Listener
+After=network.target asterisk.service ivr-api.service
+
+[Service]
+WorkingDirectory=/root/ivr/bin
+ExecStart=/root/ivr/venv/bin/python3 asterisk-events-listener.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+```bash
+systemctl daemon-reload
+systemctl enable --now ivr-events
+systemctl status ivr-events
 ```
 
 ---
 
-### 13. Configure the call queue cron job
+### Step 16 — Set up cron jobs
 
-The call queue processor drains queued calls when Asterisk has free channels. Add it to cron to run every minute:
+The IVR uses three cron jobs:
+
+| Job | Script | Schedule | Purpose |
+|---|---|---|---|
+| Call queue | `call-request-queue.py` | Every 3 min | Dispatches queued calls when channels are free |
+| SIP peer monitor | `sip-peer-monitor.py` | Every 50 min | Checks SIP trunk availability |
+| Log rotation | `log-rotation.py` | Daily at 23:59 | Rotates and compresses application logs |
+
+Create the cron file:
 
 ```bash
-crontab -e
-```
+cat > /etc/cron.d/ivr-system-cron << 'EOF'
+*/3  * * * * root cd /root/ivr/bin && /root/ivr/venv/bin/python3 call-request-queue.py >> /root/ivr/logs/queue.log 2>&1
+*/50 * * * * root cd /root/ivr/bin && /root/ivr/venv/bin/python3 sip-peer-monitor.py >> /root/ivr/logs/monitor.log 2>&1
+59   23 * * * root cd /root/ivr/bin && /root/ivr/venv/bin/python3 log-rotation.py >> /root/ivr/logs/rotation.log 2>&1
+EOF
 
-Add this line:
-
-```
-* * * * * cd /root/ivr/bin && /root/ivr/venv/bin/python3 call-request-queue.py >> /root/ivr/logs/queue.log 2>&1
+chown root:root /etc/cron.d/ivr-system-cron
+chmod 600 /etc/cron.d/ivr-system-cron
+systemctl restart cron
 ```
 
 ---
 
-### 14. Start the Vue.js web dashboard
+### Step 17 — Build and serve the Vue dashboard with nginx
 
-Install Node dependencies (first time only):
+**Set the API URL for the frontend:**
+
+```bash
+SERVER_IP=$(hostname -I | awk '{print $1}')
+
+cat > /root/ivr/web/.env << EOF
+VUE_APP_ROOT_API=http://${SERVER_IP}:5000/api
+EOF
+```
+
+**Install Node dependencies and build:**
 
 ```bash
 cd /root/ivr/web
 npm install
-```
-
-Set the API URL to point to your server:
-
-```bash
-# Replace the IP with your actual server IP
-echo "VUE_APP_API_URL=http://$(hostname -I | awk '{print $1}'):5000" > .env.development
-```
-
-Start the development server:
-
-```bash
-npm run serve
-```
-
-The dashboard will be available at `http://<your-server-ip>:8080`.
-
-For a production build served by a web server (nginx/apache):
-
-```bash
 npm run build
-# Output goes to /root/ivr/web/dist — serve this directory with nginx or apache
 ```
+
+This produces a `dist/` folder with the compiled dashboard.
+
+**Move the build to the nginx web root:**
+
+```bash
+mkdir -p /var/www/html/ivr-web-app
+rm -rf /var/www/html/ivr-web-app/*
+cp -r /root/ivr/web/dist/. /var/www/html/ivr-web-app/
+chown -R www-data:www-data /var/www/html/ivr-web-app
+chmod -R 755 /var/www/html/ivr-web-app
+```
+
+**Create the nginx site config:**
+
+```bash
+cat > /etc/nginx/sites-available/ivr-web-app << 'EOF'
+server {
+    listen 8000;
+    server_name _;
+
+    root /var/www/html/ivr-web-app;
+    index index.html;
+
+    # Vue Router — serve index.html for all routes so the SPA handles them
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|ico|woff2?)$ {
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
+EOF
+```
+
+**Enable the site and reload nginx:**
+
+```bash
+ln -sf /etc/nginx/sites-available/ivr-web-app /etc/nginx/sites-enabled/
+nginx -t   # must say "syntax is ok"
+systemctl reload nginx
+```
+
+The dashboard is now at `http://YOUR_SERVER_IP:8000`.
 
 ---
 
-### 15. Run as systemd services (production)
+### Step 18 — Verify everything is running
 
-This keeps all processes running across reboots and restarts them on failure.
-
-**IVR API service:**
+**Check all services:**
 
 ```bash
-sudo cp /root/ivr/bin/ivr-api.service /etc/systemd/system/ivr-api.service
-
-# Edit the service file to use the virtualenv
-sudo sed -i 's|ExecStart=.*|ExecStart=/root/ivr/venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 run:app|' \
-    /etc/systemd/system/ivr-api.service
-
-# Add the FRONTEND_ORIGIN env var — replace IP with your actual server IP
-sudo sed -i '/\[Service\]/a Environment=FRONTEND_ORIGIN=http://YOUR_SERVER_IP:8080' \
-    /etc/systemd/system/ivr-api.service
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now ivr-api
-sudo systemctl status ivr-api
+systemctl status mysql redis-server asterisk ivr-api ivr-events nginx
 ```
 
-**Asterisk events listener service:**
+All should show `active (running)`.
+
+**Check all ports are listening:**
 
 ```bash
-sudo cp /root/ivr/bin/asterisk-events-listener.service /etc/systemd/system/ivr-events.service
-
-# Edit to use the virtualenv
-sudo sed -i 's|ExecStart=.*|ExecStart=/root/ivr/venv/bin/python3 asterisk-events-listener.py|' \
-    /etc/systemd/system/ivr-events.service
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now ivr-events
-sudo systemctl status ivr-events
+ss -tlnp | grep -E '3306|6379|5000|5038|8088|5060|8000'
 ```
 
-Check logs for either service:
+Expected output:
 
-```bash
-sudo journalctl -u ivr-api -f
-sudo journalctl -u ivr-events -f
+```
+LISTEN  0.0.0.0:3306   mysql
+LISTEN  127.0.0.1:6379 redis
+LISTEN  0.0.0.0:5000   gunicorn (ivr-api)
+LISTEN  0.0.0.0:5038   asterisk (AMI)
+LISTEN  0.0.0.0:8088   asterisk (ARI/HTTP)
+LISTEN  0.0.0.0:5060   asterisk (SIP)
+LISTEN  0.0.0.0:8000   nginx (dashboard)
 ```
 
----
-
-### 16. Verify everything is running
+**Test the API health endpoint:**
 
 ```bash
-# Services
-sudo systemctl status mysql redis-server asterisk ivr-api ivr-events
-
-# Ports
-ss -tlnp | grep -E '3306|6379|5038|8088|5000|5060'
-
-# API health check
 curl http://localhost:5000/health
-# Expected: {"status": "ok"}
-
-# Asterisk AMI
-sudo asterisk -rvvv -x "core show version"
+# {"status": "ok"}
 ```
 
-Open a browser and navigate to `http://<your-server-ip>:8080` to access the web dashboard.
+**Test a login:**
 
-Default admin credentials are created by the first Alembic migration. Check the migration file in `alembic/versions/` for the default username and password, and **change them immediately after first login**.
+```bash
+curl -s -X POST http://localhost:5000/api/login \
+  -d "username=admin@example.com" \
+  -d "password=YourChosenPassword" | python3 -m json.tool
+# Should return a JWT token and user details
+```
+
+**Open the dashboard:**
+
+Navigate to `http://YOUR_SERVER_IP:8000` in a browser and log in with the admin credentials you created in Step 13.
 
 ---
 
-## SIP Phone Configuration
+## SIP Phone Setup
 
-Configure any SIP softphone (Zoiper, Linphone) or hardware phone with these settings:
+Connect a SIP phone (hardware or softphone like [Zoiper](https://www.zoiper.com/en/voip-softphone/download/current) or [Linphone](https://www.linphone.org/)) with these settings:
 
 | Setting | Value |
 |---|---|
-| Username / Auth name | `200` |
-| Password | `1234` *(change this in `/etc/asterisk/sip.conf` before production use)* |
-| SIP Server / Host | Your server IP address (run `ip a` to find it) |
+| SIP Server | Your server IP (`ip a` to find it) |
 | Port | `5060` |
+| Username / Auth name | `200` |
+| Password | `1234` |
 
-To find your server IP:
+> **Before going live:** change the SIP extension password by editing `/etc/asterisk/sip.conf` and running `asterisk -rx "sip reload"`.
 
-```bash
-ip a | grep 'inet ' | grep -v '127.0.0.1'
-```
+To make a test call, dial any number from the registered softphone. Asterisk will answer it, run `agi.py`, and you will hear whatever the VXML app at the configured `voice_url` returns.
 
 ---
 
-## Docker Setup (Alternative)
+## Updating the Application
 
-If you prefer Docker, the `docker-compose.yml` in the repository sets up all services automatically.
-
-```bash
-git clone https://github.com/Vinald/ivr-demo.git ivr
-cd ivr
-
-# Copy and edit the env file
-cp .env.example .env
-nano .env   # set MYSQL_ROOT_PASSWORD, FRONTEND_ORIGIN, VUE_APP_API_URL
-
-sudo apt update && sudo apt install -y docker.io docker-compose
-sudo docker-compose up -d --build
-```
-
-| Service | URL |
-|---|---|
-| IVR API | `http://your-ip:5000` |
-| Web Dashboard | `http://your-ip:8000` |
-
-Daily commands:
+When you pull new code, run these steps to apply the update:
 
 ```bash
-docker-compose stop    # stop containers
-docker-compose start   # resume containers
-docker-compose logs -f # follow logs
+cd /root/ivr
+git pull origin main
+
+# Apply any new database migrations
+source venv/bin/activate
+alembic upgrade head
+
+# Install any new Python dependencies
+pip install -r requirements.txt
+
+# Restart the API
+systemctl restart ivr-api
+systemctl restart ivr-events
+
+# If you changed frontend code, rebuild and redeploy
+cd /root/ivr/web
+npm install
+npm run build
+rm -rf /var/www/html/ivr-web-app/*
+cp -r dist/. /var/www/html/ivr-web-app/
+chown -R www-data:www-data /var/www/html/ivr-web-app
 ```
 
 ---
 
 ## Environment Variables Reference
 
-These can be set in your shell, in a `.env` file, or in the systemd service `Environment=` line.
+Set these in the systemd service file (`Environment=`) or your shell.
 
 | Variable | Default | Description |
 |---|---|---|
-| `FRONTEND_ORIGIN` | `http://localhost:8080` | CORS allowed origin for the Vue dashboard |
-| `MYSQL_ROOT_PASSWORD` | *(none)* | MySQL root password used by docker-compose |
-| `VUE_APP_API_URL` | `http://localhost:5000` | API base URL used by the Vue frontend |
+| `FRONTEND_ORIGIN` | `http://localhost:8080` | Allowed CORS origin — must match the URL you use to access the dashboard in the browser |
 
-The `secret-key` in `config.json` must also be set to a strong random value before starting the API in any environment:
+The `secret-key` in `config.json` must be a strong random value. Regenerate it at any time with:
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
-# Paste the output into config.json under "core" > "secret-key"
 ```
+
+> Changing the secret-key invalidates all existing JWT tokens (all users will be logged out).
 
 ---
 
@@ -583,7 +781,7 @@ source venv/bin/activate
 pytest
 ```
 
-To run a specific test file:
+Run a single file verbosely:
 
 ```bash
 pytest tests/test_cdr_manager.py -v
@@ -591,9 +789,9 @@ pytest tests/test_cdr_manager.py -v
 
 ---
 
-## Pre-commit Hooks (Secret Detection)
+## Pre-commit Hooks
 
-This repository uses [pre-commit](https://pre-commit.com) with [detect-secrets](https://github.com/Yelp/detect-secrets) to block accidental credential commits before they leave your machine.
+This repository uses [pre-commit](https://pre-commit.com) with [detect-secrets](https://github.com/Yelp/detect-secrets) to block accidental credential commits before they reach GitHub.
 
 **Install once after cloning:**
 
@@ -602,110 +800,157 @@ pip install pre-commit detect-secrets
 pre-commit install
 ```
 
-After that, every `git commit` will automatically:
-- Scan staged files for secrets and block the commit if any are found
+After that, every `git commit` will:
+- Scan staged files for secrets and block if any are found
 - Prevent direct commits to `main` or `master`
-- Check Python syntax, YAML/JSON validity, and trailing whitespace
+- Check Python syntax, YAML/JSON validity, trailing whitespace
 
-**If detect-secrets flags a false positive** (e.g. a test fixture or example value):
+**If detect-secrets flags a false positive:**
 
 ```bash
-# Review what was flagged
 detect-secrets scan > .secrets.baseline
-
-# Audit each finding and mark safe ones as approved
 detect-secrets audit .secrets.baseline
-
-# Then commit the updated baseline
-git add .secrets.baseline
-git commit -m "chore: update secrets baseline"
+git add .secrets.baseline && git commit -m "chore: update secrets baseline"
 ```
 
-> **Never commit `config.json`** — it contains your real database password and JWT secret key. Only `config.dev.json` (with placeholder values) is tracked. The `.gitignore` blocks `config.json` by default.
+> **Never commit `config.json`** — it contains your real credentials. The `.gitignore` blocks it. Only `config.dev.json` (placeholder values) is tracked.
 
 ---
 
 ## Code Style
 
-This project follows [PEP 8](https://www.python.org/dev/peps/pep-0008/) with a max line length of 120.
-
-Check for style errors before pushing:
+PEP 8 with a max line length of 120.
 
 ```bash
-flake8 --max-line-length=120 --statistics ./run.py ./agi.py ./app
+# Check
+flake8 --max-line-length=120 ./run.py ./agi.py ./app
+
+# Auto-fix
+autopep8 --in-place --aggressive --aggressive ./run.py
 ```
 
-Auto-fix style errors:
+---
+
+## Docker Alternative
+
+If you prefer containers, `docker-compose.yml` sets up MySQL, Redis, and the web app automatically. You still need Asterisk installed on the host (Asterisk cannot run inside a container and reach SIP phones on the local network without host networking).
 
 ```bash
-autopep8 --in-place --aggressive --aggressive <filename_or_directory>
+cp .env.example .env
+nano .env   # fill in MYSQL_ROOT_PASSWORD, FRONTEND_ORIGIN, VUE_APP_API_URL
+
+apt install -y docker.io docker-compose
+docker-compose up -d --build
 ```
+
+| Service | URL |
+|---|---|
+| IVR API | `http://your-ip:5000` |
+| Web Dashboard | `http://your-ip:8000` |
 
 ---
 
 ## Troubleshooting
 
+**`systemctl status ivr-api` shows a failure**
+
+```bash
+journalctl -u ivr-api -n 50 --no-pager
+```
+
+Common causes: `config.json` missing, wrong database password, Redis not running, empty `secret-key`.
+
+**API returns 500 on login**
+
+Check the application log:
+
+```bash
+tail -f /root/ivr/logs/app.log
+```
+
 **Asterisk won't start**
-```bash
-sudo journalctl -u asterisk -n 50
-sudo asterisk -cvvv   # start in console mode to see errors
-```
-
-**API fails to connect to MySQL**
-```bash
-mysql -u ivr_user -p ivr -e "SELECT 1;"   # test credentials directly
-# Also check: sudo systemctl status mysql
-```
-
-**API fails to connect to Redis**
-```bash
-redis-cli ping   # should return PONG
-# Check: sudo systemctl status redis-server
-```
-
-**API starts but AMI connection fails**
-
-AMI connects in a background thread — the API starts normally even if Asterisk is down. Check the log:
 
 ```bash
-tail -f /root/ivr/logs/app.log | grep AMI
+journalctl -u asterisk -n 50 --no-pager
+asterisk -cvvv           # run in foreground to see all errors
 ```
 
-**AGI script not found by Asterisk**
+**Asterisk starts but AMI connection fails**
 
-Make sure `extensions.conf` references the correct Python path:
+AMI connects in a background thread so the API starts regardless. Check the log:
+
+```bash
+grep -i ami /root/ivr/logs/app.log | tail -20
+```
+
+The most common cause is the AMI password in `manager.conf` not matching `asterisk-ami.pass` in `config.json`.
+
+**AGI script fails on calls**
+
+```bash
+tail -f /var/log/asterisk/full | grep -i agi
+```
+
+Make sure the extensions.conf AGI line points to the venv Python:
 
 ```bash
 grep AGI /etc/asterisk/extensions.conf
-# Should show: AGI(/root/ivr/venv/bin/python3 /root/ivr/agi.py)
-sudo asterisk -rx "dialplan reload"
+# Must be: AGI(/root/ivr/venv/bin/python3 /root/ivr/agi.py)
 ```
 
-**Vue dashboard shows CORS errors**
+**Dashboard blank or shows "Network Error"**
 
-Make sure `FRONTEND_ORIGIN` matches the exact URL (including port) you use to access the dashboard in your browser, and restart the API after changing it.
+Check the `VUE_APP_ROOT_API` URL in `/root/ivr/web/.env` matches your actual server IP. Rebuild and redeploy if you change it:
+
+```bash
+cd /root/ivr/web && npm run build
+cp -r dist/. /var/www/html/ivr-web-app/
+```
+
+**CORS errors in the browser console**
+
+`FRONTEND_ORIGIN` in the `ivr-api.service` must exactly match the URL in your browser's address bar (including the port). After changing it:
+
+```bash
+systemctl daemon-reload && systemctl restart ivr-api
+```
 
 **Permission errors writing logs**
 
 ```bash
-sudo chown -R $USER:asterisk /root/ivr
-sudo chmod -R 775 /root/ivr/logs
+chown -R root:asterisk /root/ivr
+chmod -R 775 /root/ivr/logs
+```
+
+**MySQL "Access denied"**
+
+```bash
+mysql -u ivr_user -p ivr -e "SELECT 1;"
+```
+
+If this fails, the password in `config.json` doesn't match what you set in Step 3. Reset it:
+
+```bash
+mysql -u root -p
+ALTER USER 'ivr_user'@'localhost' IDENTIFIED BY 'your_new_password';
+FLUSH PRIVILEGES;
+EXIT;
 ```
 
 ---
 
 ## References
 
-| Interface | Description | Reference |
-|---|---|---|
-| Asterisk ARI | Get SIP peer info, active channels | [ARI Docs](https://wiki.asterisk.org/wiki/pages/viewpage.action?pageId=29395573) |
-| Asterisk AMI | Initiate calls, receive call events | [AMI Docs](https://wiki.asterisk.org/wiki/pages/viewpage.action?pageId=4817239) |
-| Asterisk AGI | Manipulate call flow after VXML parsing | [AGI Docs](https://wiki.asterisk.org/wiki/pages/viewpage.action?pageId=32375589) |
-| Flask | Python web framework for the REST API | [Flask Docs](https://flask.palletsprojects.com/) |
-| Beautiful Soup | VXML parser | [BS4 Docs](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) |
-| SQLAlchemy | ORM for all database operations | [SQLAlchemy Docs](https://docs.sqlalchemy.org/) |
-| Redis | In-memory cache and call queue | [Redis Docs](https://redis.io/documentation) |
-| marshmallow | Request input validation | [marshmallow Docs](https://marshmallow.readthedocs.io/) |
-| Alembic | Database schema migrations | [Alembic Docs](https://alembic.sqlalchemy.org/) |
-| Flake8 | Python code style linter | [Flake8 Docs](http://flake8.pycqa.org/en/latest/) |
-| Autopep8 | Auto code style fixer | [Autopep8 Docs](https://pypi.org/project/autopep8/) |
+| Component | Docs |
+|---|---|
+| Asterisk ARI | https://wiki.asterisk.org/wiki/pages/viewpage.action?pageId=29395573 |
+| Asterisk AMI | https://wiki.asterisk.org/wiki/pages/viewpage.action?pageId=4817239 |
+| Asterisk AGI | https://wiki.asterisk.org/wiki/pages/viewpage.action?pageId=32375589 |
+| Flask | https://flask.palletsprojects.com |
+| SQLAlchemy | https://docs.sqlalchemy.org |
+| Alembic | https://alembic.sqlalchemy.org |
+| marshmallow | https://marshmallow.readthedocs.io |
+| Redis | https://redis.io/documentation |
+| BeautifulSoup4 | https://www.crummy.com/software/BeautifulSoup/bs4/doc |
+| Gunicorn | https://docs.gunicorn.org |
+| nginx | https://nginx.org/en/docs |
