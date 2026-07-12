@@ -9,4 +9,9 @@ public class HomeController {
 	public String home() {
 		return "Ecommerce API";
 	}
+
+	@GetMapping("/about")
+	public String about() {
+		return "Ecommerce API - About";
+	}
 }
