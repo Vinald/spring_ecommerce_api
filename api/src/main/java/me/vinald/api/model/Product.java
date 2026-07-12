@@ -17,15 +17,15 @@ public class Product {
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer productId;
-	@NotBlank
+	@NotBlank(message = "Product name is required")
 	private String name;
-	@NotBlank
+	@NotBlank(message = "Product description is required")
 	private String description;
-	@NotBlank
+	@NotBlank(message = "Product category is required")
 	private String category;
-	@NotBlank
+	@NotBlank(message = "Product price is required")
 	private double price;
-	@NotBlank
+	@NotBlank(message = "Product quantity is required and can not be negative")
 	private int quantity;
 
 	private boolean available;
