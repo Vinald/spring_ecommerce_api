@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class HomeController {
 	@GetMapping("/")
 	public String home() {
-		return "Ecommerce API";
+		return "Welcome to the E-commerce application!";
 	}
 
 	@GetMapping("/about")
